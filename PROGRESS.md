@@ -3,8 +3,8 @@
 | Fase | Estado |
 |---|---|
 | 0. Preparación | ✅ Hecha |
-| 1. Núcleo jugable | ✅ Hecha (pendiente del visto bueno de Carlos) |
-| 2. Día/noche y oleadas | ⏳ Pendiente |
+| 1. Núcleo jugable | ✅ Hecha |
+| 2. Día/noche, oleadas, decoración e interacciones | ✅ Hecha (pendiente del visto bueno de Carlos) |
 | 3. Construcción | ⏳ Pendiente |
 | 4. Tiendas | ⏳ Pendiente |
 | 5. Enemigos y defensas completos | ⏳ Pendiente |
@@ -50,10 +50,48 @@
   - Sombras obsoletas y FOV en pantallas verticales.
   - Closures en bucles calientes y constantes fuera de `src/data`.
 
+## Fase 2: qué hay
+- **Ciclo:**
+  - Día (60 s el primero, 90 s el resto, N para adelantarlo) → atardecer con sirena (15 s) → noche (140 s + 12 s por noche, hasta 260) → amanecer (6 s).
+  - Reloj de 07:00 a 05:00; marca "05:00+" si la noche se alarga.
+  - La noche no termina hasta abatir toda la horda.
+- **Oleadas:**
+  - Horda por noche: 14, 22, 32, 43, 55…
+  - Con cada noche aumentan la vida (+6 %), la velocidad (+2,5 %, tope +35 %), el máximo de zombis vivos y los puntos de aparición activos.
+  - Rezagados de día a partir del día 2.
+- **Iluminación:**
+  - Paletas de día, atardecer y noche, y el sol cruzando el cielo.
+  - Linterna con sombras, farolas (charcos de luz y 4 luces reales reasignadas) y luces interiores con generador.
+  - Ojos brillantes de los zombis, alarma roja y sirenas de los coches.
+- **Puntuación:**
+  - Combos (×1,5 cada 5 bajas, tope ×3) y números flotantes.
+  - Bonus al amanecer (noche × 100 y +75 × noche si no te han tocado).
+  - Casos de la pizarra.
+- **Decoración procedural:**
+  - 63 tipos de props y 208 instancias en 7 draw calls: escritorios con monitores, mostradores con mampara, armero, taquillas, celdas con camastro, váter y barrotes, camillas, coches patrulla rotulados, mástiles con bandera, rótulos…
+- **24 interacciones** (tecla E mantenida, aviso, barra de progreso y marcadores "!"): cafetera, vending, fuente, 4 taquillas, 2 archivadores, 2 botiquines de pared, 2 camas, teléfono, radio, cámaras, generador, cuadro eléctrico, pizarra de casos, sirena de 4 coches (señuelo con rutas reales) y alarma.
+- **Botiquines** (Q): curan 40; máximo 3; empiezas con 1.
+- **QA (Sonnet) y revisión (Opus) hechas.** Corregidos:
+  - Informe del archivador vacío y botiquín de botín con el inventario lleno.
+  - Señuelo que atravesaba muros (ahora con flow field propio).
+  - Ciclo que avanzaba con el jugador muerto.
+  - Radio que hablaba de la noche equivocada al amanecer.
+  - Generador arrancable al amanecer y daño que no cancelaba la interacción.
+  - Botiquín que se gastaba con la vida llena.
+  - Sombra de la linterna calculada de día.
+  - Parpadeos con reloj real (ahora con tiempo de juego).
+  - Normales de los elipsoides, colores del terreno duplicados, números mágicos llevados a JSON y asignaciones por frame.
+
 ## Placeholders pendientes de sustituir
-- **Detalle del interior**: el mobiliario son cajas. Se hará una pasada de props por código al estilo de la referencia (escritorios con ordenador, taquillas, estanterías, plantas, carteles, camillas, armero, coches patrulla con sirena…).
-- Todo el arte. Se sustituirá en la fase 6 por los assets aprobados.
-- Props sin asset CC0 encontrado: trampas (pinchos, cepo, mina, alambre), sacos de arena, generador, foco, celdas o rejas y mobiliario de oficina. Se modelarán por código en estilo low-poly si no aparecen.
+- Arte: todo procedural en el estilo de la referencia (decisión de Carlos). Los packs CC0 solo se usarán para sonido y música (fase 6).
+- Trampas, barricadas y armas: se modelarán por código en sus fases.
+
+## Ideas de Carlos (backlog)
+- ✅ (fase 2, hecha) **Cafetera:** +10 % de velocidad de movimiento durante 30 s; 2 min de espera hasta el siguiente café.
+- ⏳ (fase 3) **Transformador con vida**, que sustituye al generador:
+  - Funciona desde el inicio y, de noche, da más luz a la comisaría.
+  - Los zombis pueden estropearlo; sin él, solo queda la linterna.
+  - Se puede reparar en cualquier momento (coste proporcional al daño).
 
 ## Bugs conocidos
 - Ninguno.

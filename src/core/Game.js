@@ -81,6 +81,7 @@ export class Game {
     this.bus.on('phase:amanecer', () => { this.power.generator = false; });
     this.deathTimer = 0;
     this.wavesEnabled = true;
+    this._nightCleared = () => this.waves.cleared();
 
     this.setupDebug();
     this.cameraRig.snap(this.player.position);
@@ -133,6 +134,8 @@ export class Game {
     this._disposed = true;
     window.removeEventListener('resize', this._onResize);
     this.input.dispose();
+    this.props.dispose();
+    this.lighting.dispose();
     this.debug.gui.destroy();
     this.renderer.renderer.dispose();
   }
@@ -249,7 +252,9 @@ export class Game {
     this.time += dt;
     if (this.player.alive) this.run.time += dt;
     if (this.input.consume('ready') && this.player.alive) this.dayNight.skipDay();
-    this.dayNight.update(dt, () => this.waves.cleared());
+    // Muerto, el ciclo se congela (no hay "noche superada" encima de "Has caído").
+    if (this.player.alive) this.dayNight.update(dt, this._nightCleared);
+    this.lighting.updateLogic(dt);
     this.player.update(dt);
     this.interactions.update(dt);
     this.weapons.update(dt);

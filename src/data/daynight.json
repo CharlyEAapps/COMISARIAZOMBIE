@@ -60,6 +60,22 @@
     "interiorPoolRadius": 4.5,
     "interiorPoolOpacity": 0.45,
     "zombieEyesNight": 1.0,
-    "zombieEyesDay": 0.0
+    "zombieEyesDay": 0.0,
+    "flashlightNightCurve": [
+      1.1,
+      0.1
+    ],
+    "alarmLightIntensity": 60,
+    "alarmTint": 0.35,
+    "alarmHemiBoost": 0.25,
+    "alarmPulseHz": 1.9,
+    "interiorMinFactor": 0.15,
+    "interiorHemiBoost": 0.25,
+    "lampAssignInterval": 0.3,
+    "lampMaxDistance": 30,
+    "sirenHz": 4,
+    "glowDay": 0.85,
+    "glowNightLit": 1.0,
+    "glowNightDark": 0.5
   }
 }

@@ -5,7 +5,7 @@ import { withCutaway } from './Cutaway.js';
 // (1 draw call) y un InstancedMesh por tipo de obstáculo. En la fase 6 se sustituye por assets.
 
 // Paleta "maqueta": tonos claros y suaves (referencia visual de Carlos).
-const FLOOR_COLORS = {
+export const FLOOR_COLORS = {
   hierba: [0x9cbb72, 0x9fbe75, 0x99b870],
   asfalto: [0x7e8187, 0x80838a, 0x7b7e84],
   interior: [0xe9e4d9, 0xb9b2a5], // damero de baldosas suave

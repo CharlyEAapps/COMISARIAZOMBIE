@@ -23,7 +23,9 @@ export class InteractionSystem {
     this.current = null;
     this.holdT = 0;
     this.waitRelease = false;
-    game.bus.on('player:hurt', () => { this.holdT = 0; });
+    // Recibir daño cancela la acción: hay que soltar E y volver a pulsarla.
+    game.bus.on('player:hurt', () => { this.holdT = 0; this.waitRelease = true; });
+    this._markers = [];
   }
 
   /** @param {{id:string,type:string,x:number,z:number,label?:string}[]} anchors */
@@ -46,11 +48,12 @@ export class InteractionSystem {
     const phase = game.dayNight.phase;
     if (d.availability === 'day' && phase !== PHASE.DAY) return { ok: false, reason: 'Solo de día' };
     if (d.availability === 'night' && phase !== PHASE.NIGHT) return { ok: false, reason: 'Solo de noche' };
+    if (d.noDawn && phase === PHASE.DAWN) return { ok: false, reason: 'Está amaneciendo' };
     if (typeof d.cooldown === 'number' && game.time < it.readyAt) {
       return { ok: false, reason: `Disponible en ${Math.ceil(it.readyAt - game.time)} s` };
     }
     if (typeof d.cooldown === 'string' && it.usedCycle === game.dayNight.night) {
-      return { ok: false, reason: 'Ya usado hoy' };
+      return { ok: false, reason: d.availability === 'night' ? 'Ya usado esta noche' : 'Ya usado hoy' };
     }
     if (d.cost && game.run.points < d.cost) return { ok: false, reason: `Necesitas ${d.cost} puntos` };
     if (d.requiresPower && !game.power.generator) return { ok: false, reason: 'Sin corriente: arranca el generador' };
@@ -115,13 +118,19 @@ export class InteractionSystem {
     const p = game.player;
     let msg = null;
     if (e.loot) {
-      const pick = weightedPick(e.loot);
-      this.apply(pick, it);
-      return pick.msg ?? null;
+      let pick = weightedPick(e.loot);
+      // Botiquín con el inventario lleno: se convierte en puntos.
+      if (pick.medkit && p.medkits >= data._medkit.max) {
+        pick = { points: data._medkit.fullLootPoints, msg: `🩹 Un botiquín… pero ya llevas el máximo: +${data._medkit.fullLootPoints}` };
+      }
+      const sub = this.apply(pick, it);
+      if (pick.msg && sub) return `${pick.msg}: ${sub}`;
+      return sub ?? pick.msg ?? null;
     }
     if (e.heal) p.heal(e.heal);
     if (e.stamina) p.stamina = Math.min(p.data.maxStamina, p.stamina + e.stamina);
     if (e.staminaRegenMul) p.addBuff('staminaRegen', e.staminaRegenMul, e.buffDuration);
+    if (e.speedMul) p.addBuff('speed', e.speedMul, e.buffDuration);
     if (e.medkit) p.medkits = Math.min(data._medkit.max, p.medkits + e.medkit);
     if (e.points) game.score.addPoints(e.points, it.x, it.z);
     if (e.intel) msg = this.intelMessage();
@@ -156,9 +165,10 @@ export class InteractionSystem {
   intelMessage() {
     const { game } = this;
     const dnSys = game.dayNight;
-    const side = game.waves.dominantSide();
+    // En el amanecer, la noche que viene es la siguiente.
+    const n = dnSys.phase === PHASE.DAWN ? dnSys.night + 1 : dnSys.night;
+    const side = game.waves.dominantSide(n);
     if (dnSys.phase === PHASE.NIGHT) return `📻 Quedan unos ${game.waves.remaining} zombis. Llegan sobre todo por el ${side}.`;
-    const n = dnSys.night;
     const count = game.waves.forecast(n);
     return `📻 Noche ${n}: se esperan unos ${count} zombis, sobre todo por el ${side}.`;
   }
@@ -181,10 +191,11 @@ export class InteractionSystem {
     return `📹 Cámaras: ${alive} zombis a la vista, ${n} por el ${side}.`;
   }
 
-  /** Puntos con "!" (interacción útil disponible) cerca del jugador, para el HUD. */
+  /** Puntos con "!" (interacción útil disponible) cerca del jugador, para el HUD. Reutiliza el array. */
   markers(maxDist = 20) {
     const p = this.game.player.position;
-    const out = [];
+    const out = this._markers;
+    out.length = 0;
     for (const it of this.items) {
       if (!it.def.marker) continue;
       if ((it.x - p.x) ** 2 + (it.z - p.z) ** 2 > maxDist * maxDist) continue;

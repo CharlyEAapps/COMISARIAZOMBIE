@@ -56,6 +56,7 @@ export class Lighting {
       this.lampLights.push(pl);
     }
     this.assignTimer = 0;
+    this._sorted = []; // reutilizado al ordenar farolas por distancia
 
     // Luz roja de alarma.
     this.alarmLight = new THREE.PointLight(0xff2a2a, 0, 40, 1.2);
@@ -114,6 +115,21 @@ export class Lighting {
     this.alarmTimer = seconds;
   }
 
+  /** Temporizadores de juego (paso fijo): misma fuente de verdad que la ralentización de zombis. */
+  updateLogic(dt) {
+    if (this.alarmTimer > 0) this.alarmTimer = Math.max(0, this.alarmTimer - dt);
+  }
+
+  dispose() {
+    const { scene } = this.game;
+    for (const m of [this.lampPools, this.interiorPools]) {
+      if (m) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
+    }
+    this.poolTexture.dispose();
+    this.flashlight.dispose();
+    for (const l of [...this.lampLights, this.alarmLight]) { scene.remove(l); l.dispose(); }
+  }
+
   update(dt) {
     const { game, r, cfg } = this;
     const dnSys = game.dayNight;
@@ -136,13 +152,12 @@ export class Lighting {
     // El sol recorre el cielo durante el día (sombras que giran); de noche, luna fija.
     r.sunAngle = dnSys.phase === 'dia' ? -0.9 + dnSys.progress * 1.8 : dnSys.phase === 'atardecer' ? 0.9 + dnSys.progress * 0.4 : 0.3;
 
-    // Alarma: parpadeo rojo y ambiente teñido.
+    // Alarma: parpadeo rojo y ambiente teñido (tiempo de juego: se congela en pausa).
     if (this.alarmTimer > 0) {
-      this.alarmTimer -= dt;
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.012);
-      this.alarmLight.intensity = 60 * pulse;
-      r.hemi.color.lerp(this._c.set(0xff3030), 0.35 * pulse);
-      r.hemi.intensity += 0.25 * pulse;
+      const pulse = 0.5 + 0.5 * Math.sin(game.time * Math.PI * 2 * cfg.alarmPulseHz);
+      this.alarmLight.intensity = cfg.alarmLightIntensity * pulse;
+      r.hemi.color.lerp(this._c.set(0xff3030), cfg.alarmTint * pulse);
+      r.hemi.intensity += cfg.alarmHemiBoost * pulse;
     } else {
       this.alarmLight.intensity = 0;
     }
@@ -151,7 +166,10 @@ export class Lighting {
     const p = game.player;
     const fl = this.flashlight;
     const dir = p.aimDir;
-    fl.intensity = p.alive ? cfg.flashlightIntensity * Math.max(0, night * 1.1 - 0.1) : 0;
+    const [curveA, curveB] = cfg.flashlightNightCurve;
+    fl.intensity = p.alive ? cfg.flashlightIntensity * Math.max(0, night * curveA - curveB) : 0;
+    // Sin luz no hace falta el pase de sombra (WebGLShadowMap no mira la intensidad).
+    fl.shadow.autoUpdate = fl.intensity > 0;
     fl.position.set(p.position.x + dir.x * 0.9, 1.55, p.position.z + dir.z * 0.9);
     fl.target.position.set(p.position.x + dir.x * 9, 0, p.position.z + dir.z * 9);
     this.alarmLight.position.set(p.position.x, 6, p.position.z);
@@ -160,26 +178,28 @@ export class Lighting {
     this.lampPools.material.opacity = cfg.lampPoolOpacity * night;
     this.lampPools.visible = night > 0.01;
     const interiorOn = game.power?.lightsOn && game.power?.generator;
-    this.interiorPools.material.opacity = interiorOn ? cfg.interiorPoolOpacity * Math.max(0.15, night) : 0;
+    this.interiorPools.material.opacity = interiorOn ? cfg.interiorPoolOpacity * Math.max(cfg.interiorMinFactor, night) : 0;
     this.interiorPools.visible = !!interiorOn;
     if (interiorOn) {
       // Interior iluminado: algo más de luz ambiente.
-      r.hemi.intensity += 0.25 * night;
+      r.hemi.intensity += cfg.interiorHemiBoost * night;
     }
 
     // Reasignación periódica de las luces reales a las farolas más cercanas.
     this.assignTimer -= dt;
     if (this.assignTimer <= 0) {
-      this.assignTimer = 0.3;
+      this.assignTimer = cfg.lampAssignInterval;
       const px = p.position.x, pz = p.position.z;
-      const sorted = this.lamps
-        .map((l) => ({ l, d: (l.x - px) ** 2 + (l.z - pz) ** 2 }))
-        .sort((x, y) => x.d - y.d);
-      this.lampLights.forEach((pl, k) => {
-        const s = sorted[k];
-        if (s) pl.position.set(s.l.x, s.l.y - 0.3, s.l.z);
-        pl.userData.active = !!s && s.d < 30 * 30;
-      });
+      const sorted = this._sorted;
+      sorted.length = 0;
+      for (const l of this.lamps) { l._d = (l.x - px) ** 2 + (l.z - pz) ** 2; sorted.push(l); }
+      sorted.sort((x, y) => x._d - y._d);
+      const maxD2 = cfg.lampMaxDistance * cfg.lampMaxDistance;
+      for (let k = 0; k < this.lampLights.length; k++) {
+        const pl = this.lampLights[k], l = sorted[k];
+        if (l) pl.position.set(l.x, l.y - 0.3, l.z);
+        pl.userData.active = !!l && l._d < maxD2;
+      }
     }
     for (const pl of this.lampLights) pl.intensity = pl.userData.active ? cfg.lampPointIntensity * night : 0;
 
@@ -187,8 +207,8 @@ export class Lighting {
     const props = game.props;
     if (props) {
       const sirens = game.zombies.decoy.timer > 0 || this.alarmTimer > 0 || dnSys.phase === 'atardecer';
-      props.setSirens(sirens, performance.now() / 1000);
-      props.setGlow(night > 0.5 ? (interiorOn ? 1 : 0.5) : 0.85);
+      props.setSirens(sirens, game.time * cfg.sirenHz / 4);
+      props.setGlow(night > 0.5 ? (interiorOn ? cfg.glowNightLit : cfg.glowNightDark) : cfg.glowDay);
     }
 
     // Ojos de los zombis: brillan de noche.

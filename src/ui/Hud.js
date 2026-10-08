@@ -1,4 +1,7 @@
 import { PHASE } from '../systems/DayNight.js';
+import interactions from '../data/interactions.json';
+
+const MEDKIT_TIME = interactions._medkit.useTime;
 
 const PHASE_TEXT = {
   [PHASE.DAY]: (n) => `Día ${n}<br>Prepara la defensa`,
@@ -108,10 +111,15 @@ export class Hud {
   update(dt) {
     const { player, weapons, run, state, dayNight, waves, score, interactions, power } = this.game;
     const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-    this.set('time', dayNight.formatClock());
+    // Si la noche se alarga porque quedan zombis, el reloj se queda en 05:00 y lo indica.
+    const overtime = dayNight.phase === PHASE.NIGHT && dayNight.t > dayNight.duration;
+    this.set('time', overtime ? `${dayNight.formatClock()}+` : dayNight.formatClock());
     this.set('phase', PHASE_TEXT[dayNight.phase](dayNight.night), 'innerHTML');
     this.set('phaseBar', `${(dayNight.progress * 100).toFixed(1)}%`, 'width');
-    this.el.phaseBar.dataset.phase = dayNight.phase;
+    if (this._last.phaseAttr !== dayNight.phase) {
+      this._last.phaseAttr = dayNight.phase;
+      this.el.phaseBar.dataset.phase = dayNight.phase;
+    }
     this.set('hpText', String(Math.ceil(player.hp)));
     this.set('hp', `${(player.hp / player.maxHp) * 100}%`, 'width');
     this.set('stText', String(Math.round(player.stamina)));
@@ -133,7 +141,8 @@ export class Hud {
     // Caso de la noche.
     this.set('case', !!score.objective, 'show');
     if (score.objective) {
-      const met = score.objectiveMet();
+      // El caso solo cuenta durante su noche (antes, "recibe menos de N de daño" ya saldría cumplido).
+      const met = night && score.objectiveMet();
       this.set('caseText', `${score.objective.text} <b class="${met ? 'ok' : ''}">${met ? '✔' : `+${score.objective.reward}`}</b>`, 'innerHTML');
     }
 
@@ -148,7 +157,7 @@ export class Hud {
     this.set('medkits', `🩹 ×${player.medkits} <span class="key small">Q</span>`, 'innerHTML');
     this.set('mag', w.reloading > 0 ? '··' : String(w.mag));
     this.set('res', w.reserve < 0 ? '/ ∞' : `/ ${w.reserve}`);
-    const rl = w.reloading > 0 ? 1 - w.reloading / w.data.reloadTime : player.medkitTimer > 0 ? 1 - player.medkitTimer / 1 : 0;
+    const rl = w.reloading > 0 ? 1 - w.reloading / w.data.reloadTime : player.medkitTimer > 0 ? 1 - player.medkitTimer / MEDKIT_TIME : 0;
     this.set('reload', `${(rl * 100).toFixed(0)}%`, 'width');
     this.el.mag.classList.toggle('low', w.mag <= Math.ceil(w.data.magSize * 0.25));
 

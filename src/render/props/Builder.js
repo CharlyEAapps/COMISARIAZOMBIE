@@ -144,7 +144,11 @@ export class PropBuilder {
     const t = sphereTemplate(seg);
     const P = t.pos, N = t.nor;
     for (let k = 0; k < P.length; k += 3) {
-      this._vert(L, rt, P[k] * dx + (o.ox || 0), P[k + 1] * dy + dy / 2 + (o.oy || 0), P[k + 2] * dz + (o.oz || 0), N[k], N[k + 1], N[k + 2], c, 1 - ao * (0.5 - P[k + 1]));
+      // Normal de elipsoide: la de la esfera dividida por la escala de cada eje, normalizada.
+      let nx = N[k] / dx, ny = N[k + 1] / dy, nz = N[k + 2] / dz;
+      const l = Math.hypot(nx, ny, nz) || 1;
+      nx /= l; ny /= l; nz /= l;
+      this._vert(L, rt, P[k] * dx + (o.ox || 0), P[k + 1] * dy + dy / 2 + (o.oy || 0), P[k + 2] * dz + (o.oz || 0), nx, ny, nz, c, 1 - ao * (0.5 - P[k + 1]));
     }
   }
 

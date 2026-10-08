@@ -3,6 +3,7 @@ import { FURNITURE } from './furniture.js';
 import { OUTDOOR } from './outdoor.js';
 import { DECOR } from './decor.js';
 import { defaultDecor } from './layout.js';
+import { FLOOR_COLORS } from '../MapRenderer.js';
 
 // Fábrica de props: detecta los grupos de celdas del mapa ('o', 'c', 'k', 'L'), decide qué es
 // cada uno (según la sala y la forma, con posibilidad de forzarlo desde props.json), construye
@@ -178,11 +179,11 @@ function groundColor(grid, g) {
       const ch = grid.chars[grid.index(i, j)];
       if (ch === 'o') continue;
       const f = grid.tiles[ch]?.floor;
-      if (f === 'hierba') return terrainRgb(0x9fbe75);
-      if (f === 'asfalto') return terrainRgb(0x80838a);
+      if (f === 'hierba') return terrainRgb(FLOOR_COLORS.hierba[1]);
+      if (f === 'asfalto') return terrainRgb(FLOOR_COLORS.asfalto[1]);
     }
   }
-  return terrainRgb(0x80838a);
+  return terrainRgb(FLOOR_COLORS.asfalto[1]);
 }
 
 /**

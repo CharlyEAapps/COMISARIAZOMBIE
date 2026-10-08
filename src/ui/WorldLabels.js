@@ -4,6 +4,7 @@ import * as THREE from 'three';
 // números flotantes de puntos/curación y los "!" de interacciones disponibles.
 const MAX_FLOATING = 32;
 const MAX_MARKERS = 16;
+const EMPTY = [];
 
 export class WorldLabels {
   constructor(game) {
@@ -12,6 +13,7 @@ export class WorldLabels {
     this.root.className = 'world-labels';
     game.uiRoot.appendChild(this.root);
     this._v = new THREE.Vector3();
+    this._p = { sx: 0, sy: 0, visible: false };
 
     this.floats = [];
     for (let i = 0; i < MAX_FLOATING; i++) {
@@ -49,7 +51,11 @@ export class WorldLabels {
     const cam = this.game.cameraRig.camera;
     const v = this._v.set(x, y, z).project(cam);
     const w = this.game.canvas.clientWidth, h = this.game.canvas.clientHeight;
-    return { sx: (v.x * 0.5 + 0.5) * w, sy: (-v.y * 0.5 + 0.5) * h, visible: v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1 };
+    const p = this._p;
+    p.sx = (v.x * 0.5 + 0.5) * w;
+    p.sy = (-v.y * 0.5 + 0.5) * h;
+    p.visible = v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1;
+    return p;
   }
 
   update(dt) {
@@ -63,7 +69,8 @@ export class WorldLabels {
       f.el.style.opacity = String(Math.min(1, f.life / 0.35));
     }
 
-    const list = this.game.interactions.markers();
+    const showMarkers = this.game.player.alive && this.game.state === 'playing';
+    const list = showMarkers ? this.game.interactions.markers() : EMPTY;
     const t = performance.now() * 0.004;
     for (let i = 0; i < MAX_MARKERS; i++) {
       const el = this.markers[i];

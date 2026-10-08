@@ -6,8 +6,27 @@
   "nightBonusBase": 100,
   "noDamageBonusBase": 75,
   "objectives": [
-    { "id": "kills", "text": "Abate a {n} zombis esta noche", "base": 10, "perNight": 6, "reward": 150 },
-    { "id": "maxDamage", "text": "Recibe menos de {n} de daño esta noche", "base": 60, "perNight": 0, "reward": 200 },
-    { "id": "combo", "text": "Consigue un combo de {n}", "base": 8, "perNight": 2, "reward": 175 }
+    {
+      "id": "kills",
+      "text": "Abate a {n} zombis esta noche",
+      "base": 10,
+      "perNight": 6,
+      "reward": 150
+    },
+    {
+      "id": "maxDamage",
+      "text": "Recibe menos de {n} de daño esta noche",
+      "base": 60,
+      "perNight": -4,
+      "reward": 200,
+      "min": 25
+    },
+    {
+      "id": "combo",
+      "text": "Consigue un combo de {n}",
+      "base": 8,
+      "perNight": 2,
+      "reward": 175
+    }
   ]
 }

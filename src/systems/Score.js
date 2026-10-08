@@ -61,7 +61,7 @@ export class Score {
   pickObjective(night) {
     const list = this.cfg.objectives;
     const o = list[(Math.random() * list.length) | 0];
-    const n = o.base + o.perNight * (night - 1);
+    const n = Math.max(o.min ?? -Infinity, o.base + o.perNight * (night - 1));
     this.objective = { id: o.id, n, reward: o.reward, text: o.text.replace('{n}', n), night };
     return this.objective;
   }

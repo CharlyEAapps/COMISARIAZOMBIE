@@ -38,6 +38,7 @@ export class ZombieSystem {
     this.free = this.pool.map((z) => z).reverse();
     this.active = [];
     this.flow = new FlowField(game.grid);
+    this.decoyFlow = new FlowField(game.grid); // rutas hacia el señuelo (sirena)
     this.flowTimer = 0;
     this.flowCell = -1;
     const g = game.grid;
@@ -102,6 +103,9 @@ export class ZombieSystem {
   /** Atrae hacia (x,z) a los zombis en `radius` que no ven al jugador, durante `seconds`. */
   setDecoy(x, z, seconds, radius) {
     Object.assign(this.decoy, { x, z, timer: seconds, radius });
+    const g = this.game.grid;
+    const cell = g.walkableCellAt(x, z);
+    if (cell >= 0) this.decoyFlow.compute(cell % g.w, (cell / g.w) | 0);
   }
 
   /** Multiplica la velocidad de todos los zombis durante `seconds` (alarma). */
@@ -237,13 +241,17 @@ export class ZombieSystem {
       // Dirección deseada: directa si ve al jugador; hacia el señuelo si lo oye;
       // si no, la del flow field.
       let mx = ux, mz = uz;
-      const ddx = decoy.x - zb.pos.x, ddz = decoy.z - zb.pos.z;
-      const dd = Math.hypot(ddx, ddz);
-      if (!zb.hasLos && decoy.timer > 0 && dd < decoy.radius) {
-        if (dd > 1.5) { mx = ddx / dd; mz = ddz / dd; } else { mx = 0; mz = 0; }
-      } else if (!zb.hasLos) {
+      let toDecoy = false;
+      if (!zb.hasLos && decoy.timer > 0) {
+        const dd = Math.hypot(decoy.x - zb.pos.x, decoy.z - zb.pos.z);
+        toDecoy = dd < decoy.radius;
+        if (toDecoy && dd < 1.5) { mx = 0; mz = 0; }
+      }
+      if (!zb.hasLos && !(toDecoy && mx === 0 && mz === 0)) {
+        // Sin línea de visión: flow field hacia el jugador o, si oye la sirena, hacia el señuelo.
+        const field = toDecoy ? this.decoyFlow : flow;
         const cell = grid.walkableCellAt(zb.pos.x, zb.pos.z);
-        const nk = cell >= 0 ? flow.next[cell] : -1;
+        const nk = cell >= 0 ? field.next[cell] : -1;
         if (nk >= 0) {
           const tx = grid.centerX(nk % grid.w) - zb.pos.x;
           const tz = grid.centerZ((nk / grid.w) | 0) - zb.pos.z;

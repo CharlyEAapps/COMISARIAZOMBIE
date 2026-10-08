@@ -81,12 +81,13 @@ export class Player {
       return;
     }
 
-    for (const b of Object.values(this.buffs)) b.timer -= dt;
+    for (const k in this.buffs) this.buffs[k].timer -= dt;
 
     // Botiquín (Q): curación tras un breve uso; se puede caminar mientras.
     if (this.medkitTimer > 0) {
       this.medkitTimer -= dt;
-      if (this.medkitTimer <= 0) {
+      // Si mientras tanto se ha llenado la vida (fuente, vending…), no se gasta.
+      if (this.medkitTimer <= 0 && this.hp < this.maxHp) {
         this.medkits--;
         this.heal(MEDKIT.heal);
       }
@@ -99,7 +100,8 @@ export class Player {
     if (this.stamina <= 0) this.sprintLocked = true;
     else if (this.stamina >= this.data.sprintMinStamina) this.sprintLocked = false;
     const wantsSprint = input.isHeld('sprint') && moving && !this.sprintLocked;
-    const speed = (wantsSprint ? this.data.sprintSpeed : this.data.speed) * (this.medkitTimer > 0 ? 0.5 : 1);
+    const speed = (wantsSprint ? this.data.sprintSpeed : this.data.speed) *
+      (this.medkitTimer > 0 ? MEDKIT.moveMul : 1) * this.buff('speed');
     this.velocity.set(input.move.x * speed, 0, input.move.y * speed);
     const x0 = this.position.x, z0 = this.position.z;
     this.position.x += this.velocity.x * dt;

@@ -15,13 +15,22 @@
     "spawnPointsBase": 4,
     "spawnPointsPerNight": 1,
     "types": [
-      { "type": "caminante", "weight": 1, "fromNight": 1 }
-    ]
+      {
+        "type": "caminante",
+        "weight": 1,
+        "fromNight": 1
+      }
+    ],
+    "firstSpawnDelay": 2,
+    "retryDelay": 1,
+    "intervalJitter": 0.3,
+    "spawnScatter": 1.2
   },
   "day": {
     "fromDay": 2,
     "interval": 16,
     "maxAlive": 3,
-    "type": "caminante"
+    "type": "caminante",
+    "intervalJitter": 0.3
   }
 }

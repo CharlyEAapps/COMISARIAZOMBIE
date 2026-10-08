@@ -116,3 +116,50 @@ describe('Interacciones', () => {
     }
   });
 });
+
+describe('InteractionSystem.apply (con un juego simulado)', async () => {
+  const { InteractionSystem } = await import('../src/systems/InteractionSystem.js');
+  const makeGame = () => {
+    const bus = new EventBus();
+    return {
+      bus,
+      time: 0,
+      run: { points: 0 },
+      power: { generator: false, lightsOn: true },
+      player: { medkits: 0, hp: 100, maxHp: 100, stamina: 0, data: { maxStamina: 100 }, heal() {}, addBuff() {} },
+      score: { addPoints(n) { this.total = (this.total ?? 0) + n; } },
+      dayNight: { phase: PHASE.DAY, night: 1 },
+      waves: { dominantSide: () => 'norte', forecast: () => 14, remaining: 0 },
+      hud: { toast() {} },
+      zombies: { setDecoy() {} },
+      lighting: { triggerAlarm() {} },
+    };
+  };
+
+  it('un botín con informe incluye el texto del informe', () => {
+    const g = makeGame();
+    const sys = new InteractionSystem(g);
+    const msg = sys.apply({ loot: [{ w: 1, intel: true, msg: '📁 Informe' }] }, { x: 0, z: 0 });
+    expect(msg).toMatch(/^📁 Informe: 📻 Noche 1: se esperan unos 14 zombis/);
+  });
+
+  it('un botiquín de botín con el inventario lleno se convierte en puntos', () => {
+    const g = makeGame();
+    g.player.medkits = interactions._medkit.max;
+    const sys = new InteractionSystem(g);
+    const msg = sys.apply({ loot: [{ w: 1, medkit: 1, msg: 'botiquín' }] }, { x: 0, z: 0 });
+    expect(g.player.medkits).toBe(interactions._medkit.max);
+    expect(g.score.total).toBe(interactions._medkit.fullLootPoints);
+    expect(msg).toMatch(/máximo/);
+  });
+
+  it('en el amanecer la radio habla de la noche siguiente', () => {
+    const g = makeGame();
+    g.dayNight = { phase: PHASE.DAWN, night: 3 };
+    let asked;
+    g.waves.forecast = (n) => { asked = n; return 30; };
+    const sys = new InteractionSystem(g);
+    expect(sys.intelMessage()).toMatch(/Noche 4/);
+    expect(asked).toBe(4);
+  });
+});

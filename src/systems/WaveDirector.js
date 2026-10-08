@@ -35,13 +35,24 @@ export class WaveDirector {
     this.dayTimer = this.cfg.day.interval;
     this.mods = { hpMul: 1, speedMul: 1 };
     this.maxAlive = this.cfg.night.maxAliveBase;
-    // Orden de apertura de los puntos de aparición, distinto en cada partida.
-    this.spawnOrder = this.game.grid.spawns.map((s) => s).sort(() => Math.random() - 0.5);
-    this.activeSpawns = this.spawnOrder.slice(0, this.cfg.night.spawnPointsBase);
+    // Orden de apertura de los puntos de aparición, distinto en cada partida (Fisher-Yates).
+    const order = this.game.grid.spawns.slice();
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    this.spawnOrder = order;
+    this.activeSpawns = this.spawnsFor(1);
   }
 
   get remaining() {
     return this.toSpawn + this.game.zombies.aliveCount;
+  }
+
+  /** Puntos de aparición activos en la noche n. */
+  spawnsFor(n) {
+    const c = this.cfg.night;
+    return this.spawnOrder.slice(0, Math.min(this.spawnOrder.length, c.spawnPointsBase + c.spawnPointsPerNight * (n - 1)));
   }
 
   /** Tamaño previsto de la horda de la noche n (para la radio). */
@@ -59,12 +70,11 @@ export class WaveDirector {
     this.total = this.toSpawn = nightCount(c, n);
     const avgGroup = (c.groupMin + c.groupMax) / 2;
     this.interval = (c.spawnWindow * nightDuration) / Math.max(1, this.total / avgGroup);
-    this.spawnTimer = 2;
+    this.spawnTimer = c.firstSpawnDelay;
     this.maxAlive = Math.min(c.maxAliveCap, c.maxAliveBase + c.maxAlivePerNight * (n - 1));
     this.mods.hpMul = 1 + c.hpBonusPerNight * (n - 1);
     this.mods.speedMul = 1 + Math.min(c.speedBonusCap, c.speedBonusPerNight * (n - 1));
-    const points = Math.min(this.spawnOrder.length, c.spawnPointsBase + c.spawnPointsPerNight * (n - 1));
-    this.activeSpawns = this.spawnOrder.slice(0, points);
+    this.activeSpawns = this.spawnsFor(n);
     this.nightNumber = n;
   }
 
@@ -78,9 +88,9 @@ export class WaveDirector {
     this.spawnTimer -= dt;
     if (this.spawnTimer > 0) return;
     const c = this.cfg.night;
-    this.spawnTimer = this.interval * (0.7 + Math.random() * 0.6);
+    this.spawnTimer = this.interval * (1 + (Math.random() * 2 - 1) * c.intervalJitter);
     const room = this.maxAlive - this.game.zombies.aliveCount;
-    if (room <= 0) { this.spawnTimer = 1; return; }
+    if (room <= 0) { this.spawnTimer = c.retryDelay; return; }
     const group = Math.min(this.toSpawn, room, c.groupMin + Math.floor(Math.random() * (c.groupMax - c.groupMin + 1)));
     const s = this.activeSpawns[(Math.random() * this.activeSpawns.length) | 0];
     for (let k = 0; k < group; k++) {
@@ -93,7 +103,7 @@ export class WaveDirector {
     const d = this.cfg.day;
     this.dayTimer -= dt;
     if (this.dayTimer > 0) return;
-    this.dayTimer = d.interval * (0.7 + Math.random() * 0.6);
+    this.dayTimer = d.interval * (1 + (Math.random() * 2 - 1) * d.intervalJitter);
     if (this.game.zombies.aliveCount >= d.maxAlive) return;
     const spawns = this.game.grid.spawns;
     this.spawnAt(spawns[(Math.random() * spawns.length) | 0], d.type);
@@ -101,7 +111,8 @@ export class WaveDirector {
 
   spawnAt(s, type) {
     const { grid, zombies } = this.game;
-    const j = () => (Math.random() - 0.5) * 1.2;
+    const k = this.cfg.night.spawnScatter;
+    const j = () => (Math.random() - 0.5) * k;
     return zombies.spawn(type, grid.centerX(s.i) + j(), grid.centerZ(s.j) + j(), this.mods);
   }
 
@@ -111,11 +122,11 @@ export class WaveDirector {
     return this.spawnAt(spawns[(Math.random() * spawns.length) | 0], type);
   }
 
-  /** Dirección dominante de los puntos activos (para la radio). */
-  dominantSide() {
+  /** Dirección dominante de los puntos de aparición de la noche n (para la radio). */
+  dominantSide(n) {
     const { grid } = this.game;
     const sides = { norte: 0, sur: 0, este: 0, oeste: 0 };
-    for (const s of this.activeSpawns) {
+    for (const s of this.spawnsFor(n)) {
       const dx = s.i - grid.w / 2, dz = s.j - grid.h / 2;
       if (Math.abs(dx) > Math.abs(dz)) sides[dx > 0 ? 'este' : 'oeste']++;
       else sides[dz > 0 ? 'sur' : 'norte']++;

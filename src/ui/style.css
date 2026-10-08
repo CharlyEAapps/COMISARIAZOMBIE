@@ -246,5 +246,8 @@ html, body {
   .clock-big { font-size: 26px; }
   .hint { display: none; }
   .panel-case { top: 290px; width: 200px; }
+}
+@media (max-width: 1000px) {
+  .banner { top: 58%; }
   .banner-title { font-size: 30px; }
 }

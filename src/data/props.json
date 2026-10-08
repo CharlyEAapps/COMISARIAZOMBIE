@@ -1,0 +1,17 @@
+{
+  "groups": {
+    "43,16": { "type": "fuente" },
+    "43,19": { "type": "fotocopiadora" },
+    "35,29": { "type": "cafetera" },
+    "44,29": { "type": "vending" },
+    "36,37": { "type": "mastil", "variant": "es" },
+    "41,37": { "type": "mastil", "variant": "pol" },
+    "14,42": { "type": "patrulla", "rot": 0 },
+    "20,42": { "type": "patrulla", "rot": 180, "variant": "azul" },
+    "52,42": { "type": "furgoneta", "rot": 180 },
+    "14,50": { "type": "civil", "rot": 0 },
+    "20,50": { "type": "patrulla", "rot": 180 },
+    "58,50": { "type": "patrulla", "rot": 0, "variant": "azul" }
+  },
+  "decor": []
+}

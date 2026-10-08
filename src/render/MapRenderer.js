@@ -7,7 +7,7 @@ import { withCutaway } from './Cutaway.js';
 // Paleta "maqueta": tonos claros y suaves (referencia visual de Carlos).
 const FLOOR_COLORS = {
   hierba: [0x9cbb72, 0x9fbe75, 0x99b870],
-  asfalto: [0x9a9ca1, 0x9c9ea3, 0x989a9f],
+  asfalto: [0x7e8187, 0x80838a, 0x7b7e84],
   interior: [0xe9e4d9, 0xb9b2a5], // damero de baldosas suave
 };
 const TEX_RES = 2; // píxeles de textura por celda (damero de 50 cm)
@@ -15,7 +15,7 @@ const TEX_RES = 2; // píxeles de textura por celda (damero de 50 cm)
 const BLOCK_STYLE = {
   '#': { color: 0xeee5d3, cutaway: true, cap: 0x2b2b30 },
   '=': { color: 0xb8bec4 },
-  '|': { color: 0x3a3d42 },
+  '|': { color: 0x3a3d42, bars: true },
   'c': { color: 0x2c4f8c, cutaway: true },
   'k': { color: 0x3f7a5a, cutaway: true },
   'o': { color: 0xc49a6c },
@@ -42,7 +42,6 @@ export class MapRenderer {
     const { grid } = this;
     const tw = grid.w * TEX_RES, th = grid.h * TEX_RES;
     const data = new Uint8Array(tw * th * 4);
-    const c = new THREE.Color();
     for (let y = 0; y < th; y++) {
       for (let x = 0; x < tw; x++) {
         const i = (x / TEX_RES) | 0, j = (y / TEX_RES) | 0;
@@ -51,10 +50,11 @@ export class MapRenderer {
         let v;
         if (t.floor === 'interior') v = palette[(x + y) & 1];
         else v = palette[(i * 7 + j * 13 + ((i * j) % 5)) % palette.length]; // variación estable por celda
-        c.setHex(v);
+        // Bytes sRGB tal cual (la textura está marcada como sRGB): sin pasar por THREE.Color,
+        // que los convertiría a lineal y oscurecería el suelo.
         // El mapa ASCII tiene la fila 0 al norte; la textura se rellena de abajo arriba.
         const k = ((th - 1 - y) * tw + x) * 4;
-        data[k] = c.r * 255; data[k + 1] = c.g * 255; data[k + 2] = c.b * 255; data[k + 3] = 255;
+        data[k] = (v >> 16) & 255; data[k + 1] = (v >> 8) & 255; data[k + 2] = v & 255; data[k + 3] = 255;
       }
     }
     const tex = new THREE.DataTexture(data, tw, th, THREE.RGBAFormat);
@@ -107,6 +107,7 @@ export class MapRenderer {
       const style = BLOCK_STYLE[ch];
       const t = grid.tiles[ch];
       const pieces = this.buildPieces(ch, cells, style);
+      if (style.bars) { this.buildBars(pieces, t.height, style.color); continue; }
       const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
       if (style.cutaway) withCutaway(mat);
       const mesh = new THREE.InstancedMesh(style.pole ? pole : box, mat, pieces.length);
@@ -166,6 +167,38 @@ export class MapRenderer {
       }
     }
     return pieces;
+  }
+
+  /** Rejas de calabozo: barrotes verticales cada 16 cm más travesaños arriba y abajo. */
+  buildBars(pieces, height, color) {
+    const SPACING = 0.16, BAR = 0.045, RAIL = 0.07;
+    const bars = [], rails = [];
+    for (const p of pieces) {
+      const alongX = p.sx >= p.sz;
+      const len = alongX ? p.sx : p.sz;
+      const n = Math.max(1, Math.round(len / SPACING));
+      for (let k = 0; k < n; k++) {
+        const o = -len / 2 + (k + 0.5) * (len / n);
+        bars.push([alongX ? p.x + o : p.x, alongX ? p.z : p.z + o]);
+      }
+      for (const y of [0.08, height / 2, height - RAIL / 2]) rails.push({ p, y, alongX, len });
+    }
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.6 });
+    const barGeo = new THREE.BoxGeometry(BAR, height, BAR);
+    barGeo.translate(0, height / 2, 0);
+    const barMesh = new THREE.InstancedMesh(barGeo, mat, bars.length);
+    const m = new THREE.Matrix4();
+    bars.forEach(([x, z], k) => { m.makeTranslation(x, 0, z); barMesh.setMatrixAt(k, m); });
+    const railMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, RAIL, 1), mat, rails.length);
+    rails.forEach(({ p, y, alongX, len }, k) => {
+      m.makeScale(alongX ? len : RAIL, 1, alongX ? RAIL : len);
+      m.setPosition(p.x, y, p.z);
+      railMesh.setMatrixAt(k, m);
+    });
+    for (const mesh of [barMesh, railMesh]) {
+      mesh.castShadow = true;
+      this.group.add(mesh);
+    }
   }
 
   buildShopMarkers() {

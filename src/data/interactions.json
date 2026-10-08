@@ -77,7 +77,7 @@
     { "text": "📞 «Le llamo de su compañía eléctrica para ofrecerle una tarifa…»" },
     { "text": "📞 «Agente, ¿es normal que mi vecino muerda el buzón?»" },
     { "text": "📞 «Soy el comisario. Aguanta, chaval. Te dejo algo en el despacho.»", "points": 50 },
-    { "text": "📞 «Aquí la central: esta noche vienen más por el norte.»", "intel": true },
+    { "text": "📞 «Aquí la central, te paso el parte:»", "intel": true },
     { "text": "📞 Solo se oye respirar… y un gruñido. Cuelgas." }
   ]
 }

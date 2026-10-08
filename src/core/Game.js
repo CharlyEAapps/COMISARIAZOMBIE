@@ -8,6 +8,7 @@ import { FixedStepLoop } from './FixedStepLoop.js';
 import { Renderer } from '../render/Renderer.js';
 import { CameraRig } from '../render/CameraRig.js';
 import { MapRenderer } from '../render/MapRenderer.js';
+import { PropRenderer, PROP_TILES } from '../render/PropRenderer.js';
 import { Effects } from '../render/Effects.js';
 import { Lighting } from '../render/Lighting.js';
 import { updateCutaway } from '../render/Cutaway.js';
@@ -46,7 +47,8 @@ export class Game {
     this.time = 0; // tiempo de simulación total (para cooldowns)
 
     this.grid = new NavGrid(map.rows, tiles, config.world.cellSize);
-    this.mapRenderer = new MapRenderer(this.scene, this.grid);
+    this.mapRenderer = new MapRenderer(this.scene, this.grid, { skip: PROP_TILES });
+    this.props = new PropRenderer(this.scene, this.grid);
     this.effects = new Effects(this.scene);
     this.player = new Player(this);
     this.zombies = new ZombieSystem(this);
@@ -59,7 +61,9 @@ export class Game {
     this.score = new Score(this);
     this.interactions = new InteractionSystem(this);
     this.lighting = new Lighting(this);
+    this.lighting.setAnchors(this.props.lightAnchors);
     this.lighting.applyQuality(config.quality.presets[this.qualityName]);
+    this.interactions.setAnchors(this.props.interactAnchors);
     this.flowViz = new FlowFieldViz(this.scene, this.grid);
     this.hud = new Hud(this);
 

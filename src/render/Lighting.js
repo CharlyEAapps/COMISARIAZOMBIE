@@ -183,6 +183,14 @@ export class Lighting {
     }
     for (const pl of this.lampLights) pl.intensity = pl.userData.active ? cfg.lampPointIntensity * night : 0;
 
+    // Props: sirenas de los coches (atardecer, señuelo o alarma) y brillo de pantallas y lámparas.
+    const props = game.props;
+    if (props) {
+      const sirens = game.zombies.decoy.timer > 0 || this.alarmTimer > 0 || dnSys.phase === 'atardecer';
+      props.setSirens(sirens, performance.now() / 1000);
+      props.setGlow(night > 0.5 ? (interiorOn ? 1 : 0.5) : 0.85);
+    }
+
     // Ojos de los zombis: brillan de noche.
     const eyes = game.zombies.eyeMaterial;
     if (eyes) eyes.opacity = cfg.zombieEyesDay + (cfg.zombieEyesNight - cfg.zombieEyesDay) * night;

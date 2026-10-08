@@ -52,6 +52,34 @@ set(24, 31, 'M'); rect(25, 30, 25, 32, 'o'); rect(28, 34, 31, 34, 'o');
 // Almacén de pruebas
 set(52, 30, 'W'); rect(50, 31, 52, 31, 'o'); rect(48, 34, 53, 34, 'o');
 
+// --- Decoración (props): mobiliario extra 'o'. PropRenderer decide el mueble según sala y forma.
+// Calabozos: camastros y váteres de acero dentro de las 3 celdas, banco fuera.
+rect(23, 15, 23, 16, 'o'); set(26, 15, 'o');   // celda 1: camastro + váter
+set(29, 15, 'o'); rect(28, 17, 28, 18, 'o');   // celda 2
+set(31, 15, 'o'); rect(32, 17, 32, 18, 'o');   // celda 3
+rect(24, 22, 26, 22, 'o');                     // banco de espera
+// Oficinas: archivadores, consola de cámaras, fuente de agua, fotocopiadora y plantas
+rect(34, 15, 35, 15, 'o'); rect(34, 18, 34, 19, 'o');
+set(43, 16, 'o'); set(43, 19, 'o'); set(34, 22, 'o'); set(43, 22, 'o');
+// Armería: armero en la pared norte y estantería de munición en la este
+rect(46, 15, 49, 15, 'o'); rect(54, 18, 54, 19, 'o');
+// Pasillo: taquillas de agentes, bancos y plantas
+rect(30, 24, 33, 24, 'o');
+rect(30, 27, 32, 27, 'o'); rect(41, 27, 43, 27, 'o'); rect(51, 27, 53, 27, 'o');
+set(23, 24, 'o'); set(23, 27, 'o'); set(54, 24, 'o');
+// Enfermería: armario de medicinas y biombo
+rect(23, 33, 23, 34, 'o'); rect(28, 32, 29, 32, 'o');
+// Recepción: centralita de radio, cafetera, máquina expendedora y planta
+rect(33, 29, 33, 30, 'o'); set(35, 29, 'o'); set(44, 29, 'o'); set(44, 31, 'o');
+// Almacén: cajas apiladas
+set(46, 29, 'o'); set(54, 29, 'o'); set(54, 32, 'o');
+// Exterior: generador (patio norte), caseta del portón, mástiles de bandera, bancos y árboles
+rect(42, 10, 43, 10, 'o');
+rect(35, 61, 36, 62, 'o');
+set(36, 37, 'o'); set(41, 37, 'o');
+rect(60, 19, 62, 19, 'o'); rect(65, 33, 67, 33, 'o'); rect(11, 24, 13, 24, 'o');
+for (const [x, y] of [[11, 18], [18, 18], [16, 31], [59, 16], [68, 17], [59, 33], [69, 31]]) set(x, y, 'o');
+
 // Contenedores (patio trasero)
 rect(14, 9, 16, 10, 'k'); rect(46, 9, 48, 10, 'k'); rect(60, 9, 62, 10, 'k');
 // Coches (parking)

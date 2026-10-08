@@ -49,6 +49,64 @@ export class NavGrid {
         if (t.door) this.doors.push({ i, j });
       }
     }
+    this.buildCollisionBoxes();
+  }
+
+  /**
+   * Cajas de colisión por celda (fuente única para física, raycast y render del mapa).
+   * Los tiles con collisionInset (muros, vallas, rejas) son barras finas de grosor
+   * cellSize − 2·inset que llegan al borde solo hacia vecinos de su mismo tipo "fino";
+   * el resto de tiles no transitables ocupan la celda entera.
+   */
+  buildCollisionBoxes() {
+    const n = this.w * this.h;
+    this.boxStart = new Int32Array(n);
+    this.boxCount = new Uint8Array(n);
+    const boxes = [];
+    const cs = this.cellSize;
+    const thinAt = (i, j) => this.inBounds(i, j) && !this.walkable[j * this.w + i] && this.collisionInset[j * this.w + i] > 0;
+    for (let j = 0; j < this.h; j++) {
+      for (let i = 0; i < this.w; i++) {
+        const k = j * this.w + i;
+        this.boxStart[k] = boxes.length / 4;
+        if (this.walkable[k]) continue;
+        const x0 = this.originX + i * cs, z0 = this.originZ + j * cs;
+        const inset = this.collisionInset[k];
+        if (inset <= 0) {
+          boxes.push(x0, z0, x0 + cs, z0 + cs);
+          this.boxCount[k] = 1;
+          continue;
+        }
+        const e = thinAt(i + 1, j), w = thinAt(i - 1, j), s = thinAt(i, j + 1), nn = thinAt(i, j - 1);
+        const lo = inset, hi = cs - inset;
+        let count = 0;
+        if (e || w) { boxes.push(x0 + (w ? 0 : lo), z0 + lo, x0 + (e ? cs : hi), z0 + hi); count++; }
+        if (nn || s) { boxes.push(x0 + lo, z0 + (nn ? 0 : lo), x0 + hi, z0 + (s ? cs : hi)); count++; }
+        if (!count) { boxes.push(x0 + lo, z0 + lo, x0 + hi, z0 + hi); count = 1; }
+        this.boxCount[k] = count;
+      }
+    }
+    this.boxes = new Float32Array(boxes);
+  }
+
+  /**
+   * Celda transitable que corresponde a (x,z). Con colisiones finas, el centro de una
+   * entidad puede quedar sobre una celda de muro: entonces se devuelve la vecina
+   * transitable más cercana al punto. -1 si no hay ninguna.
+   */
+  walkableCellAt(x, z) {
+    const i = this.cellX(x), j = this.cellZ(z);
+    if (this.isWalkable(i, j)) return j * this.w + i;
+    let best = -1, bestD = Infinity;
+    for (let dj = -1; dj <= 1; dj++) {
+      for (let di = -1; di <= 1; di++) {
+        const ni = i + di, nj = j + dj;
+        if ((!di && !dj) || !this.isWalkable(ni, nj)) continue;
+        const d = (this.centerX(ni) - x) ** 2 + (this.centerZ(nj) - z) ** 2;
+        if (d < bestD) { bestD = d; best = nj * this.w + ni; }
+      }
+    }
+    return best;
   }
 
   index(i, j) { return j * this.w + i; }

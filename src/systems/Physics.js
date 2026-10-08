@@ -2,45 +2,29 @@
 // sobre la rejilla y una rejilla espacial (spatial hash) para consultas entre entidades.
 
 /**
- * Empuja un círculo fuera de las celdas no transitables. Modifica `pos` (con x,z).
+ * Empuja un círculo fuera de las cajas de colisión de las celdas no transitables.
+ * Modifica `pos` (con x,z).
  * @returns {boolean} si hubo contacto
  */
 export function resolveCircleVsGrid(pos, r, grid) {
   let hit = false;
+  const { boxes } = grid;
   for (let iter = 0; iter < 2; iter++) {
     const i0 = grid.cellX(pos.x - r), i1 = grid.cellX(pos.x + r);
     const j0 = grid.cellZ(pos.z - r), j1 = grid.cellZ(pos.z + r);
     for (let j = j0; j <= j1; j++) {
       for (let i = i0; i <= i1; i++) {
         if (grid.isWalkable(i, j)) continue;
-        let minX = grid.originX + i * grid.cellSize, maxX = minX + grid.cellSize;
-        let minZ = grid.originZ + j * grid.cellSize, maxZ = minZ + grid.cellSize;
-        const inset = grid.inBounds(i, j) ? grid.collisionInset[grid.index(i, j)] : 0;
-        if (inset > 0) {
-          if (grid.isWalkable(i - 1, j)) minX += inset;
-          if (grid.isWalkable(i + 1, j)) maxX -= inset;
-          if (grid.isWalkable(i, j - 1)) minZ += inset;
-          if (grid.isWalkable(i, j + 1)) maxZ -= inset;
+        if (!grid.inBounds(i, j)) {
+          // Fuera del mapa: celda completa.
+          const minX = grid.originX + i * grid.cellSize, minZ = grid.originZ + j * grid.cellSize;
+          if (pushOutOfBox(pos, r, minX, minZ, minX + grid.cellSize, minZ + grid.cellSize)) hit = true;
+          continue;
         }
-        const cx = Math.max(minX, Math.min(pos.x, maxX));
-        const cz = Math.max(minZ, Math.min(pos.z, maxZ));
-        let dx = pos.x - cx, dz = pos.z - cz;
-        const d2 = dx * dx + dz * dz;
-        if (d2 >= r * r) continue;
-        hit = true;
-        if (d2 > 1e-10) {
-          const d = Math.sqrt(d2);
-          const push = r - d;
-          pos.x += (dx / d) * push;
-          pos.z += (dz / d) * push;
-        } else {
-          // Centro dentro de la celda: sacarlo por el lado más cercano.
-          const left = pos.x - minX, right = maxX - pos.x, top = pos.z - minZ, bottom = maxZ - pos.z;
-          const m = Math.min(left, right, top, bottom);
-          if (m === left) pos.x = minX - r;
-          else if (m === right) pos.x = maxX + r;
-          else if (m === top) pos.z = minZ - r;
-          else pos.z = maxZ + r;
+        const k = grid.index(i, j);
+        for (let b = grid.boxStart[k], end = b + grid.boxCount[k]; b < end; b++) {
+          const o = b * 4;
+          if (pushOutOfBox(pos, r, boxes[o], boxes[o + 1], boxes[o + 2], boxes[o + 3])) hit = true;
         }
       }
     }
@@ -48,15 +32,78 @@ export function resolveCircleVsGrid(pos, r, grid) {
   return hit;
 }
 
+function pushOutOfBox(pos, r, minX, minZ, maxX, maxZ) {
+  const cx = Math.max(minX, Math.min(pos.x, maxX));
+  const cz = Math.max(minZ, Math.min(pos.z, maxZ));
+  const dx = pos.x - cx, dz = pos.z - cz;
+  const d2 = dx * dx + dz * dz;
+  if (d2 >= r * r) return false;
+  if (d2 > 1e-10) {
+    const d = Math.sqrt(d2);
+    const push = r - d;
+    pos.x += (dx / d) * push;
+    pos.z += (dz / d) * push;
+  } else {
+    // Centro dentro de la caja: sacarlo por el lado más cercano.
+    const left = pos.x - minX, right = maxX - pos.x, top = pos.z - minZ, bottom = maxZ - pos.z;
+    const m = Math.min(left, right, top, bottom);
+    if (m === left) pos.x = minX - r;
+    else if (m === right) pos.x = maxX + r;
+    else if (m === top) pos.z = minZ - r;
+    else pos.z = maxZ + r;
+  }
+  return true;
+}
+
+/** Intersección rayo–caja (slabs) en 2D. Devuelve t de entrada ≥ 0 (0 si el origen está dentro) o -1. */
+export function rayBox(ox, oz, dx, dz, minX, minZ, maxX, maxZ) {
+  let tmin = 0, tmax = Infinity;
+  if (Math.abs(dx) < 1e-12) {
+    if (ox < minX || ox > maxX) return -1;
+  } else {
+    let t1 = (minX - ox) / dx, t2 = (maxX - ox) / dx;
+    if (t1 > t2) { const t = t1; t1 = t2; t2 = t; }
+    tmin = Math.max(tmin, t1); tmax = Math.min(tmax, t2);
+  }
+  if (Math.abs(dz) < 1e-12) {
+    if (oz < minZ || oz > maxZ) return -1;
+  } else {
+    let t1 = (minZ - oz) / dz, t2 = (maxZ - oz) / dz;
+    if (t1 > t2) { const t = t1; t1 = t2; t2 = t; }
+    tmin = Math.max(tmin, t1); tmax = Math.min(tmax, t2);
+  }
+  return tmin <= tmax ? tmin : -1;
+}
+
+/** Primer impacto del rayo con las cajas de la celda k a partir de tFrom, o Infinity. */
+function hitCellBoxes(grid, k, ox, oz, dx, dz, tFrom) {
+  let best = Infinity;
+  const { boxes } = grid;
+  for (let b = grid.boxStart[k], end = b + grid.boxCount[k]; b < end; b++) {
+    const o = b * 4;
+    const t = rayBox(ox, oz, dx, dz, boxes[o], boxes[o + 1], boxes[o + 2], boxes[o + 3]);
+    if (t >= 0 && t >= tFrom - 1e-6 && t < best) best = t;
+  }
+  return best;
+}
+
 /**
- * Recorre la rejilla (DDA) desde (ox,oz) en dirección (dx,dz) normalizada.
+ * Recorre la rejilla (DDA) desde (ox,oz) en dirección (dx,dz) normalizada. En las celdas
+ * que `blocked` marca, el impacto se calcula contra sus cajas de colisión reales (los
+ * muros finos no ocupan la celda entera), así que el rayo puede pasar por la parte libre.
  * @param {(i:number,j:number)=>boolean} blocked
- * @returns {number} distancia hasta la primera celda bloqueada, o maxDist
+ * @returns {number} distancia hasta el primer impacto, o maxDist
  */
 export function raycastGrid(grid, ox, oz, dx, dz, maxDist, blocked) {
   const cs = grid.cellSize;
   let i = grid.cellX(ox), j = grid.cellZ(oz);
-  if (blocked(i, j)) return 0;
+  const test = (ci, cj, tFrom) => {
+    if (!blocked(ci, cj)) return Infinity;
+    if (!grid.inBounds(ci, cj)) return tFrom;
+    return hitCellBoxes(grid, grid.index(ci, cj), ox, oz, dx, dz, tFrom);
+  };
+  const t0 = test(i, j, 0);
+  if (t0 < maxDist) return t0;
   const stepI = dx > 0 ? 1 : -1, stepJ = dz > 0 ? 1 : -1;
   const tDeltaX = dx !== 0 ? Math.abs(cs / dx) : Infinity;
   const tDeltaZ = dz !== 0 ? Math.abs(cs / dz) : Infinity;
@@ -68,7 +115,9 @@ export function raycastGrid(grid, ox, oz, dx, dz, maxDist, blocked) {
     if (tMaxX < tMaxZ) { t = tMaxX; tMaxX += tDeltaX; i += stepI; }
     else { t = tMaxZ; tMaxZ += tDeltaZ; j += stepJ; }
     if (t >= maxDist) break;
-    if (blocked(i, j)) return t;
+    const hit = test(i, j, t);
+    if (hit < maxDist) return hit;
+    if (!grid.inBounds(i, j)) break;
   }
   return maxDist;
 }
@@ -117,6 +166,25 @@ export class SpatialHash {
     this.items[idx] = item;
     this.nextItem[idx] = this.head[k];
     this.head[k] = idx;
+  }
+
+  /**
+   * Escribe en `out` los elementos de las celdas que tocan el círculo (x,z,r) y devuelve
+   * cuántos hay. Sin closures: apto para bucles calientes.
+   */
+  queryInto(x, z, r, out) {
+    const cs = this.cellSize;
+    const i0 = Math.max(0, Math.floor((x - r + this.offset) / cs));
+    const i1 = Math.min(this.dim - 1, Math.floor((x + r + this.offset) / cs));
+    const j0 = Math.max(0, Math.floor((z - r + this.offset) / cs));
+    const j1 = Math.min(this.dim - 1, Math.floor((z + r + this.offset) / cs));
+    let n = 0;
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        for (let idx = this.head[j * this.dim + i]; idx !== -1 && n < out.length; idx = this.nextItem[idx]) out[n++] = this.items[idx];
+      }
+    }
+    return n;
   }
 
   /** Llama a fn(item) para los elementos en las celdas que tocan el círculo (x,z,r). */

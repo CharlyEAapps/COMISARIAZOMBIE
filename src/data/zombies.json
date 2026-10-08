@@ -22,7 +22,14 @@
     "separationStrength": 2.2,
     "turnSharpness": 8,
     "flowFieldInterval": 0.2,
-    "corpseTime": 2.5
+    "corpseTime": 2.5,
+    "hitPadding": 0.08,
+    "attackHitTolerance": 0.25,
+    "attackSlowFactor": 0.25,
+    "maxSpeedFactor": 1.3,
+    "playerPushShare": 0.15,
+    "fallTime": 0.4,
+    "sinkTime": 1
   },
   "_testSpawner": {
     "startInterval": 2.5,

@@ -7,6 +7,9 @@
   "staminaDrain": 28,
   "staminaRegen": 18,
   "staminaRegenDelay": 0.6,
+  "sprintMinStamina": 15,
   "startWeapon": "pistola",
-  "hurtFlashTime": 0.35
+  "hurtFlashTime": 0.35,
+  "hurtShake": 0.25,
+  "gameOverDelay": 1.8
 }

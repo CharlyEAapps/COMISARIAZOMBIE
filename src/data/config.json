@@ -21,9 +21,25 @@
   "quality": {
     "default": "media",
     "presets": {
-      "baja": { "pixelRatio": 1, "shadows": false, "shadowMapSize": 512 },
-      "media": { "pixelRatio": 1.25, "shadows": true, "shadowMapSize": 1024 },
-      "alta": { "pixelRatio": 2, "shadows": true, "shadowMapSize": 2048 }
+      "baja": {
+        "pixelRatio": 1,
+        "shadows": false,
+        "shadowMapSize": 512
+      },
+      "media": {
+        "pixelRatio": 1.25,
+        "shadows": true,
+        "shadowMapSize": 1024
+      },
+      "alta": {
+        "pixelRatio": 2,
+        "shadows": true,
+        "shadowMapSize": 2048
+      }
     }
+  },
+  "combat": {
+    "shotHeight": 1.25,
+    "fireBuffer": 0.15
   }
 }

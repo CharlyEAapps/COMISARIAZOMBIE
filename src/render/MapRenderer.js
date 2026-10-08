@@ -13,9 +13,9 @@ const FLOOR_COLORS = {
 const TEX_RES = 2; // píxeles de textura por celda (damero de 50 cm)
 
 const BLOCK_STYLE = {
-  '#': { color: 0xeee5d3, cutaway: true, cap: 0x2b2b30, wallThickness: 0.3 },
-  '=': { color: 0xb8bec4, thin: 0.12 },
-  '|': { color: 0x3a3d42, thin: 0.15 },
+  '#': { color: 0xeee5d3, cutaway: true, cap: 0x2b2b30 },
+  '=': { color: 0xb8bec4 },
+  '|': { color: 0x3a3d42 },
   'c': { color: 0x2c4f8c, cutaway: true },
   'k': { color: 0x3f7a5a, cutaway: true },
   'o': { color: 0xc49a6c },
@@ -139,37 +139,25 @@ export class MapRenderer {
   }
 
   /**
-   * Convierte celdas en cajas. Los muros se dibujan como tabiques finos que conectan
-   * con sus vecinos (la colisión sigue siendo la celda completa); vallas y rejas son
-   * finas según su orientación; el resto ocupa la celda entera.
+   * Convierte celdas en cajas. Los tiles finos (muros, vallas, rejas) usan exactamente
+   * las cajas de colisión de NavGrid, así lo que se ve y lo que choca coincide siempre.
    */
   buildPieces(ch, cells, style) {
     const { grid } = this;
     const cs = grid.cellSize;
-    const same = (i, j) => grid.inBounds(i, j) && grid.chars[grid.index(i, j)] === ch;
     const pieces = [];
     for (const [i, j] of cells) {
-      const cx = grid.centerX(i), cz = grid.centerZ(j);
-      if (style.wallThickness) {
-        const th = style.wallThickness, half = th / 2;
-        const e = same(i + 1, j), w = same(i - 1, j), s = same(i, j + 1), n = same(i, j - 1);
-        if (e || w) {
-          const x0 = w ? cx - cs / 2 : cx - half, x1 = e ? cx + cs / 2 : cx + half;
-          pieces.push({ i, j, x: (x0 + x1) / 2, z: cz, sx: x1 - x0, sz: th });
+      const k = grid.index(i, j);
+      if (grid.collisionInset[k] > 0) {
+        for (let b = grid.boxStart[k], end = b + grid.boxCount[k]; b < end; b++) {
+          const o = b * 4;
+          const [x0, z0, x1, z1] = [grid.boxes[o], grid.boxes[o + 1], grid.boxes[o + 2], grid.boxes[o + 3]];
+          pieces.push({ i, j, x: (x0 + x1) / 2, z: (z0 + z1) / 2, sx: x1 - x0, sz: z1 - z0 });
         }
-        if (n || s) {
-          const z0 = n ? cz - cs / 2 : cz - half, z1 = s ? cz + cs / 2 : cz + half;
-          pieces.push({ i, j, x: cx, z: (z0 + z1) / 2, sx: th, sz: z1 - z0 });
-        }
-        if (!(e || w || n || s)) pieces.push({ i, j, x: cx, z: cz, sx: th, sz: th });
-      } else if (style.thin) {
-        const horiz = same(i + 1, j) || same(i - 1, j);
-        const vert = same(i, j + 1) || same(i, j - 1);
-        pieces.push({ i, j, x: cx, z: cz, sx: vert && !horiz ? style.thin : cs, sz: horiz && !vert ? style.thin : cs });
       } else if (style.pole) {
-        pieces.push({ i, j, x: cx, z: cz, sx: 1, sz: 1 });
+        pieces.push({ i, j, x: grid.centerX(i), z: grid.centerZ(j), sx: 1, sz: 1 });
       } else {
-        pieces.push({ i, j, x: cx, z: cz, sx: cs * 0.96, sz: cs * 0.96 });
+        pieces.push({ i, j, x: grid.centerX(i), z: grid.centerZ(j), sx: cs * 0.96, sz: cs * 0.96 });
       }
     }
     return pieces;
@@ -179,12 +167,11 @@ export class MapRenderer {
     const { grid } = this;
     // Marcadores de tiendas (provisional): cilindro de color sobre el suelo.
     const shopColors = { armeria: 0xe8b23a, enfermeria: 0xd9473b, almacen: 0x3a7be8 };
+    const geo = new THREE.CylinderGeometry(0.4, 0.4, 0.05, 20);
     for (const [name, list] of Object.entries(grid.shops)) {
+      const mat = new THREE.MeshStandardMaterial({ color: shopColors[name], emissive: shopColors[name], emissiveIntensity: 0.4 });
       for (const { i, j } of list) {
-        const marker = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.4, 0.4, 0.05, 20),
-          new THREE.MeshStandardMaterial({ color: shopColors[name], emissive: shopColors[name], emissiveIntensity: 0.4 }),
-        );
+        const marker = new THREE.Mesh(geo, mat);
         marker.position.set(grid.centerX(i), 0.03, grid.centerZ(j));
         marker.name = `tienda-${name}`;
         this.group.add(marker);

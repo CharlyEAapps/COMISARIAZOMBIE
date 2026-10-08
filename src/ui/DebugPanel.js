@@ -48,7 +48,7 @@ export class DebugPanel {
       this._fpsFrames = 0;
       this._fpsTime = 0;
     }
-    if (!this.visible) return;
+    if (!this.visible || !lines) return;
     this.statsEl.textContent = [`FPS ${this.fps}`, ...lines].join('\n');
   }
 }

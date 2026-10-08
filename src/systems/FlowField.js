@@ -11,10 +11,11 @@ export class FlowField {
   constructor(grid) {
     this.grid = grid;
     const n = grid.w * grid.h;
-    this.dist = new Float32Array(n);
+    this.dist = new Float64Array(n);
     this.next = new Int32Array(n);
+    // Cada celda entra en el heap como mucho una vez por mejora de distancia (≤ 8 vecinos).
     this.heapK = new Int32Array(n * 8);
-    this.heapD = new Float32Array(n * 8);
+    this.heapD = new Float64Array(n * 8);
     this.target = { i: -1, j: -1 };
   }
 
@@ -30,7 +31,7 @@ export class FlowField {
     next.fill(-1);
     this.target.i = ti;
     this.target.j = tj;
-    if (!grid.inBounds(ti, tj)) return;
+    if (!this.passable(ti, tj)) return;
 
     let size = 0;
     const push = (k, d) => {

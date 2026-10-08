@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import weapons from '../data/weapons.json';
+import config from '../data/config.json';
 import { raycastGrid } from './Physics.js';
 
-const SHOT_HEIGHT = 1.25;
-const FIRE_BUFFER = 0.15; // un clic durante la cadencia se guarda este tiempo
+const { shotHeight: SHOT_HEIGHT, fireBuffer: FIRE_BUFFER } = config.combat; // el búfer guarda un clic hecho durante la cadencia
 
 export class WeaponSystem {
   constructor(game) {
@@ -13,6 +13,7 @@ export class WeaponSystem {
     this._from = new THREE.Vector3();
     this._to = new THREE.Vector3();
     this._exclude = new Set();
+    this.shotBlocked = (i, j) => game.grid.isShotBlocked(i, j);
     this.reset();
   }
 
@@ -79,6 +80,18 @@ export class WeaponSystem {
     const { player, grid, zombies, effects } = game;
     const muzzle = player.getMuzzleWorld(this._from);
     const ox = player.position.x, oz = player.position.z;
+    // Si hay un muro más cerca que la boca del arma, el fogonazo y la trazadora salen
+    // desde este lado del muro (no desde la sala contigua).
+    const mdx = muzzle.x - ox, mdz = muzzle.z - oz;
+    const muzzleDist = Math.hypot(mdx, mdz);
+    if (muzzleDist > 1e-4) {
+      const wall = raycastGrid(grid, ox, oz, mdx / muzzleDist, mdz / muzzleDist, muzzleDist, this.shotBlocked);
+      if (wall < muzzleDist) {
+        const k = Math.max(0, wall - 0.08) / muzzleDist;
+        muzzle.x = ox + mdx * k;
+        muzzle.z = oz + mdz * k;
+      }
+    }
 
     for (let p = 0; p < d.pellets; p++) {
       const spread = THREE.MathUtils.degToRad(d.spreadDeg) * (Math.random() - 0.5);
@@ -86,7 +99,7 @@ export class WeaponSystem {
       const dx = Math.sin(base), dz = Math.cos(base);
 
       // Las balas salen del centro del jugador (no atraviesan el muro que tenga pegado).
-      const wallDist = raycastGrid(grid, ox, oz, dx, dz, d.range, (i, j) => grid.isShotBlocked(i, j));
+      const wallDist = raycastGrid(grid, ox, oz, dx, dz, d.range, this.shotBlocked);
       let endDist = wallDist;
       this._exclude.clear();
       for (let pierce = 0; pierce <= d.pierce; pierce++) {

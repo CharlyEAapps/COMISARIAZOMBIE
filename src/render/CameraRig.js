@@ -58,6 +58,18 @@ export class CameraRig {
 
   resize(aspect) {
     this.camera.aspect = aspect;
+    this.applyFov();
+  }
+
+  /** En pantallas verticales se abre el FOV para mantener el campo horizontal de una pantalla cuadrada. */
+  applyFov() {
+    const aspect = this.camera.aspect;
+    let fov = this.cfg.fov;
+    if (aspect < 1) {
+      const half = THREE.MathUtils.degToRad(this.cfg.fov / 2);
+      fov = Math.min(75, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(half) / aspect)));
+    }
+    this.camera.fov = fov;
     this.camera.updateProjectionMatrix();
   }
 }

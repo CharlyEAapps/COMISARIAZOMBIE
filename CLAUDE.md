@@ -9,6 +9,13 @@ Juego de supervivencia zombi en 3D low-poly (Three.js + Vite, JavaScript con mó
 - La especificación completa está en `PROMPT_JUEGO_ZOMBIS.md` (diseño, fases, agentes). El estado actual está en `PROGRESS.md`.
 - El desarrollo va **por fases**: al cerrar cada una se para y se espera el visto bueno de Carlos.
 
+## Estilo visual (referencia de Carlos)
+Diorama/maqueta 3D de un juego hecho con Claude que Carlos vio en un vídeo:
+- Personajes "de bloques" (vóxel, tipo Minecraft/Roblox) animados por código: `render/BlockyCharacter.js`.
+- Tabiques finos de color crema/pastel con remate superior oscuro, suelos de baldosa o madera, mobiliario hecho con primitivas, luz clara y suave y sombras.
+- HUD de paneles oscuros translúcidos, reloj grande en monoespaciada, barras de color, aviso de tecla "E" y bocadillos "!".
+- Casi todo se genera por código; los assets CC0 son secundarios (ver `ASSETS_CATALOGO.md`).
+
 ## Comandos
 - `npm run dev`: servidor de desarrollo en http://localhost:5173 (configuración "juego" de `.claude/launch.json` para `preview_start`).
 - `npm test`: tests unitarios con Vitest (`tests/`).
@@ -18,6 +25,7 @@ Juego de supervivencia zombi en 3D low-poly (Three.js + Vite, JavaScript con mó
 - La lógica avanza en pasos fijos de 1/60 s (`core/FixedStepLoop.js`); el render va por frame.
 - La entrada pasa siempre por acciones abstractas (`input/Input.js`): `consume()` para pulsaciones e `isHeld()` para teclas mantenidas.
 - Todo el equilibrado va en `src/data/*.json`. Nada de números mágicos en la lógica.
+- Colisiones: `NavGrid.buildCollisionBoxes()` es la fuente única de las cajas de colisión. Los muros, vallas y rejas son barras finas (`collisionInset`), y `MapRenderer` dibuja esas mismas cajas. Como el centro de una entidad puede caer sobre una celda de muro, para todo lo que trabaja por celdas hay que usar `grid.walkableCellAt(x, z)`.
 - Sin asignaciones por frame en los bucles calientes: reutilizar vectores temporales y pools.
 - Para depurar y hacer QA:
   - `window.__game` expone el juego.

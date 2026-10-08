@@ -76,10 +76,35 @@ describe('Physics', () => {
     expect(resolveCircleVsGrid(pos, 0.35, grid)).toBe(false);
   });
 
-  it('el raycast se detiene en el muro', () => {
+  it('el raycast se detiene en la cara real del muro fino', () => {
     const blocked = (i, j) => grid.isShotBlocked(i, j);
     const d = raycastGrid(grid, grid.centerX(0), grid.centerZ(2), 1, 0, 20, blocked);
-    expect(d).toBeCloseTo(1.5, 5);
+    expect(d).toBeCloseTo(1.5 + tiles['#'].collisionInset, 5);
+  });
+
+  it('el raycast cruza la parte libre de una celda de muro fino', () => {
+    // Fila 1 "  ###   ": barra horizontal en z ∈ [1.35, 1.65] relativo a la celda.
+    // Un rayo hacia el este por z = 1.1 (dentro de las celdas de muro, pero fuera de la barra) no choca.
+    const blocked = (i, j) => grid.isShotBlocked(i, j);
+    const z = grid.originZ + 1.1;
+    expect(raycastGrid(grid, grid.originX + 0.5, z, 1, 0, 6, blocked)).toBe(6);
+  });
+
+  it('la colisión de las esquinas en L coincide con las barras (sin salientes)', () => {
+    // Esquina (2,1): barra horizontal hacia el este y vertical hacia el sur. La esquina
+    // interior (3,2) debe permitir llegar a 0,35 de las caras de ambas barras.
+    const inset = tiles['#'].collisionInset, r = 0.2;
+    const pos = { x: grid.originX + 2.7, z: grid.originZ + 1.7 }; // solapa ambas barras
+    resolveCircleVsGrid(pos, r, grid);
+    expect(pos.x).toBeCloseTo(grid.originX + 2 + (1 - inset) + r, 3);
+    expect(pos.z).toBeCloseTo(grid.originZ + 1 + (1 - inset) + r, 3);
+  });
+
+  it('walkableCellAt devuelve una vecina transitable si el punto cae en una celda de muro', () => {
+    const k = grid.walkableCellAt(grid.originX + 2.1, grid.originZ + 2.5); // dentro de la celda (2,2)
+    expect(k).toBeGreaterThanOrEqual(0);
+    expect(grid.walkable[k]).toBe(1);
+    expect(k).toBe(grid.index(1, 2));
   });
 
   it('rayCircle detecta impactos y fallos', () => {

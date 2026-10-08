@@ -31,6 +31,7 @@ export class Player {
     this.maxHp = this.data.maxHp;
     this.stamina = this.data.maxStamina;
     this.staminaDelay = 0;
+    this.sprintLocked = false;
     this.hurtTimer = 0;
     this.alive = true;
     this.mesh.rotation.set(0, 0, 0);
@@ -42,7 +43,7 @@ export class Player {
     this.hp = Math.max(0, this.hp - amount);
     this.hurtTimer = this.data.hurtFlashTime;
     this.game.bus.emit('player:hurt', { amount, hp: this.hp });
-    this.game.effects.shake(0.25);
+    this.game.effects.shake(this.data.hurtShake);
     if (this.hp <= 0) {
       this.alive = false;
       this.game.bus.emit('player:died');
@@ -59,8 +60,19 @@ export class Player {
     }
 
     const moving = input.move.x !== 0 || input.move.y !== 0;
-    const wantsSprint = input.isHeld('sprint') && moving && this.stamina > 0;
-    if (wantsSprint) {
+    // Al agotarse, no se puede volver a esprintar hasta recuperar un mínimo (evita parpadeos).
+    if (this.stamina <= 0) this.sprintLocked = true;
+    else if (this.stamina >= this.data.sprintMinStamina) this.sprintLocked = false;
+    const wantsSprint = input.isHeld('sprint') && moving && !this.sprintLocked;
+    const speed = wantsSprint ? this.data.sprintSpeed : this.data.speed;
+    this.velocity.set(input.move.x * speed, 0, input.move.y * speed);
+    const x0 = this.position.x, z0 = this.position.z;
+    this.position.x += this.velocity.x * dt;
+    this.position.z += this.velocity.z * dt;
+    resolveCircleVsGrid(this.position, this.radius, this.game.grid);
+    // Solo gasta resistencia si realmente avanza (no al empujar contra un muro).
+    const moved = Math.hypot(this.position.x - x0, this.position.z - z0);
+    if (wantsSprint && moved > speed * dt * 0.3) {
       this.stamina = Math.max(0, this.stamina - this.data.staminaDrain * dt);
       this.staminaDelay = this.data.staminaRegenDelay;
     } else if (this.staminaDelay > 0) {
@@ -68,11 +80,6 @@ export class Player {
     } else {
       this.stamina = Math.min(this.data.maxStamina, this.stamina + this.data.staminaRegen * dt);
     }
-    const speed = wantsSprint ? this.data.sprintSpeed : this.data.speed;
-    this.velocity.set(input.move.x * speed, 0, input.move.y * speed);
-    this.position.x += this.velocity.x * dt;
-    this.position.z += this.velocity.z * dt;
-    resolveCircleVsGrid(this.position, this.radius, this.game.grid);
 
     // Orientación hacia el punto de apuntado.
     const aim = this.game.aimPoint;

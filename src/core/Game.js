@@ -61,7 +61,7 @@ export class Game {
       this.run.points += points;
       this.effects.burst(x, 0.9, z, 14, 0x3d1a1a, { speed: 3, up: 3, size: 0.11, life: 1.4 });
     });
-    this.bus.on('player:died', () => { this.deathTimer = 1.8; });
+    this.bus.on('player:died', () => { this.deathTimer = this.player.data.gameOverDelay; });
     this.deathTimer = 0;
 
     this.setupDebug();
@@ -85,7 +85,7 @@ export class Game {
     d.folder('Cámara').add(config.camera, 'pitchDeg', 35, 89, 1).name('Inclinación')
       .onChange(() => this.cameraRig.updateOffset());
     d.folder('Cámara').add(config.camera, 'fov', 25, 70, 1).name('FOV')
-      .onChange((v) => { this.cameraRig.camera.fov = v; this.cameraRig.camera.updateProjectionMatrix(); });
+      .onChange(() => this.cameraRig.applyFov());
     d.addToggle('Trucos', 'Modo dios', d.flags, 'godMode');
     d.addAction('Trucos', '+1000 puntos', () => { this.run.points += 1000; });
     d.addAction('Zombis', 'Generar 10 caminantes', () => {
@@ -98,6 +98,15 @@ export class Game {
     d.addToggle('Zombis', 'Aparición automática', spawnCtl, 'activo', (v) => { this.spawnerEnabled = v; });
     this.spawnerEnabled = true;
     d.addToggle('Zombis', 'Ver flow field', d.flags, 'showFlowField', (v) => { this.flowViz.setVisible(v); });
+  }
+
+  /** Libera listeners globales (útil si se recrea el juego, p. ej. con HMR). */
+  dispose() {
+    this._disposed = true;
+    window.removeEventListener('resize', this._onResize);
+    this.input.dispose();
+    this.debug.gui.destroy();
+    this.renderer.renderer.dispose();
   }
 
   setQuality(name) {
@@ -140,7 +149,7 @@ export class Game {
     const dt = Math.min((now - this._last) / 1000, 0.25);
     this._last = now;
     this.tick(dt);
-    requestAnimationFrame(this._frame);
+    if (!this._disposed) requestAnimationFrame(this._frame);
   }
 
   /**
@@ -191,12 +200,12 @@ export class Game {
     this.renderer.render(this.cameraRig.camera);
 
     this.hud.update(dt);
-    this.debug.frame(dt, [
+    this.debug.frame(dt, this.debug.visible ? [
       `Estado ${this.state}`,
       `Zombis ${this.zombies.aliveCount} vivos / ${this.zombies.active.length} activos`,
       `Draw calls ${this.renderer.renderer.info.render.calls}`,
       `Jugador ${pp.x.toFixed(1)}, ${pp.z.toFixed(1)}`,
-    ]);
+    ] : null);
   }
 
   update(dt) {

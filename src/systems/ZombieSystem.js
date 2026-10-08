@@ -7,12 +7,13 @@ import { PARTS, PART_NAMES, partGeometry, computePose, makePose } from '../rende
 const SHIRTS = [0x7a5c3e, 0x4b5d73, 0x8c3b3b, 0x5f6b4e, 0x6b6b6b, 0x6a4f7a];
 const PANTS = [0x2e3542, 0x3e3328, 0x24282e, 0x40464f];
 const WHITE = new THREE.Color(0xffffff);
+const PART_COUNT = PART_NAMES.length;
 
 export const Z_STATE = { CHASE: 0, DYING: 1 };
 
-function makeZombie() {
+function makeZombie(id) {
   return {
-    active: false, type: '', data: null,
+    id, active: false, type: '', data: null,
     pos: { x: 0, z: 0 }, vx: 0, vz: 0, facing: 0, scale: 1,
     hp: 0, maxHp: 0, speed: 0, radius: 0.38,
     state: Z_STATE.CHASE, windup: 0, cooldown: 0, attackAnim: 0,
@@ -22,23 +23,29 @@ function makeZombie() {
   };
 }
 
+const rnd = (v) => 1 + (Math.random() * 2 - 1) * v;
+
 export class ZombieSystem {
   constructor(game) {
     this.game = game;
     this.types = zombieData;
     this.ai = zombieData._ai;
     const max = this.ai.maxZombies;
-    this.pool = Array.from({ length: max }, makeZombie);
+    this.pool = Array.from({ length: max }, (_, id) => makeZombie(id));
+    // Pila de huecos libres del pool: spawn O(1).
+    this.free = this.pool.map((z) => z).reverse();
     this.active = [];
     this.flow = new FlowField(game.grid);
     this.flowTimer = 0;
     this.flowCell = -1;
-    this.hash = new SpatialHash(game.grid.w * game.grid.cellSize, 2, max + 8);
+    const g = game.grid;
+    this.hash = new SpatialHash(Math.max(g.w, g.h) * g.cellSize, 2, max + 8);
+    this.neighbors = new Array(max + 8); // resultado reutilizable de las consultas al hash
     this.pose = makePose();
+    this.blockedWalk = (i, j) => !g.isWalkable(i, j);
 
     // Un InstancedMesh por parte del cuerpo → 6 draw calls para toda la horda.
-    this.meshes = {};
-    for (const name of PART_NAMES) {
+    this.meshList = PART_NAMES.map((name) => {
       const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
       const mesh = new THREE.InstancedMesh(partGeometry(name), mat, max);
       mesh.castShadow = true;
@@ -46,15 +53,17 @@ export class ZombieSystem {
       mesh.frustumCulled = false;
       mesh.setColorAt(0, WHITE); // crea instanceColor
       game.scene.add(mesh);
-      this.meshes[name] = mesh;
-    }
+      return mesh;
+    });
+    this.partPivots = PART_NAMES.map((n) => new THREE.Vector3().fromArray(PARTS[n].pivot));
     this._base = new THREE.Matrix4();
     this._part = new THREE.Matrix4();
     this._m = new THREE.Matrix4();
     this._q = new THREE.Quaternion();
-    this._e = new THREE.Euler(0, 0, 0, 'YXZ');
+    this._e = new THREE.Euler();
     this._v = new THREE.Vector3();
     this._s = new THREE.Vector3();
+    this._one = new THREE.Vector3(1, 1, 1);
     this._c = new THREE.Color();
   }
 
@@ -65,16 +74,21 @@ export class ZombieSystem {
   }
 
   reset() {
-    for (const z of this.active) z.active = false;
+    for (const z of this.active) this.release(z);
     this.active.length = 0;
     this.flowCell = -1;
+    this.flowTimer = 0;
+  }
+
+  release(zb) {
+    zb.active = false;
+    this.free.push(zb);
   }
 
   spawn(type, x, z) {
-    const zb = this.pool.find((p) => !p.active);
+    const zb = this.free.pop();
     if (!zb) return null;
     const d = this.types[type];
-    const rnd = (v) => 1 + (Math.random() * 2 - 1) * v;
     zb.active = true;
     zb.type = type;
     zb.data = d;
@@ -94,13 +108,13 @@ export class ZombieSystem {
     const skin = this._c.set(d.color).multiplyScalar(rnd(d.colorVariance));
     const shirt = SHIRTS[(Math.random() * SHIRTS.length) | 0];
     const pants = PANTS[(Math.random() * PANTS.length) | 0];
-    PART_NAMES.forEach((n, k) => {
-      const c = zb.colors[k];
+    for (let k = 0; k < PART_COUNT; k++) {
+      const n = PART_NAMES[k], c = zb.colors[k];
       if (n === 'torso') c.setHex(shirt);
       else if (n === 'legL' || n === 'legR') c.setHex(pants);
       else if (n === 'armL' || n === 'armR') c.setHex(Math.random() < 0.5 ? shirt : skin.getHex());
       else c.copy(skin);
-    });
+    }
     this.active.push(zb);
     return zb;
   }
@@ -117,6 +131,8 @@ export class ZombieSystem {
     if (zb.hp <= 0) {
       zb.state = Z_STATE.DYING;
       zb.deathTimer = 0;
+      zb.windup = 0;
+      zb.attackAnim = 0;
       this.game.bus.emit('zombie:killed', { type: zb.type, points: zb.data.points, x: zb.pos.x, z: zb.pos.z });
       return true;
     }
@@ -131,32 +147,31 @@ export class ZombieSystem {
     let best = null, bestT = maxDist;
     for (const zb of this.active) {
       if (zb.state === Z_STATE.DYING || exclude?.has(zb)) continue;
-      const t = rayCircle(ox, oz, dx, dz, zb.pos.x, zb.pos.z, zb.radius + 0.08);
+      const t = rayCircle(ox, oz, dx, dz, zb.pos.x, zb.pos.z, zb.radius + this.ai.hitPadding);
       if (t >= 0 && t < bestT) { bestT = t; best = zb; }
     }
     return best ? { zombie: best, t: bestT } : null;
   }
 
   update(dt) {
-    const { game, ai, flow } = this;
+    const { game, ai, flow, hash, neighbors } = this;
     const { grid, player } = game;
     const px = player.position.x, pz = player.position.z;
 
-    // Flow field hacia la celda del jugador (solo si ha cambiado de celda).
+    // Flow field hacia la celda transitable del jugador (solo si ha cambiado).
     this.flowTimer -= dt;
-    const pcell = grid.index(grid.cellX(px), grid.cellZ(pz));
-    if (this.flowTimer <= 0 && pcell !== this.flowCell) {
-      flow.compute(grid.cellX(px), grid.cellZ(pz));
+    const pcell = grid.walkableCellAt(px, pz);
+    if (this.flowTimer <= 0 && pcell !== this.flowCell && pcell >= 0) {
+      flow.compute(pcell % grid.w, (pcell / grid.w) | 0);
       this.flowCell = pcell;
       this.flowTimer = ai.flowFieldInterval;
     }
 
-    this.hash.clear();
-    for (const zb of this.active) if (zb.state !== Z_STATE.DYING) this.hash.insert(zb, zb.pos.x, zb.pos.z);
+    hash.clear();
+    for (const zb of this.active) if (zb.state !== Z_STATE.DYING) hash.insert(zb, zb.pos.x, zb.pos.z);
 
     const turn = 1 - Math.exp(-ai.turnSharpness * dt);
     const sepR = ai.separationRadius;
-    const blockedWalk = (i, j) => !grid.isWalkable(i, j);
 
     for (let n = this.active.length - 1; n >= 0; n--) {
       const zb = this.active[n];
@@ -164,30 +179,32 @@ export class ZombieSystem {
 
       if (zb.state === Z_STATE.DYING) {
         zb.deathTimer += dt;
-        zb.fall = Math.min(1, zb.deathTimer / 0.4);
-        if (zb.deathTimer > ai.corpseTime) zb.sink = Math.min(1, (zb.deathTimer - ai.corpseTime) / 1);
-        if (zb.deathTimer > ai.corpseTime + 1) {
-          zb.active = false;
+        zb.fall = Math.min(1, zb.deathTimer / ai.fallTime);
+        if (zb.deathTimer > ai.corpseTime) zb.sink = Math.min(1, (zb.deathTimer - ai.corpseTime) / ai.sinkTime);
+        if (zb.deathTimer > ai.corpseTime + ai.sinkTime) {
           this.active.splice(n, 1);
+          this.release(zb);
         }
         continue;
       }
 
       const dx = px - zb.pos.x, dz = pz - zb.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-6;
+      const ux = dx / dist, uz = dz / dist;
 
       // Línea de visión escalonada en el tiempo (no todos los zombis en el mismo paso).
       zb.losTimer -= dt;
       if (zb.losTimer <= 0) {
         zb.losTimer = ai.losCheckInterval;
         zb.hasLos = dist < ai.directChaseRange &&
-          raycastGrid(grid, zb.pos.x, zb.pos.z, dx / dist, dz / dist, dist, blockedWalk) >= dist;
+          raycastGrid(grid, zb.pos.x, zb.pos.z, ux, uz, dist, this.blockedWalk) >= dist;
       }
 
       // Dirección deseada: directa si ve al jugador; si no, la del flow field.
-      let mx = dx / dist, mz = dz / dist;
+      let mx = ux, mz = uz;
       if (!zb.hasLos) {
-        const nk = flow.nextCell(grid.cellX(zb.pos.x), grid.cellZ(zb.pos.z));
+        const cell = grid.walkableCellAt(zb.pos.x, zb.pos.z);
+        const nk = cell >= 0 ? flow.next[cell] : -1;
         if (nk >= 0) {
           const tx = grid.centerX(nk % grid.w) - zb.pos.x;
           const tz = grid.centerZ((nk / grid.w) | 0) - zb.pos.z;
@@ -196,27 +213,32 @@ export class ZombieSystem {
         }
       }
 
-      // Separación entre zombis.
+      // Separación blanda entre zombis (dirección de evitación).
       let sx = 0, sz = 0;
-      this.hash.query(zb.pos.x, zb.pos.z, sepR, (o) => {
-        if (o === zb) return;
+      let count = hash.queryInto(zb.pos.x, zb.pos.z, sepR, neighbors);
+      for (let q = 0; q < count; q++) {
+        const o = neighbors[q];
+        if (o === zb) continue;
         const ox = zb.pos.x - o.pos.x, oz = zb.pos.z - o.pos.z;
         const d2 = ox * ox + oz * oz;
-        if (d2 > sepR * sepR || d2 < 1e-8) return;
+        if (d2 > sepR * sepR || d2 < 1e-8) continue;
         const d = Math.sqrt(d2);
         const w = (sepR - d) / sepR;
         sx += (ox / d) * w; sz += (oz / d) * w;
-      });
+      }
 
-      // Ataque: preparación (windup) y golpe si el jugador sigue al alcance.
+      // Ataque: preparación (windup) y golpe si el jugador sigue al alcance y no hay
+      // un muro en medio (con muros finos, ambos pueden quedar a menos del alcance).
       const gap = dist - zb.radius - player.radius;
-      const inRange = gap < zb.data.attackRange && player.alive;
+      const near = player.alive && gap < zb.data.attackRange + ai.attackHitTolerance;
+      const clear = near && raycastGrid(grid, zb.pos.x, zb.pos.z, ux, uz, dist, this.blockedWalk) >= dist;
+      const inRange = clear && gap < zb.data.attackRange;
       zb.cooldown = Math.max(0, zb.cooldown - dt);
       if (zb.windup > 0) {
         zb.windup -= dt;
         zb.attackAnim = 1 - zb.windup / zb.data.attackWindup;
         if (zb.windup <= 0) {
-          if (gap < zb.data.attackRange + 0.25) player.damage(zb.data.damage);
+          if (clear) player.damage(zb.data.damage);
           zb.cooldown = zb.data.attackCooldown;
           zb.attackAnim = 0;
         }
@@ -224,16 +246,33 @@ export class ZombieSystem {
         zb.windup = zb.data.attackWindup;
       }
 
-      const speed = zb.windup > 0 || inRange ? zb.speed * 0.25 : zb.speed;
+      const speed = zb.windup > 0 || inRange ? zb.speed * ai.attackSlowFactor : zb.speed;
       let tvx = mx * speed + sx * ai.separationStrength;
       let tvz = mz * speed + sz * ai.separationStrength;
       const tl = Math.hypot(tvx, tvz);
-      const maxV = zb.speed * 1.3;
+      const maxV = zb.speed * ai.maxSpeedFactor;
       if (tl > maxV) { tvx *= maxV / tl; tvz *= maxV / tl; }
       zb.vx += (tvx - zb.vx) * turn;
       zb.vz += (tvz - zb.vz) * turn;
       zb.pos.x += zb.vx * dt;
       zb.pos.z += zb.vz * dt;
+
+      // Colisión "dura" entre zombis: cada uno corrige la mitad del solape (el otro hará
+      // su mitad en su turno). Evita que la horda se apile en un mismo punto.
+      count = hash.queryInto(zb.pos.x, zb.pos.z, zb.radius * 2 + 0.1, neighbors);
+      for (let q = 0; q < count; q++) {
+        const o = neighbors[q];
+        if (o === zb) continue;
+        const ox = zb.pos.x - o.pos.x, oz = zb.pos.z - o.pos.z;
+        const minD = zb.radius + o.radius;
+        const d2 = ox * ox + oz * oz;
+        if (d2 >= minD * minD) continue;
+        if (d2 < 1e-8) { zb.pos.x += (Math.random() - 0.5) * 0.02; continue; }
+        const d = Math.sqrt(d2);
+        const push = (minD - d) * 0.5;
+        zb.pos.x += (ox / d) * push;
+        zb.pos.z += (oz / d) * push;
+      }
       resolveCircleVsGrid(zb.pos, zb.radius, grid);
 
       // Mira al jugador si está cerca; si no, hacia donde camina.
@@ -244,27 +283,31 @@ export class ZombieSystem {
       zb.walkPhase += Math.hypot(zb.vx, zb.vz) * dt * 2.4;
     }
 
-    // Empuje mutuo jugador–zombis (el jugador no atraviesa la horda).
+    // Empuje jugador–zombis: el jugador cede poco para que la horda no lo arrastre.
     if (player.alive) {
       const pr = player.radius;
-      this.hash.query(px, pz, 1.5, (o) => {
+      const share = ai.playerPushShare;
+      const count = hash.queryInto(px, pz, 1.5, neighbors);
+      for (let q = 0; q < count; q++) {
+        const o = neighbors[q];
         const ox = player.position.x - o.pos.x, oz = player.position.z - o.pos.z;
         const minD = pr + o.radius;
         const d2 = ox * ox + oz * oz;
-        if (d2 >= minD * minD || d2 < 1e-8) return;
+        if (d2 >= minD * minD || d2 < 1e-8) continue;
         const d = Math.sqrt(d2);
-        const push = (minD - d) * 0.5;
-        player.position.x += (ox / d) * push;
-        player.position.z += (oz / d) * push;
-        o.pos.x -= (ox / d) * push;
-        o.pos.z -= (oz / d) * push;
-      });
+        const overlap = minD - d;
+        player.position.x += (ox / d) * overlap * share;
+        player.position.z += (oz / d) * overlap * share;
+        o.pos.x -= (ox / d) * overlap * (1 - share);
+        o.pos.z -= (oz / d) * overlap * (1 - share);
+        resolveCircleVsGrid(o.pos, o.radius, grid);
+      }
       resolveCircleVsGrid(player.position, pr, grid);
     }
   }
 
   render() {
-    const { meshes, pose, _base, _part, _m, _q, _e, _v, _s, _c } = this;
+    const { meshList, pose, partPivots, _base, _part, _m, _q, _e, _v, _s, _one, _c } = this;
     let count = 0;
     for (const zb of this.active) {
       const moving = Math.min(1, Math.hypot(zb.vx, zb.vz) / Math.max(zb.speed, 0.01));
@@ -275,24 +318,21 @@ export class ZombieSystem {
       _v.set(zb.pos.x, -zb.sink * 0.6 + zb.fall * 0.12, zb.pos.z);
       _s.setScalar(zb.scale);
       _base.compose(_v, _q, _s);
-      PART_NAMES.forEach((name, k) => {
-        const p = PARTS[name];
-        _e.set(pose[name].x, 0, pose[name].z, 'XYZ');
+      for (let k = 0; k < PART_COUNT; k++) {
+        const p = pose[PART_NAMES[k]];
+        _e.set(p.x, 0, p.z, 'XYZ');
         _q.setFromEuler(_e);
-        _v.fromArray(p.pivot);
-        _s.setScalar(1);
-        _part.compose(_v, _q, _s);
+        _part.compose(partPivots[k], _q, _one);
         _m.multiplyMatrices(_base, _part);
-        meshes[name].setMatrixAt(count, _m);
+        meshList[k].setMatrixAt(count, _m);
         _c.copy(zb.colors[k]);
         if (zb.flash > 0) _c.lerp(WHITE, 0.7);
         if (zb.state === Z_STATE.DYING) _c.multiplyScalar(0.6);
-        meshes[name].setColorAt(count, _c);
-      });
+        meshList[k].setColorAt(count, _c);
+      }
       count++;
     }
-    for (const name of PART_NAMES) {
-      const m = meshes[name];
+    for (const m of meshList) {
       m.count = count;
       m.instanceMatrix.needsUpdate = true;
       m.instanceColor.needsUpdate = true;

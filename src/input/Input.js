@@ -64,7 +64,8 @@ export class Input {
       this.wheel += Math.sign(e.deltaY);
       e.preventDefault();
     };
-    this._onBlur = () => this.held.clear();
+    this._onLeave = () => { this.pointer.inside = false; };
+    this._onBlur = () => { this.held.clear(); this.pointer.inside = false; };
     this._onContext = (e) => e.preventDefault();
 
     window.addEventListener('keydown', this._onKeyDown);
@@ -75,6 +76,7 @@ export class Input {
     window.addEventListener('mousemove', this._onMouseMove);
     canvas.addEventListener('wheel', this._onWheel, { passive: false });
     canvas.addEventListener('contextmenu', this._onContext);
+    canvas.addEventListener('mouseleave', this._onLeave);
   }
 
   /** Recalcula los ejes; se llama una vez por frame antes de los pasos lógicos. */
@@ -118,5 +120,6 @@ export class Input {
     window.removeEventListener('mousemove', this._onMouseMove);
     this.canvas.removeEventListener('wheel', this._onWheel);
     this.canvas.removeEventListener('contextmenu', this._onContext);
+    this.canvas.removeEventListener('mouseleave', this._onLeave);
   }
 }

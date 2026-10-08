@@ -9,17 +9,22 @@ npm run dev
 ```
 Después abre http://localhost:5173.
 
-## Controles (estado actual: fase 0)
+## Controles (estado actual: fase 1)
 | Tecla | Acción |
 |---|---|
 | WASD / flechas | Mover |
 | Ratón | Apuntar (la cámara se adelanta hacia el cursor) |
+| Clic izquierdo | Disparar |
+| R | Recargar |
+| Shift | Correr (gasta resistencia) |
 | Rueda | Zoom |
 | Esc | Pausa |
-| F1 | Panel de depuración |
+| Enter | Reintentar tras morir |
+| F1 | Panel de depuración (modo dios, generar zombis, ver flow field…) |
 
 ## Desarrollo
 - `npm test`: tests unitarios.
 - `npm run build`: build de producción.
+- `node tools/genmap.cjs`: regenera `src/data/map.json` (mapa de la comisaría).
 - Estado del proyecto: ver [PROGRESS.md](PROGRESS.md).
 - Créditos de assets: ver [CREDITS.md](CREDITS.md).

@@ -14,6 +14,7 @@ export const KEYMAP = {
   KeyB: 'build',
   Escape: 'pause',
   F1: 'debug',
+  Enter: 'confirm', NumpadEnter: 'confirm',
   Digit1: 'weapon1', Digit2: 'weapon2', Digit3: 'weapon3', Digit4: 'weapon4', Digit5: 'weapon5',
   Digit6: 'weapon6', Digit7: 'weapon7',
 };

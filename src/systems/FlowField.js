@@ -1,0 +1,96 @@
+// Flow field por Dijkstra sobre la rejilla (8 vecinos, sin cortar esquinas).
+// Cada celda guarda la distancia al objetivo y la siguiente celda a la que moverse,
+// así cada zombi solo hace una lectura O(1) por paso.
+const SQRT2 = Math.SQRT2;
+const DIRS = [
+  [1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1],
+  [1, 1, SQRT2], [1, -1, SQRT2], [-1, 1, SQRT2], [-1, -1, SQRT2],
+];
+
+export class FlowField {
+  constructor(grid) {
+    this.grid = grid;
+    const n = grid.w * grid.h;
+    this.dist = new Float32Array(n);
+    this.next = new Int32Array(n);
+    this.heapK = new Int32Array(n * 8);
+    this.heapD = new Float32Array(n * 8);
+    this.target = { i: -1, j: -1 };
+  }
+
+  /** Celda transitable para el cálculo (las estructuras, en la fase 3, cuentan con coste extra). */
+  passable(i, j) {
+    return this.grid.isWalkable(i, j);
+  }
+
+  compute(ti, tj) {
+    const { grid, dist, next, heapK, heapD } = this;
+    const w = grid.w;
+    dist.fill(Infinity);
+    next.fill(-1);
+    this.target.i = ti;
+    this.target.j = tj;
+    if (!grid.inBounds(ti, tj)) return;
+
+    let size = 0;
+    const push = (k, d) => {
+      let c = size++;
+      while (c > 0) {
+        const p = (c - 1) >> 1;
+        if (heapD[p] <= d) break;
+        heapK[c] = heapK[p]; heapD[c] = heapD[p];
+        c = p;
+      }
+      heapK[c] = k; heapD[c] = d;
+    };
+    const pop = () => {
+      const k = heapK[0];
+      const lastK = heapK[--size], lastD = heapD[size];
+      let c = 0;
+      for (;;) {
+        let l = 2 * c + 1;
+        if (l >= size) break;
+        if (l + 1 < size && heapD[l + 1] < heapD[l]) l++;
+        if (heapD[l] >= lastD) break;
+        heapK[c] = heapK[l]; heapD[c] = heapD[l];
+        c = l;
+      }
+      heapK[c] = lastK; heapD[c] = lastD;
+      return k;
+    };
+
+    const t = tj * w + ti;
+    dist[t] = 0;
+    push(t, 0);
+    while (size > 0) {
+      const d0 = heapD[0];
+      const k = pop();
+      if (d0 > dist[k]) continue;
+      const i = k % w, j = (k / w) | 0;
+      for (const [di, dj, c] of DIRS) {
+        const ni = i + di, nj = j + dj;
+        if (!this.passable(ni, nj)) continue;
+        // Sin cortar esquinas: en diagonal, ambas celdas ortogonales deben ser transitables.
+        if (di && dj && (!this.passable(i + di, j) || !this.passable(i, j + dj))) continue;
+        const nk = nj * w + ni;
+        const nd = d0 + c + grid.extraCost[nk];
+        if (nd < dist[nk]) {
+          dist[nk] = nd;
+          next[nk] = k; // desde nk se avanza hacia k
+          push(nk, nd);
+        }
+      }
+    }
+  }
+
+  /** Índice de la siguiente celda desde (i,j), o -1 si no hay camino. */
+  nextCell(i, j) {
+    if (!this.grid.inBounds(i, j)) return -1;
+    return this.next[j * this.grid.w + i];
+  }
+
+  distanceAt(i, j) {
+    if (!this.grid.inBounds(i, j)) return Infinity;
+    return this.dist[j * this.grid.w + i];
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "radius": 0.35,
+  "maxHp": 100,
+  "speed": 5,
+  "sprintSpeed": 7.5,
+  "maxStamina": 100,
+  "staminaDrain": 28,
+  "staminaRegen": 18,
+  "staminaRegenDelay": 0.6,
+  "startWeapon": "pistola",
+  "hurtFlashTime": 0.35
+}

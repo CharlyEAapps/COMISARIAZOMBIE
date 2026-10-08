@@ -1,0 +1,34 @@
+{
+  "caminante": {
+    "name": "Caminante",
+    "hp": 60,
+    "speed": 1.7,
+    "speedVariance": 0.15,
+    "radius": 0.38,
+    "scale": 1,
+    "damage": 12,
+    "attackRange": 0.45,
+    "attackWindup": 0.35,
+    "attackCooldown": 1.1,
+    "points": 10,
+    "color": "#6f8a5a",
+    "colorVariance": 0.12
+  },
+  "_ai": {
+    "maxZombies": 200,
+    "directChaseRange": 14,
+    "losCheckInterval": 0.25,
+    "separationRadius": 0.9,
+    "separationStrength": 2.2,
+    "turnSharpness": 8,
+    "flowFieldInterval": 0.2,
+    "corpseTime": 2.5
+  },
+  "_testSpawner": {
+    "startInterval": 2.5,
+    "minInterval": 0.7,
+    "rampSeconds": 180,
+    "maxAlive": 40,
+    "initialDelay": 2
+  }
+}

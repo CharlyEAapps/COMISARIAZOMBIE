@@ -10,10 +10,10 @@ export class Renderer {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x87a7c4);
-    this.scene.fog = new THREE.Fog(0x87a7c4, 40, 110);
+    this.scene.background = new THREE.Color(0xbfd3e0);
+    this.scene.fog = new THREE.Fog(0xbfd3e0, 45, 120);
 
-    this.hemi = new THREE.HemisphereLight(0xdfe9ff, 0x4a4234, 1.1);
+    this.hemi = new THREE.HemisphereLight(0xeef3ff, 0x6b6250, 1.5);
     this.scene.add(this.hemi);
 
     this.sun = new THREE.DirectionalLight(0xfff1d6, 2.2);

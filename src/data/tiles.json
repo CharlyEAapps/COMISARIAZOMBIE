@@ -1,0 +1,18 @@
+{
+  " ": { "name": "hierba",      "walk": true,  "blocksShot": false, "height": 0,   "floor": "hierba" },
+  "_": { "name": "asfalto",     "walk": true,  "blocksShot": false, "height": 0,   "floor": "asfalto" },
+  ".": { "name": "suelo",       "walk": true,  "blocksShot": false, "height": 0,   "floor": "interior" },
+  "D": { "name": "puerta",      "walk": true,  "blocksShot": false, "height": 0,   "floor": "interior", "door": true },
+  "P": { "name": "inicio",      "walk": true,  "blocksShot": false, "height": 0,   "floor": "interior", "playerStart": true },
+  "S": { "name": "aparicion",   "walk": true,  "blocksShot": false, "height": 0,   "floor": "asfalto", "spawn": true },
+  "A": { "name": "armeria",     "walk": true,  "blocksShot": false, "height": 0,   "floor": "interior", "shop": "armeria" },
+  "M": { "name": "enfermeria",  "walk": true,  "blocksShot": false, "height": 0,   "floor": "interior", "shop": "enfermeria" },
+  "W": { "name": "almacen",     "walk": true,  "blocksShot": false, "height": 0,   "floor": "interior", "shop": "almacen" },
+  "#": { "name": "muro",        "walk": false, "blocksShot": true,  "height": 2.6, "floor": "interior", "collisionInset": 0.35 },
+  "=": { "name": "valla",       "walk": false, "blocksShot": false, "height": 1.8, "floor": "hierba" },
+  "|": { "name": "reja",        "walk": false, "blocksShot": false, "height": 2.6, "floor": "interior" },
+  "c": { "name": "coche",       "walk": false, "blocksShot": true,  "height": 1.4, "floor": "asfalto" },
+  "k": { "name": "contenedor",  "walk": false, "blocksShot": true,  "height": 1.7, "floor": "asfalto" },
+  "o": { "name": "mobiliario",  "walk": false, "blocksShot": false, "height": 0.9, "floor": "interior" },
+  "L": { "name": "farola",      "walk": false, "blocksShot": false, "height": 4.5, "floor": "asfalto", "light": true }
+}

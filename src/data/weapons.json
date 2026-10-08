@@ -1,0 +1,18 @@
+{
+  "pistola": {
+    "name": "Pistola",
+    "damage": 25,
+    "fireRate": 5,
+    "auto": false,
+    "magSize": 12,
+    "reloadTime": 1.1,
+    "reserve": -1,
+    "spreadDeg": 2,
+    "range": 35,
+    "pellets": 1,
+    "pierce": 0,
+    "knockback": 0.25,
+    "shake": 0.06,
+    "tracerColor": "#ffe6a0"
+  }
+}

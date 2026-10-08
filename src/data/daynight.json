@@ -1,0 +1,65 @@
+{
+  "firstDayDuration": 60,
+  "dayDuration": 90,
+  "duskDuration": 15,
+  "nightBaseDuration": 140,
+  "nightDurationPerNight": 12,
+  "nightMaxDuration": 260,
+  "dawnDuration": 6,
+  "clock": {
+    "dayStart": 7,
+    "duskStart": 19,
+    "nightStart": 21,
+    "nightEnd": 5
+  },
+  "palettes": {
+    "dia": {
+      "background": "#bfd3e0",
+      "fogNear": 45,
+      "fogFar": 120,
+      "hemiSky": "#eef3ff",
+      "hemiGround": "#6b6250",
+      "hemiIntensity": 1.5,
+      "sun": "#fff1d6",
+      "sunIntensity": 2.2,
+      "exposure": 1.0
+    },
+    "atardecer": {
+      "background": "#e3a37e",
+      "fogNear": 35,
+      "fogFar": 100,
+      "hemiSky": "#ffcfa8",
+      "hemiGround": "#5a4030",
+      "hemiIntensity": 1.0,
+      "sun": "#ff9858",
+      "sunIntensity": 1.6,
+      "exposure": 1.0
+    },
+    "noche": {
+      "background": "#0d1424",
+      "fogNear": 26,
+      "fogFar": 72,
+      "hemiSky": "#6a7fc0",
+      "hemiGround": "#2a2a3a",
+      "hemiIntensity": 0.95,
+      "sun": "#a8bcff",
+      "sunIntensity": 0.55,
+      "exposure": 1.1
+    }
+  },
+  "lights": {
+    "flashlightIntensity": 70,
+    "flashlightDistance": 26,
+    "flashlightAngleDeg": 32,
+    "flashlightPenumbra": 0.55,
+    "lampPoolRadius": 5.5,
+    "lampPoolOpacity": 0.5,
+    "lampPointLights": 4,
+    "lampPointIntensity": 14,
+    "lampPointDistance": 11,
+    "interiorPoolRadius": 4.5,
+    "interiorPoolOpacity": 0.45,
+    "zombieEyesNight": 1.0,
+    "zombieEyesDay": 0.0
+  }
+}

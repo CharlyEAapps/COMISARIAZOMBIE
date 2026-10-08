@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import zombieData from '../data/zombies.json';
 import { FlowField } from './FlowField.js';
 import { resolveCircleVsGrid, raycastGrid, rayCircle, SpatialHash } from './Physics.js';
@@ -8,6 +9,7 @@ const SHIRTS = [0x7a5c3e, 0x4b5d73, 0x8c3b3b, 0x5f6b4e, 0x6b6b6b, 0x6a4f7a];
 const PANTS = [0x2e3542, 0x3e3328, 0x24282e, 0x40464f];
 const WHITE = new THREE.Color(0xffffff);
 const PART_COUNT = PART_NAMES.length;
+const HEAD_INDEX = PART_NAMES.indexOf('head');
 
 export const Z_STATE = { CHASE: 0, DYING: 1 };
 
@@ -56,6 +58,20 @@ export class ZombieSystem {
       return mesh;
     });
     this.partPivots = PART_NAMES.map((n) => new THREE.Vector3().fromArray(PARTS[n].pivot));
+
+    // Ojos brillantes (visibles de noche): dos cubitos en la cara, siguen a la cabeza.
+    const eyeL = new THREE.BoxGeometry(0.08, 0.05, 0.02); eyeL.translate(-0.085, 0.2, 0.2);
+    const eyeR = new THREE.BoxGeometry(0.08, 0.05, 0.02); eyeR.translate(0.085, 0.2, 0.2);
+    this.eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0, fog: false });
+    this.eyes = new THREE.InstancedMesh(mergeGeometries([eyeL, eyeR]), this.eyeMaterial, max);
+    this.eyes.count = 0;
+    this.eyes.frustumCulled = false;
+    game.scene.add(this.eyes);
+
+    // Señuelo (sirena de coche) y modificador global de velocidad (alarma).
+    this.decoy = { x: 0, z: 0, timer: 0, radius: 0 };
+    this.speedMul = 1;
+    this.speedMulTimer = 0;
     this._base = new THREE.Matrix4();
     this._part = new THREE.Matrix4();
     this._m = new THREE.Matrix4();
@@ -78,6 +94,20 @@ export class ZombieSystem {
     this.active.length = 0;
     this.flowCell = -1;
     this.flowTimer = 0;
+    this.decoy.timer = 0;
+    this.speedMul = 1;
+    this.speedMulTimer = 0;
+  }
+
+  /** Atrae hacia (x,z) a los zombis en `radius` que no ven al jugador, durante `seconds`. */
+  setDecoy(x, z, seconds, radius) {
+    Object.assign(this.decoy, { x, z, timer: seconds, radius });
+  }
+
+  /** Multiplica la velocidad de todos los zombis durante `seconds` (alarma). */
+  slowAll(mul, seconds) {
+    this.speedMul = mul;
+    this.speedMulTimer = seconds;
   }
 
   release(zb) {
@@ -85,7 +115,8 @@ export class ZombieSystem {
     this.free.push(zb);
   }
 
-  spawn(type, x, z) {
+  /** @param {{hpMul?:number, speedMul?:number}} [mods] escalado por noche */
+  spawn(type, x, z, mods) {
     const zb = this.free.pop();
     if (!zb) return null;
     const d = this.types[type];
@@ -97,8 +128,8 @@ export class ZombieSystem {
     zb.facing = Math.random() * Math.PI * 2;
     zb.scale = d.scale * rnd(0.06);
     zb.radius = d.radius * zb.scale;
-    zb.hp = zb.maxHp = d.hp;
-    zb.speed = d.speed * rnd(d.speedVariance);
+    zb.hp = zb.maxHp = d.hp * (mods?.hpMul ?? 1);
+    zb.speed = d.speed * rnd(d.speedVariance) * (mods?.speedMul ?? 1);
     zb.state = Z_STATE.CHASE;
     zb.windup = 0; zb.cooldown = 0; zb.attackAnim = 0;
     zb.losTimer = Math.random() * this.ai.losCheckInterval;
@@ -172,6 +203,9 @@ export class ZombieSystem {
 
     const turn = 1 - Math.exp(-ai.turnSharpness * dt);
     const sepR = ai.separationRadius;
+    const decoy = this.decoy;
+    if (decoy.timer > 0) decoy.timer -= dt;
+    if (this.speedMulTimer > 0 && (this.speedMulTimer -= dt) <= 0) this.speedMul = 1;
 
     for (let n = this.active.length - 1; n >= 0; n--) {
       const zb = this.active[n];
@@ -200,9 +234,14 @@ export class ZombieSystem {
           raycastGrid(grid, zb.pos.x, zb.pos.z, ux, uz, dist, this.blockedWalk) >= dist;
       }
 
-      // Dirección deseada: directa si ve al jugador; si no, la del flow field.
+      // Dirección deseada: directa si ve al jugador; hacia el señuelo si lo oye;
+      // si no, la del flow field.
       let mx = ux, mz = uz;
-      if (!zb.hasLos) {
+      const ddx = decoy.x - zb.pos.x, ddz = decoy.z - zb.pos.z;
+      const dd = Math.hypot(ddx, ddz);
+      if (!zb.hasLos && decoy.timer > 0 && dd < decoy.radius) {
+        if (dd > 1.5) { mx = ddx / dd; mz = ddz / dd; } else { mx = 0; mz = 0; }
+      } else if (!zb.hasLos) {
         const cell = grid.walkableCellAt(zb.pos.x, zb.pos.z);
         const nk = cell >= 0 ? flow.next[cell] : -1;
         if (nk >= 0) {
@@ -246,11 +285,12 @@ export class ZombieSystem {
         zb.windup = zb.data.attackWindup;
       }
 
-      const speed = zb.windup > 0 || inRange ? zb.speed * ai.attackSlowFactor : zb.speed;
+      const baseSpeed = zb.speed * this.speedMul;
+      const speed = zb.windup > 0 || inRange ? baseSpeed * ai.attackSlowFactor : baseSpeed;
       let tvx = mx * speed + sx * ai.separationStrength;
       let tvz = mz * speed + sz * ai.separationStrength;
       const tl = Math.hypot(tvx, tvz);
-      const maxV = zb.speed * ai.maxSpeedFactor;
+      const maxV = baseSpeed * ai.maxSpeedFactor;
       if (tl > maxV) { tvx *= maxV / tl; tvz *= maxV / tl; }
       zb.vx += (tvx - zb.vx) * turn;
       zb.vz += (tvz - zb.vz) * turn;
@@ -329,6 +369,11 @@ export class ZombieSystem {
         if (zb.flash > 0) _c.lerp(WHITE, 0.7);
         if (zb.state === Z_STATE.DYING) _c.multiplyScalar(0.6);
         meshList[k].setColorAt(count, _c);
+        if (k === HEAD_INDEX) {
+          // Los muertos no tienen ojos brillantes: se esconden escalando a 0.
+          if (zb.state === Z_STATE.DYING) _m.makeScale(0, 0, 0);
+          this.eyes.setMatrixAt(count, _m);
+        }
       }
       count++;
     }
@@ -337,5 +382,8 @@ export class ZombieSystem {
       m.instanceMatrix.needsUpdate = true;
       m.instanceColor.needsUpdate = true;
     }
+    this.eyes.count = count;
+    this.eyes.instanceMatrix.needsUpdate = true;
+    this.eyes.visible = this.eyeMaterial.opacity > 0.01;
   }
 }

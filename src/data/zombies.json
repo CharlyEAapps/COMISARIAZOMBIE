@@ -30,12 +30,5 @@
     "playerPushShare": 0.15,
     "fallTime": 0.4,
     "sinkTime": 1
-  },
-  "_testSpawner": {
-    "startInterval": 2.5,
-    "minInterval": 0.7,
-    "rampSeconds": 180,
-    "maxAlive": 40,
-    "initialDelay": 2
   }
 }

@@ -1,0 +1,83 @@
+{
+  "_comment": "cooldown: segundos, 'day' (una vez por día), 'night' (una vez por noche) o 'cycle' (una vez por ciclo día+noche). availability: 'always' | 'day' | 'night'.",
+  "_defaults": { "radius": 1.3, "hold": 0.8, "availability": "always", "cooldown": 1 },
+  "cafetera": {
+    "label": "Tomar un café", "hold": 1.2, "cooldown": "cycle", "marker": true,
+    "effect": { "stamina": 100, "staminaRegenMul": 2.2, "buffDuration": 60 },
+    "msg": "☕ Café de comisaría: resistencia a tope y recuperación ×2 durante 60 s"
+  },
+  "vending": {
+    "label": "Comprar una chocolatina", "hold": 0.6, "cost": 25, "cooldown": 15,
+    "effect": { "heal": 15 }, "msg": "🍫 +15 de vida"
+  },
+  "fuente": {
+    "label": "Beber agua", "hold": 0.8, "cooldown": 30,
+    "effect": { "heal": 8 }, "msg": "💧 +8 de vida"
+  },
+  "taquilla": {
+    "label": "Registrar taquilla", "hold": 1.5, "cooldown": "cycle", "marker": true,
+    "effect": { "loot": [
+      { "w": 3, "medkit": 1, "msg": "🩹 Has encontrado un botiquín" },
+      { "w": 4, "points": 40, "msg": "💰 Unas monedas olvidadas: +40" },
+      { "w": 2, "points": 90, "msg": "💰 Un sobre con dinero: +90" },
+      { "w": 3, "msg": "🧦 Solo hay calcetines sucios" }
+    ] }
+  },
+  "archivador": {
+    "label": "Revisar expedientes", "hold": 2.0, "cooldown": "cycle", "marker": true,
+    "effect": { "loot": [
+      { "w": 5, "points": 35, "msg": "📁 Un expediente con recompensa: +35" },
+      { "w": 3, "points": 70, "msg": "📁 Caso cerrado, bonificación: +70" },
+      { "w": 2, "intel": true, "msg": "📁 Un informe sobre la horda" }
+    ] }
+  },
+  "botiquin_pared": {
+    "label": "Coger botiquín de pared", "hold": 0.8, "cooldown": "cycle", "marker": true,
+    "effect": { "medkit": 1 }, "msg": "🩹 +1 botiquín (Q para usarlo)"
+  },
+  "cama": {
+    "label": "Descansar hasta el anochecer", "hold": 2.5, "availability": "day", "cooldown": "cycle",
+    "effect": { "heal": 30, "skipDay": true }, "msg": "😴 Has descansado: +30 de vida"
+  },
+  "telefono": {
+    "label": "Contestar al teléfono", "hold": 0.5, "cooldown": 35, "marker": true,
+    "effect": { "call": true }
+  },
+  "radio": {
+    "label": "Escuchar la centralita", "hold": 1.0, "cooldown": "cycle", "marker": true,
+    "effect": { "intel": true }
+  },
+  "ordenador_camaras": {
+    "label": "Ver cámaras de seguridad", "hold": 1.0, "cooldown": 20,
+    "effect": { "cameras": true }
+  },
+  "cuadro_electrico": {
+    "label": "Luces de la comisaría", "hold": 0.6, "cooldown": 2, "requiresPower": true,
+    "effect": { "toggleLights": true }
+  },
+  "generador": {
+    "label": "Arrancar el generador", "hold": 3.0, "cooldown": "cycle", "marker": true,
+    "effect": { "startGenerator": true }, "msg": "⚡ Generador en marcha hasta el amanecer"
+  },
+  "pizarra_casos": {
+    "label": "Aceptar caso de la noche", "hold": 1.0, "availability": "day", "cooldown": "cycle", "marker": true,
+    "effect": { "objective": true }
+  },
+  "coche_sirena": {
+    "label": "Encender la sirena (señuelo)", "hold": 0.8, "cooldown": 60,
+    "effect": { "decoy": 10, "decoyRadius": 28 }, "msg": "🚨 La sirena atrae a los zombis cercanos durante 10 s"
+  },
+  "alarma": {
+    "label": "Activar la alarma", "hold": 0.5, "availability": "night", "cooldown": "cycle",
+    "effect": { "alarm": 20, "alarmSlow": 0.75 }, "msg": "🚨 Alarma: luces de emergencia y zombis aturdidos (−25 % velocidad) 20 s"
+  },
+  "_medkit": { "heal": 40, "useTime": 1.0, "max": 3 },
+  "_calls": [
+    { "text": "📞 «¿Comisaría? Mi gato no baja del árbol… ¿cómo que zombis?»" },
+    { "text": "📞 «Le llamo de su compañía eléctrica para ofrecerle una tarifa…»" },
+    { "text": "📞 «Agente, ¿es normal que mi vecino muerda el buzón?»" },
+    { "text": "📞 «Soy el comisario. Aguanta, chaval. Te dejo algo en el despacho.»", "points": 50 },
+    { "text": "📞 «Aquí la central: esta noche vienen más por el norte.»", "intel": true },
+    { "text": "📞 Solo se oye respirar… y un gruñido. Cuelgas." }
+  ]
+}

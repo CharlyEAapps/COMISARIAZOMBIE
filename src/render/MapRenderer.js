@@ -23,9 +23,14 @@ const BLOCK_STYLE = {
 };
 
 export class MapRenderer {
-  constructor(scene, grid) {
+  /**
+   * @param {{ skip?: Iterable<string> }} [opts] tiles que dibuja otro sistema (p. ej. PropRenderer);
+   *   su colisión sigue existiendo, solo se omite la caja provisional.
+   */
+  constructor(scene, grid, opts = {}) {
     this.scene = scene;
     this.grid = grid;
+    this.skip = new Set(opts.skip ?? []);
     this.group = new THREE.Group();
     this.group.name = 'mapa';
     scene.add(this.group);
@@ -82,7 +87,7 @@ export class MapRenderer {
     for (let j = 0; j < grid.h; j++) {
       for (let i = 0; i < grid.w; i++) {
         const ch = grid.chars[grid.index(i, j)];
-        if (!BLOCK_STYLE[ch]) continue;
+        if (!BLOCK_STYLE[ch] || this.skip.has(ch)) continue;
         if (!byChar.has(ch)) byChar.set(ch, []);
         byChar.get(ch).push([i, j]);
       }

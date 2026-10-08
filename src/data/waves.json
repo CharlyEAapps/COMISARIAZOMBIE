@@ -1,0 +1,27 @@
+{
+  "night": {
+    "baseCount": 14,
+    "perNight": 7,
+    "growth": 1.07,
+    "maxAliveBase": 40,
+    "maxAlivePerNight": 6,
+    "maxAliveCap": 130,
+    "spawnWindow": 0.7,
+    "groupMin": 2,
+    "groupMax": 5,
+    "hpBonusPerNight": 0.06,
+    "speedBonusPerNight": 0.025,
+    "speedBonusCap": 0.35,
+    "spawnPointsBase": 4,
+    "spawnPointsPerNight": 1,
+    "types": [
+      { "type": "caminante", "weight": 1, "fromNight": 1 }
+    ]
+  },
+  "day": {
+    "fromDay": 2,
+    "interval": 16,
+    "maxAlive": 3,
+    "type": "caminante"
+  }
+}

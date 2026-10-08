@@ -1,0 +1,190 @@
+import * as THREE from 'three';
+import dn from '../data/daynight.json';
+
+// Iluminación día/noche. Número de luces FIJO (cambiarlo recompila todos los shaders):
+// hemisférica + sol/luna (Renderer) + linterna + N luces de farola reasignadas a las más
+// cercanas + 1 luz de alarma. El resto de farolas y lámparas son "charcos de luz" aditivos
+// en el suelo (sin coste de iluminación).
+
+function radialTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.35, 'rgba(255,255,255,0.55)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+const PAL = {};
+for (const [k, p] of Object.entries(dn.palettes)) {
+  PAL[k] = {
+    background: new THREE.Color(p.background), hemiSky: new THREE.Color(p.hemiSky),
+    hemiGround: new THREE.Color(p.hemiGround), sun: new THREE.Color(p.sun),
+    hemiIntensity: p.hemiIntensity, sunIntensity: p.sunIntensity,
+    fogNear: p.fogNear, fogFar: p.fogFar, exposure: p.exposure,
+  };
+}
+
+export class Lighting {
+  constructor(game) {
+    this.game = game;
+    this.cfg = dn.lights;
+    const { scene } = game;
+    this.r = game.renderer;
+    this.nightFactor = 0;
+    this.alarmTimer = 0;
+
+    // Linterna del policía.
+    const L = this.cfg;
+    this.flashlight = new THREE.SpotLight(0xfff2d8, 0, L.flashlightDistance, THREE.MathUtils.degToRad(L.flashlightAngleDeg), L.flashlightPenumbra, 1.2);
+    this.flashlight.shadow.mapSize.set(512, 512);
+    this.flashlight.shadow.camera.near = 0.3;
+    this.flashlight.shadow.bias = -0.002;
+    scene.add(this.flashlight, this.flashlight.target);
+
+    // Luces reales de farola (pocas) que se asignan a las farolas más cercanas.
+    this.lampLights = [];
+    for (let i = 0; i < L.lampPointLights; i++) {
+      const pl = new THREE.PointLight(0xffd49a, 0, L.lampPointDistance, 1.5);
+      scene.add(pl);
+      this.lampLights.push(pl);
+    }
+    this.assignTimer = 0;
+
+    // Luz roja de alarma.
+    this.alarmLight = new THREE.PointLight(0xff2a2a, 0, 40, 1.2);
+    scene.add(this.alarmLight);
+
+    this.poolTexture = radialTexture();
+    this.lampPools = null;
+    this.interiorPools = null;
+    this.anchors = [];
+    this.setAnchors(game.grid.lights.map(({ i, j }) => ({ type: 'farola', x: game.grid.centerX(i), y: 4.3, z: game.grid.centerZ(j) })));
+
+    this._c = new THREE.Color();
+    this._v = new THREE.Vector3();
+  }
+
+  /** Reconstruye los charcos de luz a partir de los anchors (farolas del mapa o de PropRenderer). */
+  setAnchors(anchors) {
+    const { scene } = this.game;
+    for (const m of [this.lampPools, this.interiorPools]) {
+      if (m) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
+    }
+    this.anchors = anchors;
+    this.lamps = anchors.filter((a) => a.type === 'farola');
+    this.interior = anchors.filter((a) => a.type === 'lampara');
+    this.lampPools = this.makePools(this.lamps, this.cfg.lampPoolRadius, 0xffcf8a);
+    this.interiorPools = this.makePools(this.interior, this.cfg.interiorPoolRadius, 0xfff3d6);
+  }
+
+  makePools(list, radius, color) {
+    const geo = new THREE.PlaneGeometry(1, 1);
+    geo.rotateX(-Math.PI / 2);
+    const mat = new THREE.MeshBasicMaterial({
+      map: this.poolTexture, color, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+    });
+    const mesh = new THREE.InstancedMesh(geo, mat, Math.max(1, list.length));
+    mesh.count = list.length;
+    const m = new THREE.Matrix4();
+    list.forEach((a, k) => {
+      m.makeScale(radius * 2, 1, radius * 2);
+      m.setPosition(a.x, 0.04, a.z);
+      mesh.setMatrixAt(k, m);
+    });
+    mesh.renderOrder = 2;
+    mesh.frustumCulled = false;
+    this.game.scene.add(mesh);
+    return mesh;
+  }
+
+  /** Activa/desactiva sombras de la linterna según la calidad. */
+  applyQuality(preset) {
+    this.flashlight.castShadow = preset.shadows;
+  }
+
+  triggerAlarm(seconds) {
+    this.alarmTimer = seconds;
+  }
+
+  update(dt) {
+    const { game, r, cfg } = this;
+    const dnSys = game.dayNight;
+    const blend = dnSys.paletteBlend();
+    const a = PAL[blend.from], b = PAL[blend.to], t = blend.t;
+    const night = this.nightFactor = dnSys.nightFactor();
+
+    // Paleta del cielo, niebla, luz ambiente y sol/luna.
+    const scene = r.scene;
+    scene.background.copy(a.background).lerp(b.background, t);
+    scene.fog.color.copy(scene.background);
+    scene.fog.near = a.fogNear + (b.fogNear - a.fogNear) * t;
+    scene.fog.far = a.fogFar + (b.fogFar - a.fogFar) * t;
+    r.hemi.color.copy(a.hemiSky).lerp(b.hemiSky, t);
+    r.hemi.groundColor.copy(a.hemiGround).lerp(b.hemiGround, t);
+    r.hemi.intensity = a.hemiIntensity + (b.hemiIntensity - a.hemiIntensity) * t;
+    r.sun.color.copy(a.sun).lerp(b.sun, t);
+    r.sun.intensity = a.sunIntensity + (b.sunIntensity - a.sunIntensity) * t;
+    r.renderer.toneMappingExposure = a.exposure + (b.exposure - a.exposure) * t;
+    // El sol recorre el cielo durante el día (sombras que giran); de noche, luna fija.
+    r.sunAngle = dnSys.phase === 'dia' ? -0.9 + dnSys.progress * 1.8 : dnSys.phase === 'atardecer' ? 0.9 + dnSys.progress * 0.4 : 0.3;
+
+    // Alarma: parpadeo rojo y ambiente teñido.
+    if (this.alarmTimer > 0) {
+      this.alarmTimer -= dt;
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.012);
+      this.alarmLight.intensity = 60 * pulse;
+      r.hemi.color.lerp(this._c.set(0xff3030), 0.35 * pulse);
+      r.hemi.intensity += 0.25 * pulse;
+    } else {
+      this.alarmLight.intensity = 0;
+    }
+
+    // Linterna: sigue la dirección de apuntado del jugador.
+    const p = game.player;
+    const fl = this.flashlight;
+    const dir = p.aimDir;
+    fl.intensity = p.alive ? cfg.flashlightIntensity * Math.max(0, night * 1.1 - 0.1) : 0;
+    fl.position.set(p.position.x + dir.x * 0.9, 1.55, p.position.z + dir.z * 0.9);
+    fl.target.position.set(p.position.x + dir.x * 9, 0, p.position.z + dir.z * 9);
+    this.alarmLight.position.set(p.position.x, 6, p.position.z);
+
+    // Charcos de luz de farolas e interiores.
+    this.lampPools.material.opacity = cfg.lampPoolOpacity * night;
+    this.lampPools.visible = night > 0.01;
+    const interiorOn = game.power?.lightsOn && game.power?.generator;
+    this.interiorPools.material.opacity = interiorOn ? cfg.interiorPoolOpacity * Math.max(0.15, night) : 0;
+    this.interiorPools.visible = !!interiorOn;
+    if (interiorOn) {
+      // Interior iluminado: algo más de luz ambiente.
+      r.hemi.intensity += 0.25 * night;
+    }
+
+    // Reasignación periódica de las luces reales a las farolas más cercanas.
+    this.assignTimer -= dt;
+    if (this.assignTimer <= 0) {
+      this.assignTimer = 0.3;
+      const px = p.position.x, pz = p.position.z;
+      const sorted = this.lamps
+        .map((l) => ({ l, d: (l.x - px) ** 2 + (l.z - pz) ** 2 }))
+        .sort((x, y) => x.d - y.d);
+      this.lampLights.forEach((pl, k) => {
+        const s = sorted[k];
+        if (s) pl.position.set(s.l.x, s.l.y - 0.3, s.l.z);
+        pl.userData.active = !!s && s.d < 30 * 30;
+      });
+    }
+    for (const pl of this.lampLights) pl.intensity = pl.userData.active ? cfg.lampPointIntensity * night : 0;
+
+    // Ojos de los zombis: brillan de noche.
+    const eyes = game.zombies.eyeMaterial;
+    if (eyes) eyes.opacity = cfg.zombieEyesDay + (cfg.zombieEyesNight - cfg.zombieEyesDay) * night;
+  }
+}

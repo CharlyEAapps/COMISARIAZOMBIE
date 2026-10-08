@@ -1,0 +1,195 @@
+import data from '../data/interactions.json';
+import { PHASE } from './DayNight.js';
+
+const DEFAULTS = data._defaults;
+
+/** Elige un elemento de una lista con pesos `w` (función pura, testeable). */
+export function weightedPick(list, rnd = Math.random) {
+  const total = list.reduce((s, e) => s + e.w, 0);
+  let r = rnd() * total;
+  for (const e of list) {
+    r -= e.w;
+    if (r <= 0) return e;
+  }
+  return list[list.length - 1];
+}
+
+// Interacciones con la comisaría: el jugador se acerca a un punto (anchor), ve el aviso
+// "E · acción" y mantiene E durante `hold` segundos. Cada tipo se define en interactions.json.
+export class InteractionSystem {
+  constructor(game) {
+    this.game = game;
+    this.items = [];
+    this.current = null;
+    this.holdT = 0;
+    this.waitRelease = false;
+    game.bus.on('player:hurt', () => { this.holdT = 0; });
+  }
+
+  /** @param {{id:string,type:string,x:number,z:number,label?:string}[]} anchors */
+  setAnchors(anchors) {
+    this.items = anchors
+      .filter((a) => data[a.type])
+      .map((a) => ({ ...a, def: { ...DEFAULTS, ...data[a.type] }, readyAt: 0, usedCycle: 0 }));
+  }
+
+  reset() {
+    for (const it of this.items) { it.readyAt = 0; it.usedCycle = 0; }
+    this.current = null;
+    this.holdT = 0;
+  }
+
+  /** @returns {{ok:boolean, reason?:string}} */
+  availability(it) {
+    const { game } = this;
+    const d = it.def;
+    const phase = game.dayNight.phase;
+    if (d.availability === 'day' && phase !== PHASE.DAY) return { ok: false, reason: 'Solo de día' };
+    if (d.availability === 'night' && phase !== PHASE.NIGHT) return { ok: false, reason: 'Solo de noche' };
+    if (typeof d.cooldown === 'number' && game.time < it.readyAt) {
+      return { ok: false, reason: `Disponible en ${Math.ceil(it.readyAt - game.time)} s` };
+    }
+    if (typeof d.cooldown === 'string' && it.usedCycle === game.dayNight.night) {
+      return { ok: false, reason: 'Ya usado hoy' };
+    }
+    if (d.cost && game.run.points < d.cost) return { ok: false, reason: `Necesitas ${d.cost} puntos` };
+    if (d.requiresPower && !game.power.generator) return { ok: false, reason: 'Sin corriente: arranca el generador' };
+    const e = d.effect;
+    const p = game.player;
+    if (e.medkit && !e.loot && p.medkits >= data._medkit.max) return { ok: false, reason: 'Llevas el máximo de botiquines' };
+    if (e.heal && !e.skipDay && p.hp >= p.maxHp) return { ok: false, reason: 'Vida al máximo' };
+    return { ok: true };
+  }
+
+  label(it) {
+    const d = it.def;
+    if (d.effect.toggleLights) return this.game.power.lightsOn ? 'Apagar las luces' : 'Encender las luces';
+    return d.cost ? `${d.label} (${d.cost} pts)` : d.label;
+  }
+
+  update(dt) {
+    const { game } = this;
+    const p = game.player;
+    if (!p.alive) { this.current = null; return; }
+
+    // Punto más cercano dentro de su radio.
+    let best = null, bestD = Infinity;
+    for (const it of this.items) {
+      const d2 = (it.x - p.position.x) ** 2 + (it.z - p.position.z) ** 2;
+      if (d2 < it.def.radius * it.def.radius && d2 < bestD) { bestD = d2; best = it; }
+    }
+    if (best !== this.current) { this.current = best; this.holdT = 0; }
+
+    const held = game.input.isHeld('interact');
+    if (!held) this.waitRelease = false;
+    if (!best || !held || this.waitRelease) { this.holdT = 0; return; }
+    if (!this.availability(best).ok) { this.holdT = 0; return; }
+    this.holdT += dt;
+    if (this.holdT >= best.def.hold) {
+      this.holdT = 0;
+      this.waitRelease = true;
+      this.execute(best);
+    }
+  }
+
+  /** Progreso de la acción en curso (0–1) para el HUD. */
+  get progress() {
+    return this.current ? Math.min(1, this.holdT / this.current.def.hold) : 0;
+  }
+
+  execute(it) {
+    const { game } = this;
+    const d = it.def;
+    if (d.cost) game.run.points -= d.cost;
+    if (typeof d.cooldown === 'number') it.readyAt = game.time + d.cooldown;
+    else it.usedCycle = game.dayNight.night;
+    const msg = this.apply(d.effect, it);
+    const text = msg ?? d.msg;
+    if (text) game.hud.toast(text);
+    game.bus.emit('interact', { type: it.type, id: it.id });
+  }
+
+  /** Aplica un efecto y devuelve, si procede, un mensaje que sustituye al genérico. */
+  apply(e, it) {
+    const { game } = this;
+    const p = game.player;
+    let msg = null;
+    if (e.loot) {
+      const pick = weightedPick(e.loot);
+      this.apply(pick, it);
+      return pick.msg ?? null;
+    }
+    if (e.heal) p.heal(e.heal);
+    if (e.stamina) p.stamina = Math.min(p.data.maxStamina, p.stamina + e.stamina);
+    if (e.staminaRegenMul) p.addBuff('staminaRegen', e.staminaRegenMul, e.buffDuration);
+    if (e.medkit) p.medkits = Math.min(data._medkit.max, p.medkits + e.medkit);
+    if (e.points) game.score.addPoints(e.points, it.x, it.z);
+    if (e.intel) msg = this.intelMessage();
+    if (e.call) {
+      const call = data._calls[(Math.random() * data._calls.length) | 0];
+      msg = call.text;
+      if (call.points) game.score.addPoints(call.points, it.x, it.z);
+      if (call.intel) msg += `  ${this.intelMessage()}`;
+    }
+    if (e.cameras) msg = this.camerasMessage();
+    if (e.toggleLights) {
+      game.power.lightsOn = !game.power.lightsOn;
+      msg = game.power.lightsOn ? '💡 Luces de la comisaría encendidas' : '🌑 Luces apagadas';
+    }
+    if (e.startGenerator) game.power.generator = true;
+    if (e.skipDay) game.dayNight.skipDay();
+    if (e.objective) {
+      const o = game.score.pickObjective(game.dayNight.night);
+      msg = `📋 Caso aceptado: ${o.text} (+${o.reward})`;
+    }
+    if (e.decoy) {
+      game.zombies.setDecoy(it.x, it.z, e.decoy, e.decoyRadius);
+      game.bus.emit('siren', { id: it.id, seconds: e.decoy });
+    }
+    if (e.alarm) {
+      game.lighting.triggerAlarm(e.alarm);
+      game.zombies.slowAll(e.alarmSlow, e.alarm);
+    }
+    return msg;
+  }
+
+  intelMessage() {
+    const { game } = this;
+    const dnSys = game.dayNight;
+    const side = game.waves.dominantSide();
+    if (dnSys.phase === PHASE.NIGHT) return `📻 Quedan unos ${game.waves.remaining} zombis. Llegan sobre todo por el ${side}.`;
+    const n = dnSys.night;
+    const count = game.waves.forecast(n);
+    return `📻 Noche ${n}: se esperan unos ${count} zombis, sobre todo por el ${side}.`;
+  }
+
+  camerasMessage() {
+    const { game } = this;
+    const zs = game.zombies.active;
+    const p = game.player.position;
+    let alive = 0;
+    const q = { norte: 0, sur: 0, este: 0, oeste: 0 };
+    for (const z of zs) {
+      if (z.state !== 0) continue;
+      alive++;
+      const dx = z.pos.x - p.x, dz = z.pos.z - p.z; // relativo al jugador
+      if (Math.abs(dx) > Math.abs(dz)) q[dx > 0 ? 'este' : 'oeste']++;
+      else q[dz > 0 ? 'sur' : 'norte']++;
+    }
+    if (!alive) return '📹 Cámaras: perímetro despejado.';
+    const [side, n] = Object.entries(q).sort((a, b) => b[1] - a[1])[0];
+    return `📹 Cámaras: ${alive} zombis a la vista, ${n} por el ${side}.`;
+  }
+
+  /** Puntos con "!" (interacción útil disponible) cerca del jugador, para el HUD. */
+  markers(maxDist = 20) {
+    const p = this.game.player.position;
+    const out = [];
+    for (const it of this.items) {
+      if (!it.def.marker) continue;
+      if ((it.x - p.x) ** 2 + (it.z - p.z) ** 2 > maxDist * maxDist) continue;
+      if (this.availability(it).ok) out.push(it);
+    }
+    return out;
+  }
+}

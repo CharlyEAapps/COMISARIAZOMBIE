@@ -39,8 +39,10 @@ export class Renderer {
 
   /** La sombra del sol sigue al foco de la cámara para cubrir siempre la zona visible. */
   followFocus(focus) {
+    // sunAngle (rad) lo fija el sistema de iluminación según la hora del día.
+    const a = this.sunAngle ?? -0.4;
     this.sun.target.position.copy(focus);
-    this.sun.position.set(focus.x - 20, 40, focus.z + 15);
+    this.sun.position.set(focus.x + Math.sin(a) * 28, 40, focus.z + Math.cos(a) * 22);
   }
 
   resize(w, h) {

@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import playerData from '../data/player.json';
+import interactions from '../data/interactions.json';
+
+const MEDKIT = interactions._medkit;
 import { buildPolice, computePose, makePose, PART_NAMES } from '../render/BlockyCharacter.js';
 import { resolveCircleVsGrid } from '../systems/Physics.js';
 
@@ -33,9 +36,28 @@ export class Player {
     this.staminaDelay = 0;
     this.sprintLocked = false;
     this.hurtTimer = 0;
+    this.medkits = 1;
+    this.medkitTimer = 0;
+    this.buffs = {}; // nombre → { value, timer }
     this.alive = true;
     this.mesh.rotation.set(0, 0, 0);
     this.velocity.set(0, 0, 0);
+  }
+
+  heal(amount) {
+    if (!this.alive) return;
+    const before = this.hp;
+    this.hp = Math.min(this.maxHp, this.hp + amount);
+    if (this.hp > before) this.game.floating?.spawn(`+${Math.round(this.hp - before)}`, this.position.x, 2.1, this.position.z, 'heal');
+  }
+
+  addBuff(name, value, seconds) {
+    this.buffs[name] = { value, timer: seconds };
+  }
+
+  buff(name, fallback = 1) {
+    const b = this.buffs[name];
+    return b && b.timer > 0 ? b.value : fallback;
   }
 
   damage(amount) {
@@ -59,12 +81,25 @@ export class Player {
       return;
     }
 
+    for (const b of Object.values(this.buffs)) b.timer -= dt;
+
+    // Botiquín (Q): curación tras un breve uso; se puede caminar mientras.
+    if (this.medkitTimer > 0) {
+      this.medkitTimer -= dt;
+      if (this.medkitTimer <= 0) {
+        this.medkits--;
+        this.heal(MEDKIT.heal);
+      }
+    } else if (input.consume('medkit')) {
+      if (this.medkits > 0 && this.hp < this.maxHp) this.medkitTimer = MEDKIT.useTime;
+    }
+
     const moving = input.move.x !== 0 || input.move.y !== 0;
     // Al agotarse, no se puede volver a esprintar hasta recuperar un mínimo (evita parpadeos).
     if (this.stamina <= 0) this.sprintLocked = true;
     else if (this.stamina >= this.data.sprintMinStamina) this.sprintLocked = false;
     const wantsSprint = input.isHeld('sprint') && moving && !this.sprintLocked;
-    const speed = wantsSprint ? this.data.sprintSpeed : this.data.speed;
+    const speed = (wantsSprint ? this.data.sprintSpeed : this.data.speed) * (this.medkitTimer > 0 ? 0.5 : 1);
     this.velocity.set(input.move.x * speed, 0, input.move.y * speed);
     const x0 = this.position.x, z0 = this.position.z;
     this.position.x += this.velocity.x * dt;
@@ -78,7 +113,7 @@ export class Player {
     } else if (this.staminaDelay > 0) {
       this.staminaDelay -= dt;
     } else {
-      this.stamina = Math.min(this.data.maxStamina, this.stamina + this.data.staminaRegen * dt);
+      this.stamina = Math.min(this.data.maxStamina, this.stamina + this.data.staminaRegen * this.buff('staminaRegen') * dt);
     }
 
     // Orientación hacia el punto de apuntado.

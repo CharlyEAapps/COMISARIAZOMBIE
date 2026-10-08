@@ -12,6 +12,7 @@ export const KEYMAP = {
   KeyQ: 'medkit',
   KeyG: 'grenade',
   KeyB: 'build',
+  KeyN: 'ready',
   Escape: 'pause',
   F1: 'debug',
   Enter: 'confirm', NumpadEnter: 'confirm',

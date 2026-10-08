@@ -168,8 +168,10 @@ export class Lighting {
     const dir = p.aimDir;
     const [curveA, curveB] = cfg.flashlightNightCurve;
     fl.intensity = p.alive ? cfg.flashlightIntensity * Math.max(0, night * curveA - curveB) : 0;
-    // Sin luz no hace falta el pase de sombra (WebGLShadowMap no mira la intensidad).
-    fl.shadow.autoUpdate = fl.intensity > 0;
+    // Sin luz no hace falta el pase de sombra (WebGLShadowMap no mira la intensidad). Pero el
+    // mapa de sombras debe existir: si nunca se ha renderizado, los shaders muestrean una
+    // textura de tipo incorrecto y WebGL descarta todos los draws que reciben sombra.
+    fl.shadow.autoUpdate = fl.intensity > 0 || !fl.shadow.map;
     fl.position.set(p.position.x + dir.x * 0.9, 1.55, p.position.z + dir.z * 0.9);
     fl.target.position.set(p.position.x + dir.x * 9, 0, p.position.z + dir.z * 9);
     this.alarmLight.position.set(p.position.x, 6, p.position.z);

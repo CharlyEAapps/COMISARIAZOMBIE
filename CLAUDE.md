@@ -31,6 +31,7 @@ Diorama/maqueta 3D de un juego hecho con Claude que Carlos vio en un vídeo:
   - `window.__game` expone el juego.
   - `__game.simulate(segundos)` avanza la simulación de forma síncrona. Úsalo cuando el panel del navegador está oculto, porque el navegador congela `requestAnimationFrame`.
   - F1 abre el panel de depuración.
+  - Después de cualquier cambio de render (luces, sombras, materiales, shaders), compruébalo con una **captura** y con `gl.getError()` tras un render. `simulate()` no detecta los errores de la GPU: una sombra sin mapa dejó la escena en blanco sin fallar ningún test.
 - Solo assets CC0, registrados en `CREDITS.md`. Los candidatos están en `ASSETS_CATALOGO.md`.
 
 ## Agentes (`.claude/agents/`)

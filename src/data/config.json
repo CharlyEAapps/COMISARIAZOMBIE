@@ -1,0 +1,29 @@
+{
+  "loop": {
+    "updateHz": 60,
+    "maxSubSteps": 5
+  },
+  "camera": {
+    "fov": 40,
+    "pitchDeg": 57,
+    "distance": 26,
+    "minDistance": 16,
+    "maxDistance": 36,
+    "zoomStep": 2,
+    "followSharpness": 8,
+    "lookAhead": 0.18,
+    "maxLookAhead": 5
+  },
+  "world": {
+    "size": 80,
+    "cellSize": 1
+  },
+  "quality": {
+    "default": "media",
+    "presets": {
+      "baja": { "pixelRatio": 1, "shadows": false, "shadowMapSize": 512 },
+      "media": { "pixelRatio": 1.25, "shadows": true, "shadowMapSize": 1024 },
+      "alta": { "pixelRatio": 2, "shadows": true, "shadowMapSize": 2048 }
+    }
+  }
+}

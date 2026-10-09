@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import meta from '../src/data/meta.json';
 import { SaveStore, defaultSave, migrate, addRecord, SAVE_VERSION } from '../src/save/SaveStore.js';
-import { medalsForRun, upgradeCost } from '../src/systems/Meta.js';
+import { medalsForRun, upgradeCost, Meta } from '../src/systems/Meta.js';
 
 /** Almacenamiento en memoria con la API de localStorage. */
 function memoryStorage() {
@@ -84,5 +84,20 @@ describe('Medallas y mejoras', () => {
       expect(upgradeCost(u, 0)).toBe(u.cost[0]);
       expect(upgradeCost(u, u.maxLevel)).toBe(0);
     }
+  });
+
+  it('un nivel de mejora fuera de rango en el guardado se limita a [0, maxLevel]', () => {
+    const fake = { upgrades: meta.upgrades, data: { upgrades: { vida: 99, puntos: -4, desconocida: 3 } } };
+    const level = (id) => Meta.prototype.level.call(fake, id);
+    expect(level('vida')).toBe(meta.upgrades.find((u) => u.id === 'vida').maxLevel);
+    expect(level('puntos')).toBe(0);
+    expect(level('desconocida')).toBe(0);
+  });
+
+  it('los récords guardados se ordenan y se limitan al cargar', () => {
+    const recs = Array.from({ length: 30 }, (_, k) => ({ points: k, nights: 1 }));
+    const d = migrate({ records: recs }, { maxRecords: 10 });
+    expect(d.records).toHaveLength(10);
+    expect(d.records[0].points).toBe(29);
   });
 });

@@ -58,8 +58,7 @@ export class Hud {
         </div>
         <div class="prompt panel subtle" data-k="ready"><span class="key">B</span> Construir<span data-k="readyNight"> <span class="key">N</span> Empezar la noche ya</span></div>
       </div>
-      <p class="obit hidden-obit" data-k="obit"></p>
-      </div>`;
+      <p class="obit hidden-obit" data-k="obit"></p>`;
     game.uiRoot.appendChild(root);
     this.root = root;
     this.el = {};

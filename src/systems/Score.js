@@ -34,6 +34,7 @@ export class Score {
   addPoints(amount, x, z, label) {
     const { run, floating } = this.game;
     run.points += amount;
+    if (amount > 0) run.score += amount; // lo ganado (para los récords), sin gastos
     if (floating && x !== undefined) floating.spawn(label ?? `+${amount}`, x, 1.9, z, amount >= 0 ? 'pts' : 'neg');
   }
 
@@ -102,6 +103,7 @@ export class Score {
       this.objective = null;
     }
     game.run.points += total;
+    game.run.score += total;
     game.run.nights = night;
     game.bus.emit('score:nightSummary', { night, lines, total });
   }

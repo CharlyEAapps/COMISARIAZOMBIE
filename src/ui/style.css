@@ -458,3 +458,6 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
   .options label { grid-template-columns: 1fr; gap: 4px; }
   .menu-box { padding: 16px; }
 }
+
+.gameover h1.danger, .menu-box h1.danger { color: var(--danger); }
+.btn.ghost.danger-text { color: #ff8a7a; }

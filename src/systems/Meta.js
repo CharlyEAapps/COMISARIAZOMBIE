@@ -1,7 +1,7 @@
 import metaData from '../data/meta.json';
 import zombieData from '../data/zombies.json';
 import weaponsData from '../data/weapons.json';
-import { SaveStore, addRecord } from '../save/SaveStore.js';
+import { SaveStore, addRecord, defaultSave } from '../save/SaveStore.js';
 
 /**
  * Medallas ganadas en una partida (función pura, testeable).
@@ -34,7 +34,7 @@ export class Meta {
     this.game = game;
     this.cfg = metaData;
     this.store = new SaveStore(metaData.storageKey, storage);
-    this.data = this.store.load();
+    this.data = this.store.load({ maxRecords: metaData.maxRecords });
     this.upgrades = metaData.upgrades;
     this.lastRun = null;
     this.resetRunStats();
@@ -42,12 +42,12 @@ export class Meta {
     this._unsub = [
       on('run:start', () => this.resetRunStats()),
       on('weapon:fired', ({ id }) => this.useWeapon(id)),
-      on('weapon:melee', () => this.useWeapon('porra')),
+      on('weapon:melee', ({ id }) => this.useWeapon(id)),
       on('boss:killed', () => { this.runStats.bossKills++; }),
       on('build:placed', () => { this.runStats.built++; }),
       on('case:solved', () => { this.runStats.cases++; }),
       on('night:survived', () => { if (game.score.nightStats.damage === 0) this.runStats.perfectNights++; }),
-      on('run:over', () => this.finishRun()),
+      on('run:over', ({ abandoned }) => this.finishRun(abandoned)),
     ];
   }
 
@@ -64,8 +64,11 @@ export class Meta {
   get records() { return this.data.records; }
   get settings() { return this.data.settings; }
 
+  /** Nivel de una mejora, siempre dentro de [0, maxLevel] (aunque el guardado diga otra cosa). */
   level(id) {
-    return this.data.upgrades[id] ?? 0;
+    const def = this.upgrades.find((u) => u.id === id);
+    const lv = Math.floor(this.data.upgrades[id] ?? 0);
+    return def ? Math.max(0, Math.min(def.maxLevel, lv)) : 0;
   }
 
   /** Arma más usada de la partida (por disparos o golpes). */
@@ -76,7 +79,15 @@ export class Meta {
   }
 
   // ------------------------------------------------------------------ fin de partida
-  finishRun() {
+  finishRun(abandoned = false) {
+    try {
+      this.recordRun(abandoned);
+    } finally {
+      this.game.bus.emit('meta:runFinished', this.lastRun);
+    }
+  }
+
+  recordRun(abandoned) {
     const { run, score } = this.game;
     const fav = this.favoriteWeapon();
     const stats = {
@@ -87,8 +98,9 @@ export class Meta {
     };
     const medals = medalsForRun(this.cfg.medals, run, stats);
     const total = medals.reduce((s, m) => s + m.medals, 0);
+    // Los récords usan lo ganado en el turno (no el saldo: invertir en defensas no penaliza).
     const entry = {
-      points: run.points, nights: run.nights, kills: run.kills, time: Math.round(run.time),
+      points: run.score, nights: run.nights, kills: run.kills, time: Math.round(run.time),
       date: new Date().toISOString().slice(0, 10), weapon: fav ? weaponsData[fav].name : '',
     };
     const { records, rank } = addRecord(this.data.records, entry, this.cfg.maxRecords);
@@ -103,8 +115,7 @@ export class Meta {
     const killsByType = Object.entries(run.killsByType)
       .map(([type, n]) => ({ type, name: zombieData[type]?.name ?? type, n }))
       .sort((a, b) => b.n - a.n);
-    this.lastRun = { ...entry, killsByType, favorite: entry.weapon, medals, totalMedals: total, rank, saved, maxCombo: score.maxCombo };
-    this.game.bus.emit('meta:runFinished', this.lastRun);
+    this.lastRun = { ...entry, killsByType, favorite: entry.weapon, medals, totalMedals: total, rank, saved, maxCombo: score.maxCombo, abandoned };
   }
 
   // ------------------------------------------------------------------ tablón de mejoras
@@ -134,7 +145,7 @@ export class Meta {
   resetProgress() {
     const settings = this.data.settings;
     this.store.clear();
-    this.data = this.store.load();
+    this.data = defaultSave();
     this.data.settings = settings;
     this.store.save(this.data);
   }
@@ -155,8 +166,8 @@ export class Meta {
     g.run.points += per('puntos');
     p.medkits += per('botiquin');
     if (this.level('escopeta') > 0) g.weapons.give('escopeta'); // con su reserva inicial
-    g.shop.armeriaDiscount = per('descuento');
-    g.weapons.reloadMul = 1 - per('recarga');
+    g.shop.armeriaDiscount = Math.min(this.cfg.maxDiscount, per('descuento'));
+    g.weapons.reloadMul = Math.max(this.cfg.minReloadMul, 1 - per('recarga'));
     g.lighting.flashlightMul = 1 + per('linterna');
     g.build.freeBarricades = per('barricadas');
   }

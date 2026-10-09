@@ -21,7 +21,7 @@ const num = (v, def = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d
 const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
 
 /** Valida y completa unos datos leídos (o de una versión anterior) contra el esquema actual. */
-export function migrate(raw) {
+export function migrate(raw, limits = {}) {
   const d = defaultSave();
   if (!raw || typeof raw !== 'object') return d;
   // (versión 1: no hay migraciones todavía; aquí irían las de versiones futuras)
@@ -37,7 +37,9 @@ export function migrate(raw) {
       .map((r) => ({
         points: num(r.points), nights: num(r.nights), kills: num(r.kills), time: num(r.time),
         date: typeof r.date === 'string' ? r.date : '', weapon: typeof r.weapon === 'string' ? r.weapon : '',
-      }));
+      }))
+      .sort((a, b) => b.points - a.points || b.nights - a.nights)
+      .slice(0, limits.maxRecords ?? 10);
   }
   d.settings = { ...obj(raw.settings) };
   const s = obj(raw.stats);
@@ -64,23 +66,29 @@ export class SaveStore {
     } catch {
       this.storage = null; // acceder a localStorage puede lanzar si está bloqueado
     }
-    this.ok = true;
+    // ok = se puede guardar (sin almacenamiento, no; un JSON corrupto no impide guardar).
+    this.ok = !!this.storage;
   }
 
-  load() {
+  load(limits) {
+    let txt = null;
     try {
-      const txt = this.storage?.getItem(this.key);
-      return migrate(txt ? JSON.parse(txt) : null);
+      txt = this.storage?.getItem(this.key);
     } catch {
-      this.ok = false;
+      this.ok = false; // no se puede ni leer: se avisará de que no se guarda
       return defaultSave();
+    }
+    try {
+      return migrate(txt ? JSON.parse(txt) : null, limits);
+    } catch {
+      return defaultSave(); // datos corruptos: se empieza de cero y se sobrescriben al guardar
     }
   }
 
   /** @returns {boolean} si se ha podido guardar */
   save(data) {
     try {
-      if (!this.storage) return false;
+      if (!this.storage) { this.ok = false; return false; }
       this.storage.setItem(this.key, JSON.stringify({ ...data, version: SAVE_VERSION }));
       this.ok = true;
       return true;

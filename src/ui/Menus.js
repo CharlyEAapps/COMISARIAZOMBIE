@@ -1,7 +1,17 @@
 import config from '../data/config.json';
+import weaponsData from '../data/weapons.json';
 
+const STATE_MENU = 'menu'; // Game.STATE.MENU (sin importar Game para evitar el ciclo)
 const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/** Descripción de una mejora con sus valores reales ({per}, {pct}, {reserve}). */
+function upgradeDesc(u) {
+  return u.desc
+    .replaceAll('{per}', String(u.per))
+    .replaceAll('{pct}', String(Math.round(u.per * 100)))
+    .replaceAll('{reserve}', String(weaponsData.escopeta.reserve));
+}
 
 const CONTROLS = [
   ['WASD / flechas', 'Moverse'], ['Mayús', 'Esprintar'], ['Ratón', 'Apuntar · clic: disparar'],
@@ -33,22 +43,30 @@ export class Menus {
     this.root.addEventListener('click', (e) => this.onClick(e));
     this.root.addEventListener('input', (e) => this.onInput(e));
     this.root.addEventListener('change', (e) => this.onInput(e));
-    game.bus.on('meta:runFinished', () => this.show('gameover', true));
+    this._off = game.bus.on('meta:runFinished', () => this.show('gameover', true, true));
+  }
+
+  dispose() {
+    this._off();
+    this.root.remove();
   }
 
   get open() { return !!this.current; }
 
-  /** Muestra una pantalla. reset = vaciar el historial (pantallas raíz). */
-  show(name, reset = false) {
+  /**
+   * Muestra una pantalla. reset = vaciar el historial (pantallas raíz); silent = sin clic
+   * (aperturas automáticas: arranque, fin de turno).
+   */
+  show(name, reset = false, silent = false) {
     if (reset) this.stack.length = 0;
     else if (this.current && this.current !== name) this.stack.push(this.current);
     this.current = name;
     this.resetArmed = false;
+    this.abandonArmed = false;
     this.render();
     this.root.classList.add('show');
-    const inMenu = this.game.state === 'menu';
-    this.game.uiRoot.classList.toggle('in-menu', inMenu);
-    this.game.audio?.play('ui_click');
+    this.game.uiRoot.classList.toggle('in-menu', this.game.state === STATE_MENU);
+    if (!silent) this.game.audio?.play('ui_click');
   }
 
   hide() {
@@ -65,6 +83,7 @@ export class Menus {
     if (this.stack.length) {
       this.current = this.stack.pop();
       this.resetArmed = false;
+      this.abandonArmed = false;
       this.render();
       this.game.audio?.play('ui_click');
     } else if (this.current === 'pause') {
@@ -107,13 +126,13 @@ export class Menus {
   screen_tablon() {
     const list = this.game.meta.upgradeList();
     const cards = list.map((u) => {
-      const stars = `${'★'.repeat(u.level)}${'☆'.repeat(u.maxLevel - u.level)}`;
+      const stars = `${'★'.repeat(u.level)}${'☆'.repeat(Math.max(0, u.maxLevel - u.level))}`;
       const btn = u.nextCost
         ? `<button class="btn small" data-buy="${u.id}" ${u.canBuy ? '' : 'disabled'}>Mejorar · 🎖️ ${u.nextCost}</button>`
         : '<span class="maxed">Al máximo</span>';
       return `<div class="upgrade-card panel ${u.level ? 'owned' : ''}">
         <div class="up-head"><span class="up-icon">${u.icon}</span><span class="up-name">${esc(u.name)}</span><span class="up-stars">${stars}</span></div>
-        <div class="up-desc">${esc(u.desc)}</div><div class="up-flavor">«${esc(u.flavor)}»</div>${btn}</div>`;
+        <div class="up-desc">${esc(upgradeDesc(u))}</div><div class="up-flavor">«${esc(u.flavor)}»</div>${btn}</div>`;
     }).join('');
     return `
       <div class="menu-header"><h2>Tablón de la comisaría</h2>${this.medalsChip()}</div>
@@ -149,7 +168,7 @@ export class Menus {
         ${vol('music', '🎵 Música')}${vol('sfx', '🔊 Efectos')}${vol('master', '🎚️ General')}
         <label><span>🖥️ Calidad gráfica</span><select data-set="quality">${q}</select></label>
         <label><span>📳 Temblor de cámara</span><input type="checkbox" data-set="shake" ${s.shake === false ? '' : 'checked'}></label>
-        ${this.game.state === 'menu' ? `<button class="btn danger small" data-act="reset">${this.resetArmed ? '¿Seguro? Pulsa otra vez para borrar todo' : 'Borrar el progreso (medallas, mejoras y récords)'}</button>` : ''}
+        ${this.game.state === STATE_MENU ? `<button class="btn danger small" data-act="reset">${this.resetArmed ? '¿Seguro? Pulsa otra vez para borrar todo' : 'Borrar el progreso (medallas, mejoras y récords)'}</button>` : ''}
       </div>
       <div class="menu-footer"><button class="btn ghost" data-act="back">Volver <span class="key">Esc</span></button></div>`;
   }
@@ -175,7 +194,12 @@ export class Menus {
 
   screen_gameover() {
     const r = this.game.meta.lastRun;
-    if (!r) return '';
+    if (!r) {
+      // Algo falló al registrar el turno: al menos, que se pueda seguir jugando.
+      return `<div class="panel menu-box"><h1 class="danger">Fin del turno</h1>
+        <button class="btn big" data-act="play">Reintentar <span class="key">Enter</span></button>
+        <button class="btn ghost" data-act="menu">Menú principal</button></div>`;
+    }
     const kills = r.killsByType.length
       ? r.killsByType.map((k) => `<li><span>${esc(k.name)}</span><b>${k.n}</b></li>`).join('')
       : '<li><span>Ninguna. Ni una.</span><b>0</b></li>';
@@ -185,8 +209,8 @@ export class Menus {
     const record = r.rank >= 0 ? `<div class="new-record">${r.rank === 0 ? '🏆 ¡Nuevo récord!' : `📋 Entra en el top ${this.game.meta.cfg.maxRecords}: puesto ${r.rank + 1}`}</div>` : '';
     return `
       <div class="panel menu-box wide gameover">
-        <h1 class="danger">Has caído</h1>
-        <p class="obit">${esc(this.game.hud.el.obit?.textContent || '')}</p>
+        <h1 class="danger">${r.abandoned ? 'Turno abandonado' : 'Has caído'}</h1>
+        <p class="obit">${r.abandoned ? 'Has pedido la baja voluntaria. Recursos Humanos ya está redactando el despido.' : esc(this.game.hud.el.obit?.textContent || '')}</p>
         ${record}
         <div class="summary">
           <div><span class="label">Noches</span><span class="val big">${r.nights}</span></div>

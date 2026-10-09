@@ -72,7 +72,7 @@ export class Game {
     this.dayNight = new DayNight(daynightData, this.bus);
     this.waves = new WaveDirector(this);
     this.power = { generator: true, lightsOn: true }; // generator = el transformador funciona
-    this.run = { time: 0, points: 0, kills: 0, nights: 0, killsByType: {} };
+    this.run = { time: 0, points: 0, score: 0, kills: 0, nights: 0, killsByType: {} };
     this.blasts = new BlastQueue(this);
     this.acid = new AcidSystem(this);
     this.floating = new WorldLabels(this);
@@ -115,7 +115,7 @@ export class Game {
     window.addEventListener('resize', this._onResize);
     // Opciones guardadas.
     const st = this.meta.settings;
-    if (st.quality && config.quality.presets[st.quality]) this.setQuality(st.quality);
+    if (st.quality && Object.hasOwn(config.quality.presets, st.quality)) this.setQuality(st.quality);
     if (st.shake === false) this.effects.shakeMul = 0;
     this.resize();
     // Compila ya todos los shaders (efectos incluidos): sin tirón en el primer disparo o explosión.
@@ -200,6 +200,7 @@ export class Game {
     this.audio.dispose();
     this.humor.dispose();
     this.meta.dispose();
+    this.menus.dispose();
     this.lighting.dispose();
     this.debug.gui.destroy();
     this.renderer.renderer.dispose();
@@ -239,7 +240,7 @@ export class Game {
     this.hud.reset();
     this.lighting.alarmTimer = 0;
     Object.assign(this.power, { generator: true, lightsOn: true });
-    Object.assign(this.run, { time: 0, points: 0, kills: 0, nights: 0, killsByType: {} });
+    Object.assign(this.run, { time: 0, points: 0, score: 0, kills: 0, nights: 0, killsByType: {} });
     this.deathTimer = 0;
     this.state = STATE.PLAYING;
     this.cameraRig.snap(this.player.position);
@@ -268,9 +269,19 @@ export class Game {
 
   /** Abandonar desde la pausa: cuenta como fin de turno (medallas y récord incluidos). */
   abandonRun() {
+    if (this.state !== STATE.PAUSED) return;
     this.deathTimer = 0;
+    this.endRun(true);
+  }
+
+  /** Fin del turno: medallas y récord (Meta) y pantalla de resumen, pase lo que pase. */
+  endRun(abandoned = false) {
     this.state = STATE.GAMEOVER;
-    this.bus.emit('run:over', { ...this.run });
+    try {
+      this.bus.emit('run:over', { ...this.run, abandoned });
+    } finally {
+      if (this.menus.current !== 'gameover') this.menus.show('gameover', true);
+    }
   }
 
   quitToMenu() {
@@ -324,7 +335,8 @@ export class Game {
 
     if (this.state === STATE.PLAYING) {
       this.loop.advance(dt, (step) => {
-        this.update(step);
+        // Si la partida acaba en un subpaso, los siguientes no avanzan nada más.
+        if (this.state === STATE.PLAYING) this.update(step);
         input.endStep();
       });
     } else {
@@ -396,8 +408,7 @@ export class Game {
     if (this.deathTimer > 0) {
       this.deathTimer -= dt;
       if (this.deathTimer <= 0) {
-        this.state = STATE.GAMEOVER;
-        this.bus.emit('run:over', { ...this.run });
+        this.endRun(false);
       }
     }
   }

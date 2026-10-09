@@ -321,7 +321,7 @@ export class WeaponSystem {
       hits++;
     }
     if (hits) effects.shake(d.shake);
-    this.game.bus.emit('weapon:melee', { hits });
+    this.game.bus.emit('weapon:melee', { hits, id: w.id });
   }
 
   // ------------------------------------------------------------------ granadas

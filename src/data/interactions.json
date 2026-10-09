@@ -223,5 +223,32 @@
     "effect": {
       "toggleDoor": true
     }
+  },
+  "tienda_armeria": {
+    "label": "Abrir la armería",
+    "hold": 0.15,
+    "cooldown": 0.3,
+    "radius": 1.7,
+    "effect": {
+      "openShop": "armeria"
+    }
+  },
+  "tienda_enfermeria": {
+    "label": "Abrir la enfermería",
+    "hold": 0.15,
+    "cooldown": 0.3,
+    "radius": 1.7,
+    "effect": {
+      "openShop": "enfermeria"
+    }
+  },
+  "tienda_almacen": {
+    "label": "Abrir el almacén",
+    "hold": 0.15,
+    "cooldown": 0.3,
+    "radius": 1.7,
+    "effect": {
+      "openShop": "almacen"
+    }
   }
 }

@@ -3,18 +3,32 @@ import playerData from '../data/player.json';
 import interactions from '../data/interactions.json';
 
 const MEDKIT = interactions._medkit;
-import { buildPolice, computePose, makePose, PART_NAMES } from '../render/BlockyCharacter.js';
+import { buildPolice, computePose, makePose, PART_NAMES, PARTS, WEAPON_MOUNT } from '../render/BlockyCharacter.js';
 import { resolveCircleVsGrid } from '../systems/Physics.js';
+import { weaponGeometry, WEAPON_SPECS, WEAPON_MATERIAL_OPTIONS } from '../render/WeaponModels.js';
+
+// Hombros y mano derecha en espacio del personaje (para orientar el brazo izquierdo al arma).
+const SHOULDER_L = new THREE.Vector3().fromArray(PARTS.armL.pivot);
+// Con el brazo derecho estirado al frente (rot.x = -90°), el soporte del arma queda en:
+const MOUNT_CHAR = new THREE.Vector3(PARTS.armR.pivot[0], PARTS.armR.pivot[1] + WEAPON_MOUNT.position.z, -WEAPON_MOUNT.position.y);
 
 export class Player {
   constructor(game) {
     this.game = game;
     this.data = playerData;
     this.radius = playerData.radius;
-    const { root, parts, muzzle } = buildPolice();
+    const { root, parts, mount, muzzle } = buildPolice();
     this.mesh = root;
     this.parts = parts;
     this.muzzle = muzzle;
+    // Arma visible: una malla en la mano cuya geometría cambia con el arma equipada.
+    this.weaponGeos = new Map();
+    this.weaponMesh = new THREE.Mesh(undefined, new THREE.MeshStandardMaterial(WEAPON_MATERIAL_OPTIONS));
+    this.weaponMesh.castShadow = true;
+    mount.add(this.weaponMesh);
+    this.leftArmAim = null; // { x, z } rotación del brazo izquierdo hacia el guardamanos
+    this.setWeapon(playerData.startWeapon);
+    game.bus.on('weapon:switched', ({ id }) => this.setWeapon(id));
     this.pose = makePose();
     game.scene.add(root);
 
@@ -37,6 +51,8 @@ export class Player {
     this.sprintLocked = false;
     this.hurtTimer = 0;
     this.medkits = 1;
+    this.armor = 0;        // chaleco antibalas
+    this.armorAbsorb = 0;  // fracción del daño que absorbe
     this.medkitTimer = 0;
     this.buffs = {}; // nombre → { value, timer }
     this.alive = true;
@@ -62,6 +78,13 @@ export class Player {
 
   damage(amount) {
     if (!this.alive || this.game.debug.flags.godMode) return;
+    // El chaleco absorbe parte del daño hasta agotarse.
+    if (this.armor > 0) {
+      const absorbed = Math.min(this.armor, amount * this.armorAbsorb);
+      this.armor -= absorbed;
+      amount -= absorbed;
+      if (this.armor <= 0) this.game.hud?.toast('🦺 Tu chaleco está destrozado', 3);
+    }
     this.hp = Math.max(0, this.hp - amount);
     this.hurtTimer = this.data.hurtFlashTime;
     this.game.bus.emit('player:hurt', { amount, hp: this.hp });
@@ -128,11 +151,40 @@ export class Player {
     if (moving) this.walkPhase += dt * speed * 2.2;
   }
 
+  /** Cambia el arma que se ve en la mano y su punto de disparo. */
+  setWeapon(id) {
+    if (!this.weaponGeos.has(id)) this.weaponGeos.set(id, weaponGeometry(id));
+    this.weaponMesh.geometry = this.weaponGeos.get(id);
+    const spec = WEAPON_SPECS[id];
+    this.muzzle.position.fromArray(spec.muzzle);
+    this.weaponId = id;
+    // Armas de dos manos: el brazo izquierdo apunta al guardamanos (IK de un solo hueso:
+    // con orden de Euler XYZ, la dirección del brazo (0,-1,0) gira primero en Z y luego en X).
+    if (spec.support) {
+      const t = MOUNT_CHAR.clone().add(new THREE.Vector3().fromArray(spec.support)).sub(SHOULDER_L).normalize();
+      const z = Math.asin(THREE.MathUtils.clamp(t.x, -1, 1));
+      this.leftArmAim = { x: Math.atan2(-t.z, -t.y), z };
+    } else {
+      this.leftArmAim = null;
+    }
+  }
+
   /** Animación y aspecto; se llama una vez por frame de render. */
   render() {
     this.mesh.rotation.y = this.facing;
     const moving = this.velocity.lengthSq() > 0.01;
     computePose(this.pose, this.walkPhase, moving ? 1 : 0, 'police');
+    if (this.leftArmAim) {
+      this.pose.armL.x = this.leftArmAim.x;
+      this.pose.armL.z = this.leftArmAim.z;
+    }
+    // Porra: golpe de arriba abajo mientras dura el ataque.
+    const W = this.game.weapons;
+    if (this.weaponId === 'porra' && W?.meleeTimer > 0) {
+      const k = 1 - W.meleeTimer * W.defs.porra.fireRate; // 0 → 1 durante el golpe
+      this.pose.armR.x = -2.7 + Math.min(1, k * 2.2) * 2.3;
+      this.pose.armR.z = -0.35 + k * 0.5;
+    }
     // Las piernas se balancean respecto a la dirección de marcha, no de la mirada:
     // basta con el balanceo simple para el blockout.
     for (const n of PART_NAMES) {

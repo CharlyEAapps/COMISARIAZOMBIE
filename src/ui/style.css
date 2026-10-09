@@ -253,6 +253,59 @@ html, body {
 .hud.building .panel-weapon,
 .hud.building .hint { display: none; }
 
+/* Armadura y armas */
+.armor-bar { display: none; margin-top: 3px; }
+.armor-bar.show { display: block; }
+.fill.armor { background: linear-gradient(90deg, #3a7be8, #6aa8ff); }
+.weapon-slots { display: flex; justify-content: flex-end; gap: 4px; margin-bottom: 6px; }
+.weapon-slots:empty { display: none; }
+.wslot {
+  display: inline-flex; align-items: center; gap: 2px; padding: 2px 5px; border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06); font-size: 13px; opacity: 0.6;
+}
+.wslot b { font: 700 10px ui-monospace, Consolas, monospace; color: var(--hud-dim); }
+.wslot.on { opacity: 1; background: rgba(232, 178, 58, 0.25); box-shadow: inset 0 0 0 1px var(--accent); }
+.panel-weapon .stat-row { gap: 10px; }
+.build-card.locked { opacity: 0.55; }
+
+/* Tienda */
+.shop {
+  position: absolute; right: 12px; top: 12px; bottom: 12px; width: min(420px, calc(100vw - 24px));
+  display: none; flex-direction: column; padding: 14px 14px 10px; z-index: 6; pointer-events: auto;
+}
+.shop.show { display: flex; }
+.shop-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.shop-title { font: 800 22px var(--font); }
+.shop-sub { font-size: 12px; color: var(--hud-dim); margin-top: 2px; }
+.shop-points { display: flex; flex-direction: column; align-items: flex-end; }
+.shop-points .val { color: var(--accent); }
+.shop-night { margin-top: 8px; font-size: 12px; color: #e0a05a; }
+.shop-list { flex: 1; overflow-y: auto; margin-top: 10px; padding-right: 4px; }
+.shop-section {
+  font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--hud-dim);
+  margin: 12px 0 6px;
+}
+.shop-section:first-child { margin-top: 0; }
+.shop-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04); margin-bottom: 5px; cursor: pointer;
+  border: 1px solid transparent;
+}
+.shop-row:hover { border-color: rgba(232, 178, 58, 0.6); background: rgba(232, 178, 58, 0.1); }
+.shop-row .key { margin: 0; flex: none; }
+.shop-row .key.blank { visibility: hidden; }
+.shop-text { flex: 1; min-width: 0; }
+.shop-text .name { font-size: 13.5px; font-weight: 600; }
+.shop-text .desc { font-size: 11.5px; color: var(--hud-dim); margin-top: 2px; }
+.shop-row .price { font: 700 15px ui-monospace, Consolas, monospace; color: var(--accent); }
+.shop-row .price.poor { color: var(--danger); }
+.shop-row .tag { font-size: 12px; color: var(--hud-dim); }
+.shop-row .tag.ok { color: #7fd36b; }
+.shop-row.max, .shop-row.owned, .shop-row.locked { cursor: default; opacity: 0.6; }
+.shop-row.max:hover, .shop-row.owned:hover, .shop-row.locked:hover { border-color: transparent; background: rgba(255, 255, 255, 0.04); }
+.shop-foot { margin-top: 8px; font-size: 12px; color: var(--hud-dim); text-align: center; }
+.shop-foot .key { margin: 0 3px 0 8px; }
+
 /* Etiquetas en el mundo */
 .world-labels { position: absolute; inset: 0; overflow: hidden; }
 .float-text {

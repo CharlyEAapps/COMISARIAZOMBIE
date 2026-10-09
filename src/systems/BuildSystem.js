@@ -1,6 +1,6 @@
 import buildData from '../data/build.json';
 import { PHASE } from './DayNight.js';
-import { raycastGrid } from './Physics.js';
+import { explode } from './Explosions.js';
 
 export const PIECE_ORDER = ['barricada', 'sacos', 'puerta', 'pinchos', 'cepo', 'mina'];
 const NO_BUILD_CHARS = new Set(['S', 'A', 'M', 'W']);
@@ -197,6 +197,7 @@ export class BuildSystem {
     const { grid, player, zombies, interactions } = this.game;
     const def = this.pieces[type];
     if (k < 0) return 'Fuera del mapa';
+    if (this.game.shop && !this.game.shop.isUnlocked(type, 0)) return 'Desbloquéalo en el almacén';
     if (def.onlyOn && grid.chars[k] !== def.onlyOn) return 'Solo en el hueco de una puerta';
     const cells = this.footprint(type, k);
     let sx = 0, sz = 0;
@@ -285,10 +286,15 @@ export class BuildSystem {
     return s.level + 1 < s.def.levels.length ? this.costOf(s.type, s.level + 1) * s.n : 0;
   }
 
+  /** ¿Está desbloqueado (en el almacén) el siguiente nivel de la pieza? */
+  upgradeUnlocked(s) {
+    return !this.game.shop || this.game.shop.isUnlocked(s.type, s.level + 1);
+  }
+
   upgrade(s) {
     const cost = this.upgradeCost(s);
     // Las piezas dañadas se reparan antes de mejorar (si no, mejorar curaría gratis).
-    if (!cost || s.hp < s.maxHp || this.game.run.points < cost) return false;
+    if (!cost || s.hp < s.maxHp || !this.upgradeUnlocked(s) || this.game.run.points < cost) return false;
     this.game.run.points -= cost;
     s.level++;
     s.maxHp = s.def.levels[s.level].hp * s.n;
@@ -439,29 +445,7 @@ export class BuildSystem {
   }
 
   explodeMine(s) {
-    const { grid, zombies, effects, player } = this.game;
-    const x = s.cx, z = s.cz;
-    const R = s.def.radius, F = s.def.falloff;
-    const blocked = this.game.weapons.shotBlocked;
-    // Solo alcanza a lo que tiene línea de tiro desde la mina (no atraviesa muros ni puertas).
-    const exposed = (px, pz, d) => d < 1e-3 || raycastGrid(grid, x, z, (px - x) / d, (pz - z) / d, d, blocked) >= d;
-    for (const zb of zombies.active) {
-      if (zb.state !== 0) continue;
-      const d = Math.hypot(zb.pos.x - x, zb.pos.z - z);
-      if (d > R || !exposed(zb.pos.x, zb.pos.z, d)) continue;
-      const k = 1 - (d / R) * F;
-      const dx = (zb.pos.x - x) / (d || 1), dz = (zb.pos.z - z) / (d || 1);
-      zombies.damage(zb, s.def.damage * k, dx, dz, s.def.knockback * k);
-    }
-    const dp = Math.hypot(player.position.x - x, player.position.z - z);
-    if (dp < R && exposed(player.position.x, player.position.z, dp)) {
-      player.damage(s.def.damage * s.def.playerDamageMul * (1 - (dp / R) * F));
-    }
-    effects.burst(x, 0.4, z, 40, 0xff9a2a, { speed: 6, up: 6, size: 0.1, life: 0.7 });
-    effects.burst(x, 0.4, z, 25, 0x2a2a2a, { speed: 3, up: 5, size: 0.16, life: 1.6 });
-    effects.muzzleFlash({ x, y: 1.2, z });
-    effects.shake(0.45);
-    this.game.bus.emit('explosion', { x, z, radius: R });
+    explode(this.game, s.cx, s.cz, s.def);
     this.remove(s);
   }
 

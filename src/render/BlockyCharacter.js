@@ -12,6 +12,8 @@ export const PARTS = {
   head:  { size: [0.38, 0.38, 0.38], pivot: [0, 1.37, 0], hang: false },
 };
 export const PART_NAMES = Object.keys(PARTS);
+/** Dónde se sujeta el arma en el brazo derecho (espacio del brazo). */
+export const WEAPON_MOUNT = { position: new THREE.Vector3(0, -0.62, 0.06), rotationX: Math.PI / 2 };
 
 /** Geometría de una parte con el origen en su pivote (las extremidades cuelgan hacia abajo). */
 export function partGeometry(name) {
@@ -93,15 +95,15 @@ export function buildPolice() {
     eye.position.set(x, 0.2, 0.195);
     parts.head.add(eye);
   }
-  // Pistola en la mano derecha (sigue al brazo).
-  const gun = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.32), new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.5 }));
-  gun.position.set(0, -0.6, 0.1);
-  gun.rotation.x = Math.PI / 2;
-  parts.armR.add(gun);
-  // Punto de salida del disparo, en coordenadas de la mano.
+  // Soporte del arma en la mano derecha: con el brazo estirado, su +Z sigue al brazo y su +Y
+  // queda hacia arriba (convención de WeaponModels). El Player cuelga ahí el arma actual.
+  const mount = new THREE.Object3D();
+  mount.position.copy(WEAPON_MOUNT.position);
+  mount.rotation.x = WEAPON_MOUNT.rotationX;
+  parts.armR.add(mount);
+  // Punto de salida del disparo, en coordenadas del arma (lo coloca el Player según el arma).
   const muzzle = new THREE.Object3D();
-  muzzle.position.set(0, -0.78, 0.1);
-  parts.armR.add(muzzle);
+  mount.add(muzzle);
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  return { root, parts, muzzle };
+  return { root, parts, mount, muzzle };
 }

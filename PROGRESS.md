@@ -5,8 +5,8 @@
 | 0. Preparación | ✅ Hecha |
 | 1. Núcleo jugable | ✅ Hecha |
 | 2. Día/noche, oleadas, decoración e interacciones | ✅ Hecha |
-| 3. Construcción, trampas y transformador | ✅ Hecha (pendiente del visto bueno de Carlos) |
-| 4. Tiendas | ⏳ Pendiente |
+| 3. Construcción, trampas y transformador | ✅ Hecha |
+| 4. Tiendas y armas | 🔍 En revisión |
 | 5. Enemigos y defensas completos | ⏳ Pendiente |
 | 6. Arte y sonido | ⏳ Pendiente |
 | 7. Meta-progresión y menús | ⏳ Pendiente |

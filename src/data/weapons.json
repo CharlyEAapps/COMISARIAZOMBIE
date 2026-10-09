@@ -1,18 +1,59 @@
 {
+  "_comment": "Armas. fireRate en disparos/s; spreadDeg = apertura total; pellets = proyectiles por disparo (escopeta); pierce = zombis extra que atraviesa; reserve -1 = munición infinita; melee = cuerpo a cuerpo (sin munición).",
   "pistola": {
-    "name": "Pistola",
-    "damage": 25,
-    "fireRate": 5,
-    "auto": false,
-    "magSize": 12,
-    "reloadTime": 1.1,
-    "reserve": -1,
-    "spreadDeg": 2,
-    "range": 35,
-    "pellets": 1,
-    "pierce": 0,
-    "knockback": 0.25,
-    "shake": 0.06,
+    "name": "Pistola", "slot": 1, "price": 0, "icon": "🔫",
+    "damage": 25, "fireRate": 5, "auto": false, "magSize": 12, "reloadTime": 1.1, "reserve": -1,
+    "spreadDeg": 2, "range": 35, "pellets": 1, "pierce": 0, "knockback": 0.25, "shake": 0.06,
     "tracerColor": "#ffe6a0"
+  },
+  "escopeta": {
+    "name": "Escopeta", "slot": 2, "price": 550, "icon": "💥", "twoHanded": true,
+    "damage": 13, "fireRate": 1.25, "auto": false, "magSize": 6, "reloadTime": 2.2, "reserve": 24, "maxReserve": 48,
+    "spreadDeg": 20, "range": 14, "pellets": 8, "pierce": 0, "knockback": 0.45, "shake": 0.22,
+    "tracerColor": "#ffd28a", "ammoPack": { "amount": 12, "price": 60 }
+  },
+  "subfusil": {
+    "name": "Subfusil", "slot": 3, "price": 800, "icon": "🔫", "twoHanded": true,
+    "damage": 15, "fireRate": 11, "auto": true, "magSize": 30, "reloadTime": 1.7, "reserve": 90, "maxReserve": 210,
+    "spreadDeg": 7, "range": 26, "pellets": 1, "pierce": 0, "knockback": 0.12, "shake": 0.04,
+    "tracerColor": "#ffe6a0", "ammoPack": { "amount": 60, "price": 70 }
+  },
+  "fusil": {
+    "name": "Fusil de asalto", "slot": 4, "price": 1400, "icon": "🎯", "twoHanded": true,
+    "damage": 32, "fireRate": 7, "auto": true, "magSize": 30, "reloadTime": 2.0, "reserve": 90, "maxReserve": 180,
+    "spreadDeg": 3, "range": 40, "pellets": 1, "pierce": 1, "knockback": 0.2, "shake": 0.07,
+    "tracerColor": "#fff0b8", "ammoPack": { "amount": 60, "price": 110 }
+  },
+  "francotirador": {
+    "name": "Rifle de precisión", "slot": 5, "price": 1200, "icon": "🔭", "twoHanded": true,
+    "damage": 150, "fireRate": 1.1, "auto": false, "magSize": 5, "reloadTime": 2.6, "reserve": 15, "maxReserve": 40,
+    "spreadDeg": 0.3, "range": 60, "pellets": 1, "pierce": 5, "knockback": 0.6, "shake": 0.3,
+    "tracerColor": "#d8f0ff", "ammoPack": { "amount": 10, "price": 90 }
+  },
+  "taser": {
+    "name": "Táser", "slot": 6, "price": 400, "icon": "⚡",
+    "damage": 12, "fireRate": 1.2, "auto": false, "magSize": 3, "reloadTime": 2.4, "reserve": 9, "maxReserve": 24,
+    "spreadDeg": 1, "range": 9, "pellets": 1, "pierce": 0, "knockback": 0, "shake": 0.05,
+    "stun": 2.5, "chain": 2, "chainRange": 3.5, "tracerColor": "#8ad0ff", "ammoPack": { "amount": 6, "price": 50 }
+  },
+  "porra": {
+    "name": "Porra", "slot": 7, "price": 150, "icon": "🏏", "melee": true,
+    "damage": 40, "fireRate": 1.7, "auto": true, "magSize": 0, "reloadTime": 0, "reserve": -1,
+    "range": 1.7, "arcDeg": 110, "knockback": 0.9, "shake": 0.1
+  },
+  "_granada": {
+    "name": "Granada", "price": 110, "max": 5, "start": 1,
+    "damage": 150, "radius": 4, "falloff": 0.6, "knockback": 0.35, "fuse": 1.6,
+    "throwSpeed": 13, "maxRange": 15, "playerDamageMul": 0.4, "cooldown": 0.8
+  },
+  "_upgrades": {
+    "levels": 3,
+    "tracks": {
+      "damage": { "name": "Daño", "perLevel": 0.2 },
+      "mag": { "name": "Cargador", "perLevel": 0.3 },
+      "reload": { "name": "Recarga", "perLevel": 0.15 }
+    },
+    "costByLevel": [0.4, 0.7, 1.1],
+    "pistolBasePrice": 400
   }
 }

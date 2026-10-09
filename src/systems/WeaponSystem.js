@@ -2,54 +2,150 @@ import * as THREE from 'three';
 import weapons from '../data/weapons.json';
 import config from '../data/config.json';
 import { raycastGrid } from './Physics.js';
+import { explode } from './Explosions.js';
 
 const { shotHeight: SHOT_HEIGHT, fireBuffer: FIRE_BUFFER } = config.combat; // el búfer guarda un clic hecho durante la cadencia
+const GRENADE = weapons._granada;
+const UPG = weapons._upgrades;
+export const WEAPON_IDS = Object.keys(weapons)
+  .filter((k) => !k.startsWith('_'))
+  .sort((a, b) => weapons[a].slot - weapons[b].slot);
+const SWITCH_TIME = 0.25;
+const MAX_GRENADES_IN_AIR = 6;
 
+/** Estadísticas efectivas de un arma con sus mejoras (función pura, testeable). */
+export function weaponStats(def, lv = { damage: 0, mag: 0, reload: 0 }) {
+  const t = UPG.tracks;
+  return {
+    damage: def.damage * (1 + t.damage.perLevel * lv.damage),
+    magSize: def.magSize ? Math.round(def.magSize * (1 + t.mag.perLevel * lv.mag)) : 0,
+    reloadTime: def.reloadTime * (1 - t.reload.perLevel * lv.reload),
+  };
+}
+
+/** Precio de la mejora de nivel `nextLevel` (la pistola es gratis: usa pistolBasePrice). */
+export function upgradeCost(def, nextLevel) {
+  const base = def.price || UPG.pistolBasePrice;
+  return Math.round(base * UPG.costByLevel[nextLevel - 1]);
+}
+
+// Armas del policía: inventario (una por ranura 1-7), munición por arma, mejoras (daño,
+// cargador, recarga), disparo hitscan (perdigones, perforación, cadena del táser), porra cuerpo
+// a cuerpo y granadas con trayectoria parabólica.
 export class WeaponSystem {
   constructor(game) {
     this.game = game;
     this.defs = weapons;
-    this.slots = [];
+    this.owned = new Map();
     this._from = new THREE.Vector3();
     this._to = new THREE.Vector3();
     this._exclude = new Set();
     this.shotBlocked = (i, j) => game.grid.isShotBlocked(i, j);
+    this.walkBlocked = (i, j) => !game.grid.isWalkable(i, j);
+    this.grenadesInAir = [];
     this.reset();
   }
 
   reset() {
-    this.slots = [];
+    this.owned.clear();
+    this.current = null;
     this.give(this.game.player.data.startWeapon);
-    this.current = 0;
+    this.switchTo(this.game.player.data.startWeapon, true);
+    this.grenades = GRENADE.start;
+    this.grenadeCooldown = 0;
+    this.grenadesInAir.length = 0;
+    this.meleeTimer = 0;
   }
 
+  /** Añade un arma al inventario (si ya se tenía, no hace nada). */
   give(id) {
     const d = this.defs[id];
-    const slot = { id, data: d, mag: d.magSize, reserve: d.reserve, reloading: 0, cooldown: 0, buffer: 0 };
-    this.slots.push(slot);
-    return slot;
+    if (this.owned.has(id)) return this.owned.get(id);
+    const w = {
+      id, data: d, lv: { damage: 0, mag: 0, reload: 0 }, stats: weaponStats(d),
+      mag: d.magSize, reserve: d.reserve, reloading: 0, cooldown: 0, buffer: 0,
+    };
+    this.owned.set(id, w);
+    this.game.bus.emit('weapon:acquired', { id });
+    return w;
   }
 
-  get weapon() { return this.slots[this.current]; }
+  has(id) { return this.owned.has(id); }
+
+  get weapon() { return this.owned.get(this.current); }
+
+  switchTo(id, instant = false) {
+    if (!this.owned.has(id) || this.current === id) return false;
+    const prev = this.weapon;
+    if (prev) { prev.reloading = 0; prev.buffer = 0; }
+    this.current = id;
+    this.weapon.cooldown = instant ? 0 : SWITCH_TIME;
+    this.game.bus.emit('weapon:switched', { id });
+    return true;
+  }
+
+  addAmmo(id, amount) {
+    const w = this.owned.get(id);
+    if (!w || w.reserve < 0) return 0;
+    const max = w.data.maxReserve ?? Infinity;
+    const before = w.reserve;
+    w.reserve = Math.min(max, w.reserve + amount);
+    return w.reserve - before;
+  }
+
+  ammoFull(id) {
+    const w = this.owned.get(id);
+    return !w || w.reserve < 0 || w.reserve >= (w.data.maxReserve ?? Infinity);
+  }
+
+  upgradeLevel(id, track) {
+    return this.owned.get(id)?.lv[track] ?? 0;
+  }
+
+  /** Coste de la siguiente mejora de `track`, o 0 si está al máximo / no aplica / no se tiene el arma. */
+  nextUpgradeCost(id, track) {
+    const w = this.owned.get(id);
+    if (!w || (w.data.melee && track !== 'damage')) return 0;
+    const next = w.lv[track] + 1;
+    return next > UPG.levels ? 0 : upgradeCost(w.data, next);
+  }
+
+  applyUpgrade(id, track) {
+    const w = this.owned.get(id);
+    if (!w) return false;
+    w.lv[track]++;
+    const oldMag = w.stats.magSize;
+    w.stats = weaponStats(w.data, w.lv);
+    if (track === 'mag') w.mag += w.stats.magSize - oldMag; // la parte añadida del cargador viene llena
+    return true;
+  }
 
   startReload() {
     const w = this.weapon;
-    if (w.reloading > 0 || w.mag >= w.data.magSize || w.reserve === 0) return;
-    w.reloading = w.data.reloadTime;
+    if (w.data.melee || w.reloading > 0 || w.mag >= w.stats.magSize || w.reserve === 0) return;
+    w.reloading = w.stats.reloadTime;
     this.game.bus.emit('weapon:reload', { weapon: w });
+  }
+
+  canAct() {
+    const { game } = this;
+    return game.player.alive && !game.build?.active && !game.shop?.open;
   }
 
   update(dt) {
     const { input, player } = this.game;
+    this.grenadeCooldown = Math.max(0, this.grenadeCooldown - dt);
+    this.meleeTimer = Math.max(0, this.meleeTimer - dt);
+    this.updateGrenades(dt);
+
     const w = this.weapon;
     w.cooldown = Math.max(0, w.cooldown - dt);
     w.buffer = Math.max(0, w.buffer - dt);
-
     if (w.reloading > 0) {
       w.reloading -= dt;
       if (w.reloading <= 0) {
         w.reloading = 0;
-        const need = w.data.magSize - w.mag;
+        const need = w.stats.magSize - w.mag;
         const take = w.reserve < 0 ? need : Math.min(need, w.reserve);
         w.mag += take;
         if (w.reserve >= 0) w.reserve -= take;
@@ -57,33 +153,46 @@ export class WeaponSystem {
     }
     if (!player.alive) return;
 
+    if (this.canAct()) {
+      // Cambio de arma con 1-7 (en modo construcción esas teclas eligen pieza).
+      for (const id of WEAPON_IDS) {
+        if (input.consume(`weapon${this.defs[id].slot}`)) this.switchTo(id);
+      }
+      if (input.consume('grenade')) this.throwGrenade();
+    }
     if (input.consume('reload')) this.startReload();
-    // En modo construcción el clic es para construir.
-    if (this.game.build?.active) { w.buffer = 0; return; }
+    if (!this.canAct()) { this.weapon.buffer = 0; return; }
 
+    const cur = this.weapon;
     const pressed = input.consume('fire');
-    if (pressed) w.buffer = FIRE_BUFFER;
-    const wantsFire = w.data.auto ? input.isHeld('fire') : w.buffer > 0;
-    if (!wantsFire || w.cooldown > 0 || w.reloading > 0) return;
+    if (pressed) cur.buffer = FIRE_BUFFER;
+    // Automáticas: disparan mientras se mantiene el botón, y un clic rápido (pulsar y soltar
+    // dentro del mismo paso) también cuenta gracias al búfer.
+    const wantsFire = cur.data.auto ? input.isHeld('fire') || cur.buffer > 0 : cur.buffer > 0;
+    if (!wantsFire || cur.cooldown > 0 || cur.reloading > 0) return;
 
-    if (w.mag <= 0) {
+    if (cur.data.melee) {
+      cur.buffer = 0;
+      cur.cooldown = 1 / cur.data.fireRate;
+      this.melee(cur);
+      return;
+    }
+    if (cur.mag <= 0) {
       this.startReload();
       return;
     }
-    w.buffer = 0;
-    w.mag--;
-    w.cooldown = 1 / w.data.fireRate;
-    this.fire(w.data);
-    if (w.mag === 0) this.startReload();
+    cur.buffer = 0;
+    cur.mag--;
+    cur.cooldown = 1 / cur.data.fireRate;
+    this.fire(cur);
+    if (cur.mag === 0) this.startReload();
   }
 
-  fire(d) {
-    const { game } = this;
-    const { player, grid, zombies, effects } = game;
+  /** Punto de salida del disparo, sin atravesar el muro que el jugador tenga pegado. */
+  muzzlePoint() {
+    const { player, grid } = this.game;
     const muzzle = player.getMuzzleWorld(this._from);
     const ox = player.position.x, oz = player.position.z;
-    // Si hay un muro más cerca que la boca del arma, el fogonazo y la trazadora salen
-    // desde este lado del muro (no desde la sala contigua).
     const mdx = muzzle.x - ox, mdz = muzzle.z - oz;
     const muzzleDist = Math.hypot(mdx, mdz);
     if (muzzleDist > 1e-4) {
@@ -94,10 +203,21 @@ export class WeaponSystem {
         muzzle.z = oz + mdz * k;
       }
     }
+    return muzzle;
+  }
+
+  fire(w) {
+    const { game } = this;
+    const { player, grid, zombies, effects } = game;
+    const d = w.data;
+    const muzzle = this.muzzlePoint();
+    const ox = player.position.x, oz = player.position.z;
+    const aim = Math.atan2(player.aimDir.x, player.aimDir.z);
 
     for (let p = 0; p < d.pellets; p++) {
-      const spread = THREE.MathUtils.degToRad(d.spreadDeg) * (Math.random() - 0.5);
-      const base = Math.atan2(player.aimDir.x, player.aimDir.z) + spread;
+      // La escopeta reparte los perdigones por todo el abanico (con algo de azar).
+      const t = d.pellets > 1 ? (p + Math.random()) / d.pellets - 0.5 : Math.random() - 0.5;
+      const base = aim + THREE.MathUtils.degToRad(d.spreadDeg) * t;
       const dx = Math.sin(base), dz = Math.cos(base);
 
       // Las balas salen del centro del jugador (no atraviesan el muro que tenga pegado).
@@ -108,9 +228,11 @@ export class WeaponSystem {
         const hit = zombies.raycast(ox, oz, dx, dz, wallDist, this._exclude);
         if (!hit) break;
         this._exclude.add(hit.zombie);
-        zombies.damage(hit.zombie, d.damage, dx, dz, d.knockback);
+        zombies.damage(hit.zombie, w.stats.damage, dx, dz, d.knockback);
         effects.burst(hit.zombie.pos.x, 1.2, hit.zombie.pos.z, 7, 0x4a1d1d, { speed: 2.5, dirX: dx, dirZ: dz, size: 0.08 });
-        endDist = hit.t;
+        if (d.stun) this.taserChain(hit.zombie, d);
+        // Sin perforación restante, la trazadora acaba en este zombi; si no, sigue hasta el muro.
+        endDist = pierce === d.pierce ? hit.t : wallDist;
       }
       if (endDist === wallDist && wallDist < d.range) {
         effects.burst(ox + dx * wallDist, SHOT_HEIGHT, oz + dz * wallDist, 4, 0xbfb6a3, { speed: 1.5, dirX: -dx, dirZ: -dz, size: 0.06, life: 0.4 });
@@ -121,5 +243,95 @@ export class WeaponSystem {
     effects.muzzleFlash(muzzle);
     effects.shake(d.shake);
     game.bus.emit('weapon:fired', { weapon: d });
+  }
+
+  /** Táser: aturde al zombi alcanzado y salta a los más cercanos. */
+  taserChain(first, d) {
+    const { zombies, effects } = this.game;
+    first.stunTimer = Math.max(first.stunTimer, d.stun);
+    let from = first;
+    const hit = new Set([first]);
+    for (let n = 0; n < d.chain; n++) {
+      let best = null, bestD = d.chainRange;
+      for (const z of zombies.active) {
+        if (z.state !== 0 || hit.has(z)) continue;
+        const dd = Math.hypot(z.pos.x - from.pos.x, z.pos.z - from.pos.z);
+        if (dd < bestD) { bestD = dd; best = z; }
+      }
+      if (!best) break;
+      hit.add(best);
+      best.stunTimer = Math.max(best.stunTimer, d.stun);
+      zombies.damage(best, d.damage * 0.5);
+      this._from.set(from.pos.x, 1.2, from.pos.z);
+      this._to.set(best.pos.x, 1.2, best.pos.z);
+      effects.tracer(this._from, this._to, d.tracerColor);
+      from = best;
+    }
+  }
+
+  /** Porra: golpea a todos los zombis dentro del arco frontal. */
+  melee(w) {
+    const { player, zombies, effects, grid } = this.game;
+    const d = w.data;
+    this.meleeTimer = 1 / d.fireRate;
+    const ox = player.position.x, oz = player.position.z;
+    const ax = player.aimDir.x, az = player.aimDir.z;
+    const cosArc = Math.cos(THREE.MathUtils.degToRad(d.arcDeg / 2));
+    let hits = 0;
+    for (const z of zombies.active) {
+      if (z.state !== 0) continue;
+      const dx = z.pos.x - ox, dz = z.pos.z - oz;
+      const dist = Math.hypot(dx, dz);
+      if (dist - z.radius > d.range || dist < 1e-4) continue;
+      if ((dx * ax + dz * az) / dist < cosArc) continue;
+      if (raycastGrid(grid, ox, oz, dx / dist, dz / dist, dist, this.shotBlocked) < dist) continue;
+      zombies.damage(z, w.stats.damage, dx / dist, dz / dist, d.knockback);
+      effects.burst(z.pos.x, 1.2, z.pos.z, 6, 0x4a1d1d, { speed: 2, dirX: dx / dist, dirZ: dz / dist, size: 0.08 });
+      hits++;
+    }
+    if (hits) effects.shake(d.shake);
+    this.game.bus.emit('weapon:melee', { hits });
+  }
+
+  // ------------------------------------------------------------------ granadas
+  throwGrenade() {
+    if (this.grenades <= 0 || this.grenadeCooldown > 0 || this.grenadesInAir.length >= MAX_GRENADES_IN_AIR) return;
+    const { player, aimPoint, grid } = this.game;
+    const ox = player.position.x, oz = player.position.z;
+    let dx = aimPoint.x - ox, dz = aimPoint.z - oz;
+    let dist = Math.hypot(dx, dz);
+    if (dist < 1e-3) { dx = player.aimDir.x; dz = player.aimDir.z; dist = 1; }
+    dx /= dist; dz /= dist;
+    dist = Math.min(dist, GRENADE.maxRange);
+    // Se detiene contra el primer obstáculo del camino (rebota un poco hacia atrás).
+    const wall = raycastGrid(grid, ox, oz, dx, dz, dist, this.walkBlocked);
+    if (wall < dist) dist = Math.max(0.5, wall - 0.4);
+    const flight = Math.max(0.35, dist / GRENADE.throwSpeed);
+    this.grenades--;
+    this.grenadeCooldown = GRENADE.cooldown;
+    this.grenadesInAir.push({
+      x0: ox, z0: oz, x1: ox + dx * dist, z1: oz + dz * dist, t: 0, flight,
+      fuse: GRENADE.fuse, x: ox, y: 1.4, z: oz, spin: 0,
+    });
+    this.game.bus.emit('grenade:thrown');
+  }
+
+  updateGrenades(dt) {
+    const list = this.grenadesInAir;
+    for (let n = list.length - 1; n >= 0; n--) {
+      const g = list[n];
+      g.t += dt;
+      g.fuse -= dt;
+      const k = Math.min(1, g.t / g.flight);
+      g.x = g.x0 + (g.x1 - g.x0) * k;
+      g.z = g.z0 + (g.z1 - g.z0) * k;
+      // Parábola: sale a la altura de la mano, sube y cae al suelo.
+      g.y = k < 1 ? 1.4 * (1 - k) + Math.sin(k * Math.PI) * Math.min(2.5, g.flight * 3) + 0.09 * k : 0.09;
+      g.spin += dt * (k < 1 ? 12 : 0);
+      if (g.fuse <= 0) {
+        list.splice(n, 1);
+        explode(this.game, g.x, g.z, GRENADE);
+      }
+    }
   }
 }

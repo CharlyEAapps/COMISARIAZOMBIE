@@ -100,7 +100,7 @@ export class InteractionSystem {
   update(dt) {
     const { game } = this;
     const p = game.player;
-    if (!p.alive) { this.current = null; return; }
+    if (!p.alive || game.shop?.open) { this.current = null; this.holdT = 0; return; }
 
     // Punto más cercano dentro de su radio.
     let best = null, bestD = Infinity;
@@ -182,6 +182,7 @@ export class InteractionSystem {
       game.bus.emit('siren', { id: it.id, seconds: e.decoy });
     }
     if (e.toggleDoor) msg = game.build.toggleDoor(it.cell);
+    if (e.openShop) game.shop.openShop(e.openShop, it.x, it.z);
     if (e.repairTransformer) msg = game.build.repairTransformer();
     if (e.alarm) {
       game.lighting.triggerAlarm(e.alarm);

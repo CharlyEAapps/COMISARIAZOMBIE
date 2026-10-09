@@ -26,6 +26,10 @@ import { Score } from '../systems/Score.js';
 import { InteractionSystem } from '../systems/InteractionSystem.js';
 import { BuildSystem } from '../systems/BuildSystem.js';
 import { StructureRenderer } from '../render/StructureRenderer.js';
+import { GrenadeRenderer } from '../render/GrenadeRenderer.js';
+import { ShopSystem } from '../systems/ShopSystem.js';
+import { ShopPanel } from '../ui/ShopPanel.js';
+import { WEAPON_IDS } from '../systems/WeaponSystem.js';
 import { Player } from '../entities/Player.js';
 
 export const STATE = { MENU: 'menu', PLAYING: 'playing', PAUSED: 'paused', GAMEOVER: 'gameover' };
@@ -65,11 +69,14 @@ export class Game {
     this.lighting = new Lighting(this);
     this.lighting.setAnchors(this.props.lightAnchors);
     this.lighting.applyQuality(config.quality.presets[this.qualityName]);
-    this.interactions.setAnchors(this.props.interactAnchors);
+    this.interactions.setAnchors([...this.props.interactAnchors, ...this.shopAnchors()]);
+    this.shop = new ShopSystem(this);
     this.build = new BuildSystem(this);
     this.structureRenderer = new StructureRenderer(this);
+    this.grenadeRenderer = new GrenadeRenderer(this);
     this.flowViz = new FlowFieldViz(this.scene, this.grid);
     this.hud = new Hud(this);
+    this.shopPanel = new ShopPanel(this);
 
     this.aimPoint = new THREE.Vector3();
     this._raycaster = new THREE.Raycaster();
@@ -101,6 +108,16 @@ export class Game {
     requestAnimationFrame(this._frame);
   }
 
+  /** Puntos de interacción de los mostradores (A, M, W del mapa). */
+  shopAnchors() {
+    const g = this.grid;
+    const out = [];
+    for (const [shop, cells] of Object.entries(g.shops)) {
+      cells.forEach(({ i, j }, n) => out.push({ id: `tienda_${shop}_${n}`, type: `tienda_${shop}`, x: g.centerX(i), z: g.centerZ(j) }));
+    }
+    return out;
+  }
+
   setupDebug() {
     const d = this.debug;
     const q = { calidad: this.qualityName };
@@ -115,6 +132,13 @@ export class Game {
     d.addAction('Trucos', '+1000 puntos', () => { this.run.points += 1000; });
     d.addAction('Trucos', '+1 botiquín', () => { this.player.medkits++; });
     d.addAction('Trucos', 'Romper transformador', () => this.build.damageTransformer(1e9));
+    d.addAction('Trucos', 'Todas las armas', () => {
+      for (const id of WEAPON_IDS) { this.weapons.give(id); this.weapons.addAmmo(id, 999); }
+      this.weapons.grenades = 5;
+    });
+    d.addAction('Trucos', 'Desbloquear construcción', () => {
+      for (const [type, def] of Object.entries(this.build.pieces)) def.levels.forEach((_, l) => this.shop.unlocked.add(`${type}:${l}`));
+    });
     d.addAction('Ciclo', 'Saltar a la noche', () => {
       if (this.dayNight.phase === PHASE.DAY) this.dayNight.skipDay();
       if (this.dayNight.phase === PHASE.DUSK) this.dayNight.t = this.dayNight.duration;
@@ -142,6 +166,7 @@ export class Game {
     this.input.dispose();
     this.props.dispose();
     this.structureRenderer.dispose();
+    this.grenadeRenderer.dispose();
     this.lighting.dispose();
     this.debug.gui.destroy();
     this.renderer.renderer.dispose();
@@ -171,6 +196,7 @@ export class Game {
     this.score.reset();
     this.interactions.reset();
     this.build.reset();
+    this.shop.reset();
     this.effects.reset();
     this.floating.reset();
     this.hud.reset();
@@ -214,7 +240,9 @@ export class Game {
     // Acciones a nivel de frame (deben funcionar aunque la lógica esté en pausa).
     if (input.consume('debug')) this.debug.toggle();
     if (input.consume('pause')) {
-      if (this.state === STATE.PLAYING) this.state = STATE.PAUSED;
+      // Con una tienda abierta, Esc la cierra en lugar de pausar.
+      if (this.shop.open) this.shop.close();
+      else if (this.state === STATE.PLAYING) this.state = STATE.PAUSED;
       else if (this.state === STATE.PAUSED) this.state = STATE.PLAYING;
     }
     if (this.state === STATE.GAMEOVER && input.consume('confirm')) this.restart();
@@ -236,6 +264,7 @@ export class Game {
     this.player.render();
     this.zombies.render();
     this.structureRenderer.update();
+    this.grenadeRenderer.update();
     this.effects.update(visualDt);
     this.lighting.update(visualDt);
     if (this.debug.flags.showFlowField) this.flowViz.update(this.zombies.flow, visualDt);
@@ -249,6 +278,7 @@ export class Game {
     this.renderer.render(this.cameraRig.camera);
 
     this.hud.update(dt);
+    this.shopPanel.update(visualDt);
     this.floating.update(visualDt);
     this.debug.frame(dt, this.debug.visible ? [
       `Estado ${this.state} · ${this.dayNight.phase} ${this.dayNight.night} (${this.dayNight.t.toFixed(0)}/${this.dayNight.duration.toFixed(0)} s)`,
@@ -256,6 +286,19 @@ export class Game {
       `Draw calls ${this.renderer.renderer.info.render.calls}`,
       `Jugador ${pp.x.toFixed(1)}, ${pp.z.toFixed(1)}`,
     ] : null);
+  }
+
+  /** Tienda abierta: E la cierra y 1-9 compran (antes de que lleguen a las armas). */
+  updateShop() {
+    const { shop, input } = this;
+    shop.update();
+    if (!shop.open) return;
+    if (input.consume('interact')) {
+      shop.close();
+      this.interactions.waitRelease = true;
+      return;
+    }
+    for (let n = 1; n <= 9; n++) if (input.consume(`weapon${n}`)) this.shopPanel.buyIndex(n - 1);
   }
 
   update(dt) {
@@ -266,6 +309,7 @@ export class Game {
     if (this.player.alive) this.dayNight.update(dt, this._nightCleared);
     this.lighting.updateLogic(dt);
     this.player.update(dt);
+    this.updateShop();
     this.interactions.update(dt);
     this.weapons.update(dt);
     this.build.update(dt);

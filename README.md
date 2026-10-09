@@ -19,6 +19,8 @@ De día preparas la comisaría; al anochecer suena la sirena y llega la horda. L
 | Ratón | Apuntar (la cámara se adelanta hacia el cursor) |
 | Clic izquierdo | Disparar |
 | R | Recargar |
+| 1-7 | Cambiar de arma (pistola, escopeta, subfusil, fusil, rifle de precisión, táser, porra) |
+| G | Lanzar granada hacia el cursor |
 | Shift | Correr (gasta resistencia) |
 | E (mantener) | Interactuar con lo que tengas delante |
 | Q | Usar botiquín |
@@ -28,6 +30,17 @@ De día preparas la comisaría; al anochecer suena la sirena y llega la horda. L
 | Esc | Pausa |
 | Enter | Reintentar tras morir |
 | F1 | Panel de depuración (modo dios, saltar a la noche, generar zombis, ver flow field…) |
+
+## Tiendas (E en el mostrador · 1-9 o clic para comprar · E/Esc para cerrar)
+De noche, todo cuesta un 50 % más. La tienda no pausa el juego.
+
+| Tienda | Qué vende |
+|---|---|
+| 🔫 Armería | Escopeta, subfusil, fusil de asalto, rifle de precisión (atraviesa), táser (aturde en cadena) y porra (cuerpo a cuerpo). Munición, granadas y 3 mejoras por arma (daño, cargador y recarga) |
+| 🏥 Enfermería | Botiquines, curación completa, chaleco antibalas (absorbe el 60 % del daño) y +25 de vida máxima (×3) |
+| 📦 Almacén | Desbloquea puertas, pinchos, cepos, minas y los niveles de metal, hormigón y blindado. Kit para reparar todo con descuento |
+
+Al empezar solo puedes construir barricadas y sacos de madera.
 
 ## Construcción y trampas (tecla B)
 | Pieza | Niveles | Notas |

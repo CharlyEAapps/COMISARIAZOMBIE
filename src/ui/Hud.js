@@ -1,5 +1,6 @@
 import { PHASE } from '../systems/DayNight.js';
 import { PIECE_ORDER } from '../systems/BuildSystem.js';
+import { WEAPON_IDS } from '../systems/WeaponSystem.js';
 import interactions from '../data/interactions.json';
 
 const MEDKIT_TIME = interactions._medkit.useTime;
@@ -22,7 +23,7 @@ export class Hud {
       <div class="panel panel-status">
         <div class="clock"><span class="clock-big" data-k="time">07:00</span><span class="clock-sub" data-k="phase"></span></div>
         <div class="bar phase-bar"><div class="fill phase" data-k="phaseBar"></div></div>
-        <div class="stat"><div class="stat-row"><span class="label">♥ Vida</span><span class="val" data-k="hpText">100</span></div><div class="bar"><div class="fill hp" data-k="hp"></div></div></div>
+        <div class="stat"><div class="stat-row"><span class="label">♥ Vida</span><span class="val" data-k="hpText">100</span></div><div class="bar"><div class="fill hp" data-k="hp"></div></div><div class="bar thin armor-bar" data-k="armorBar"><div class="fill armor" data-k="armor"></div></div></div>
         <div class="stat"><div class="stat-row"><span class="label">⚡ Resistencia</span><span class="val" data-k="stText">100</span></div><div class="bar"><div class="fill stamina" data-k="st"></div></div></div>
         <div class="stat-row score"><span class="label">★ Puntos</span><span class="val big" data-k="points">0</span></div>
         <div class="stat-row"><span class="label">☠ Bajas</span><span class="val" data-k="kills">0</span></div>
@@ -32,7 +33,8 @@ export class Hud {
       <div class="panel panel-case" data-k="case"><span class="label">📋 Caso de la noche</span><div data-k="caseText"></div></div>
       <div class="combo" data-k="combo"><span data-k="comboMult">×1</span><small data-k="comboCount">COMBO 0</small></div>
       <div class="panel panel-weapon">
-        <div class="stat-row"><span class="label" data-k="medkits">🩹 ×1 <span class="key small">Q</span></span><span class="label" data-k="wname">Pistola</span></div>
+        <div class="weapon-slots" data-k="slots"></div>
+        <div class="stat-row"><span class="label" data-k="medkits">🩹 ×1 <span class="key small">Q</span></span><span class="label" data-k="grenades">💣 ×1 <span class="key small">G</span></span><span class="label" data-k="wname">Pistola</span></div>
         <div class="ammo"><span class="ammo-mag" data-k="mag">12</span><span class="ammo-res" data-k="res">/ ∞</span></div>
         <div class="bar thin"><div class="fill reload" data-k="reload"></div></div>
       </div>
@@ -51,7 +53,7 @@ export class Hud {
         <div class="prompt panel subtle" data-k="ready"><span class="key">B</span> Construir<span data-k="readyNight"> <span class="key">N</span> Empezar la noche ya</span></div>
       </div>
       <div class="hint panel" data-k="hint">
-        <span class="key">WASD</span> mover <span class="key">Ratón</span> apuntar y disparar <span class="key">R</span> recargar <span class="key">E</span> interactuar <span class="key">Q</span> botiquín <span class="key">Esc</span> pausa
+        <span class="key">WASD</span> mover <span class="key">Ratón</span> apuntar y disparar <span class="key">R</span> recargar <span class="key">1-7</span> armas <span class="key">G</span> granada <span class="key">E</span> interactuar <span class="key">Q</span> botiquín <span class="key">Esc</span> pausa
       </div>
       <div class="overlay" data-k="pause"><div class="panel modal"><h1>Pausa</h1><p>Pulsa <span class="key">Esc</span> para continuar</p></div></div>
       <div class="overlay" data-k="over">
@@ -173,11 +175,23 @@ export class Hud {
     const w = weapons.weapon;
     this.set('wname', w.data.name);
     this.set('medkits', `🩹 ×${player.medkits} <span class="key small">Q</span>`, 'innerHTML');
-    this.set('mag', w.reloading > 0 ? '··' : String(w.mag));
-    this.set('res', w.reserve < 0 ? '/ ∞' : `/ ${w.reserve}`);
-    const rl = w.reloading > 0 ? 1 - w.reloading / w.data.reloadTime : player.medkitTimer > 0 ? 1 - player.medkitTimer / MEDKIT_TIME : 0;
+    this.set('grenades', `💣 ×${weapons.grenades} <span class="key small">G</span>`, 'innerHTML');
+    if (w.data.melee) {
+      this.set('mag', '—');
+      this.set('res', '');
+    } else {
+      this.set('mag', w.reloading > 0 ? '··' : String(w.mag));
+      this.set('res', w.reserve < 0 ? '/ ∞' : `/ ${w.reserve}`);
+    }
+    const rl = w.reloading > 0 ? 1 - w.reloading / w.stats.reloadTime : player.medkitTimer > 0 ? 1 - player.medkitTimer / MEDKIT_TIME : 0;
     this.set('reload', `${(rl * 100).toFixed(0)}%`, 'width');
-    this.el.mag.classList.toggle('low', w.mag <= Math.ceil(w.data.magSize * 0.25));
+    this.el.mag.classList.toggle('low', !w.data.melee && w.mag <= Math.ceil(w.stats.magSize * 0.25));
+    // Tira de armas: número de tecla e icono; resaltada la actual.
+    const slots = WEAPON_IDS.filter((id) => weapons.has(id))
+      .map((id) => `<span class="wslot${id === weapons.current ? ' on' : ''}"><b>${weapons.defs[id].slot}</b>${weapons.defs[id].icon}</span>`).join('');
+    this.set('slots', slots, 'innerHTML');
+    this.set('armorBar', player.armor > 0, 'show');
+    this.set('armor', `${Math.min(100, player.armor)}%`, 'width');
 
     const hurt = Math.max(player.hurtTimer / player.data.hurtFlashTime, player.hp < 30 ? 0.35 : 0);
     this.set('hurt', hurt.toFixed(2), 'opacity');
@@ -221,11 +235,14 @@ export class Hud {
     }
     if (!b.active) return;
     const pts = this.game.run.points;
+    const shop = this.game.shop;
     for (const c of this.cards) {
       const cost = b.costOf(c.type);
+      const locked = !shop.isUnlocked(c.type, 0);
       c.el.classList.toggle('selected', b.selected === c.type);
       c.el.classList.toggle('poor', pts < cost);
-      c.cost.textContent = String(cost);
+      c.el.classList.toggle('locked', locked);
+      c.cost.textContent = locked ? '🔒' : String(cost);
     }
     const s = b.structures.get(b.hoverCell);
     const surcharge = Math.round((b.cfg.nightSurcharge - 1) * 100);
@@ -238,6 +255,7 @@ export class Hud {
       } else {
         const rc = b.repairCostOf(s), uc = b.upgradeCost(s);
         if (rc) parts.push(this.game.time < s.repairReady ? '<i>Reparando…</i>' : `<span class="key">Clic</span> Reparar (${rc})`);
+        else if (uc && !b.upgradeUnlocked(s)) parts.push(`<i>🔒 ${s.def.levels[s.level + 1].name}: desbloquéalo en el almacén</i>`);
         else if (uc) parts.push(`<span class="key">Clic</span> Mejorar a ${s.def.levels[s.level + 1].name} (${uc})`);
         else parts.push('Nivel máximo');
         parts.push(b.sellArmed === s.id

@@ -35,7 +35,7 @@ export function migrate(raw, limits = {}) {
     d.records = raw.records
       .filter((r) => r && typeof r === 'object')
       .map((r) => ({
-        points: num(r.points), nights: num(r.nights), kills: num(r.kills), time: num(r.time),
+        points: num(r.points), nights: num(r.nights), kills: num(r.kills), time: Math.max(0, num(r.time)),
         date: typeof r.date === 'string' ? r.date : '', weapon: typeof r.weapon === 'string' ? r.weapon : '',
       }))
       .sort((a, b) => b.points - a.points || b.nights - a.nights)
@@ -66,8 +66,15 @@ export class SaveStore {
     } catch {
       this.storage = null; // acceder a localStorage puede lanzar si está bloqueado
     }
-    // ok = se puede guardar (sin almacenamiento, no; un JSON corrupto no impide guardar).
-    this.ok = !!this.storage;
+    // ok = se puede guardar: se comprueba con una escritura de prueba (cuota llena, bloqueado…).
+    this.ok = false;
+    try {
+      if (this.storage) {
+        this.storage.setItem(`${key}.prueba`, '1');
+        this.storage.removeItem(`${key}.prueba`);
+        this.ok = true;
+      }
+    } catch { /* no se puede guardar */ }
   }
 
   load(limits) {

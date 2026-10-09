@@ -103,7 +103,9 @@ export class Meta {
       points: run.score, nights: run.nights, kills: run.kills, time: Math.round(run.time),
       date: new Date().toISOString().slice(0, 10), weapon: fav ? weaponsData[fav].name : '',
     };
-    const { records, rank } = addRecord(this.data.records, entry, this.cfg.maxRecords);
+    // Un turno sin puntos ni noches no es un récord.
+    const counts = entry.points > 0 || entry.nights > 0;
+    const { records, rank } = counts ? addRecord(this.data.records, entry, this.cfg.maxRecords) : { records: this.data.records, rank: -1 };
     const d = this.data;
     d.records = records;
     d.medals += total;

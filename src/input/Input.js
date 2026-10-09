@@ -29,11 +29,16 @@ export class Input {
     this.pointer = { x: 0, y: 0, ndcX: 0, ndcY: 0, inside: false };
     this.wheel = 0;
     this.move = { x: 0, y: 0 };
+    this.captureTab = true; // Tab cambia de página de construcción (en los menús, no)
     this.lastDevice = 'kbm';
 
     this._onKeyDown = (e) => {
       const a = KEYMAP[e.code];
       if (!a) return;
+      // Tab solo se captura en juego; en los menús sirve para recorrer los botones.
+      if (a === 'buildPage' && !this.captureTab) return;
+      // Con un desplegable o deslizador enfocado, Esc es suyo (no cierra el menú).
+      if (a === 'pause' && /^(SELECT|INPUT)$/.test(document.activeElement?.tagName ?? '')) { document.activeElement.blur(); return; }
       if (a === 'debug' || a === 'pause' || a === 'buildPage') e.preventDefault();
       if (!this.held.has(a)) this.pressed.add(a);
       this.held.add(a);

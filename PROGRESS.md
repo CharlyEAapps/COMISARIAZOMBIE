@@ -178,6 +178,13 @@
   - 8 mejoras permanentes con niveles y coste creciente, que se aplican al empezar cada turno.
   - Top 10 de récords y estadísticas totales.
 - **Menús** (`src/ui/Menus.js`): principal, tablón, récords, opciones (volúmenes, calidad, temblor y borrar progreso), controles, pausa (con abandonar) y resumen de fin de turno. Esc vuelve atrás y Enter juega o reintenta.
+- **QA (Sonnet) y revisión (Opus) hechas.** Corregidos:
+  - Niveles de mejora del guardado sin tope, que daban precios negativos o rompían el tablón.
+  - Récords por saldo en vez de por puntos ganados (ahora `run.score`); los turnos sin puntos ni noches no entran.
+  - Pantalla de fin a prueba de fallos y abandono que podía contar dos veces o quedarse "armado".
+  - Aviso de "no se puede guardar" (se comprueba con una escritura de prueba).
+  - Tabla de récords en móvil, HUD visible tras el resumen y animación de recarga con la mejora.
+  - Tab y Esc en los menús, textos de las mejoras generados con los valores reales y CSS.
 
 ## Fase 6: qué hay
 - **Audio** (`src/audio/`, `src/data/audio.json`):

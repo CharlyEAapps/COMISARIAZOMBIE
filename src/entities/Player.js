@@ -272,7 +272,7 @@ export class Player {
     let cant = 0;
     ph.hasMag = false;
     if (this.alive && wp && wp.reloading > 0 && !wp.data.melee) {
-      reloadPhases(ph, 1 - wp.reloading / wp.stats.reloadTime);
+      reloadPhases(ph, 1 - wp.reloading / (wp.reloadTotal || wp.stats.reloadTime));
       pose.armR.x += ph.lower * RELOAD.armDown + ph.bump * RELOAD.insertBump;
       pose.torso.x += ph.lower * RELOAD.torsoLean;
       pose.head.x += ph.lower * RELOAD.headDown;

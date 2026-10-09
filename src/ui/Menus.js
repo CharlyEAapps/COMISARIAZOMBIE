@@ -65,7 +65,10 @@ export class Menus {
     this.abandonArmed = false;
     this.render();
     this.root.classList.add('show');
-    this.game.uiRoot.classList.toggle('in-menu', this.game.state === STATE_MENU);
+    // El HUD se oculta en el menú principal y en el fin de turno (en la pausa se ve detrás).
+    this.game.uiRoot.classList.toggle('in-menu', this.game.state !== 'paused');
+    // En los menús, Tab recorre los botones (en juego cambia de página de construcción).
+    this.game.input.captureTab = false;
     if (!silent) this.game.audio?.play('ui_click');
   }
 
@@ -75,6 +78,7 @@ export class Menus {
     this.root.classList.remove('show');
     this.root.innerHTML = '';
     this.game.uiRoot.classList.remove('in-menu');
+    this.game.input.captureTab = true;
   }
 
   /** Esc: vuelve atrás; en la pausa, continúa la partida. */
@@ -118,7 +122,7 @@ export class Menus {
         <button class="btn ghost" data-go="records">Récords</button>
         <button class="btn ghost" data-go="options">Opciones</button>
         <button class="btn ghost" data-go="controls">Controles</button>
-        ${best ? `<p class="menu-note">Mejor turno: <b>${best.points}</b> puntos · ${best.nights} noches</p>` : ''}
+        ${best ? `<p class="menu-note">Mejor turno: <b>${best.points}</b> puntos · ${best.nights} ${best.nights === 1 ? 'noche' : 'noches'}</p>` : ''}
         ${m.store.ok ? '' : '<p class="menu-note warn">⚠ No se puede guardar el progreso en este navegador.</p>'}
       </div>`;
   }
@@ -136,6 +140,7 @@ export class Menus {
     }).join('');
     return `
       <div class="menu-header"><h2>Tablón de la comisaría</h2>${this.medalsChip()}</div>
+      ${this.game.meta.store.ok ? '' : '<p class="menu-note warn">⚠ Este navegador no deja guardar: las mejoras se perderán al recargar.</p>'}
       <p class="menu-note">Las medallas se ganan en cada turno: por noche sobrevivida, hitos y logros. Las mejoras son permanentes.</p>
       <div class="upgrade-grid">${cards}</div>
       <div class="menu-footer"><button class="btn ghost" data-act="back">Volver <span class="key">Esc</span></button></div>`;
@@ -145,13 +150,13 @@ export class Menus {
     const rows = this.game.meta.records;
     const last = this.game.meta.lastRun;
     const body = rows.length ? rows.map((r, k) => `<tr class="${last && last.rank === k ? 'me' : ''}">
-        <td>${k + 1}</td><td><b>${r.points}</b></td><td>${r.nights}</td><td>${r.kills}</td><td>${fmtTime(r.time)}</td><td>${esc(r.weapon || '—')}</td><td>${esc(r.date)}</td></tr>`).join('')
+        <td>${k + 1}</td><td><b>${r.points}</b></td><td>${r.nights}</td><td>${r.kills}</td><td>${fmtTime(r.time)}</td><td class="opt">${esc(r.weapon || '—')}</td><td class="opt">${esc(r.date)}</td></tr>`).join('')
       : '<tr><td colspan="7" class="empty">Todavía no hay turnos registrados. El expediente está limpio. Sospechosamente limpio.</td></tr>';
     const st = this.game.meta.data.stats;
     return `
       <div class="menu-header"><h2>Récords</h2></div>
       <div class="panel menu-box wide">
-        <table class="records"><thead><tr><th>#</th><th>Puntos</th><th>Noches</th><th>Bajas</th><th>Tiempo</th><th>Arma favorita</th><th>Fecha</th></tr></thead><tbody>${body}</tbody></table>
+        <table class="records"><thead><tr><th>#</th><th>Puntos</th><th>Noches</th><th>Bajas</th><th>Tiempo</th><th class="opt">Arma favorita</th><th class="opt">Fecha</th></tr></thead><tbody>${body}</tbody></table>
         <p class="menu-note">Turnos jugados: ${st.runs} · Mejor noche: ${st.bestNight} · Bajas totales: ${st.totalKills}</p>
       </div>
       <div class="menu-footer"><button class="btn ghost" data-act="back">Volver <span class="key">Esc</span></button></div>`;

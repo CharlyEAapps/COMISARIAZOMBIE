@@ -12,5 +12,6 @@
   "hurtFlashTime": 0.35,
   "hurtShake": 0.25,
   "gameOverDelay": 1.8,
-  "pushDecay": 8
+  "pushDecay": 8,
+  "maxStepFraction": 0.4
 }

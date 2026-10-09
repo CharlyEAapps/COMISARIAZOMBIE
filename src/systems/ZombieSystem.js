@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import zombieData from '../data/zombies.json';
-import { FlowField } from './FlowField.js';
+import { FlowField, WideFlowField } from './FlowField.js';
 import { resolveCircleVsGrid, raycastGrid, rayCircle, SpatialHash } from './Physics.js';
 import { PARTS, PART_NAMES, partGeometry, computePose, makePose } from '../render/BlockyCharacter.js';
 import { ACCESSORIES, ACCESSORY_SETS } from '../render/ZombieAccessories.js';
@@ -47,7 +47,7 @@ function makeZombie(id) {
     losTimer: 0, hasLos: false, walkPhase: 0, flash: 0,
     deathTimer: 0, fall: 0, sink: 0,
     stunTimer: 0, slowMul: 1, vandal: false, attackTarget: 0, // 0 jugador, 1 estructura, 2 transformador
-    targetCell: -1, body: null, turn: 0, shieldMsgAt: -9,
+    targetCell: -1, body: null, turn: 0, big: false, shieldMsgAt: -9,
     spitCd: 0, spitWindup: 0, spitLos: false, selfDestruct: false, exploded: false,
     colors: PART_NAMES.map(() => new THREE.Color()),
   };
@@ -69,6 +69,7 @@ export class ZombieSystem {
     this.free = this.pool.map((z) => z).reverse();
     this.active = [];
     this.flow = new FlowField(game.grid);
+    this.bigFlow = new WideFlowField(game.grid); // rutas anchas para tanques y jefes
     this.decoyFlow = new FlowField(game.grid); // rutas hacia el señuelo (sirena)
     this.vandalFlow = new FlowField(game.grid); // rutas hacia el transformador
     this.flowDirty = false; // una construcción ha cambiado: recalcular los flow fields
@@ -82,6 +83,7 @@ export class ZombieSystem {
     this.blockedWalk = (i, j) => !g.isWalkable(i, j);
     this.blockedShot = (i, j) => g.isShotBlocked(i, j);
     this._vandalTargets = [];
+    this._wp = { x: 0, z: 0 };
 
     // Un InstancedMesh por parte del cuerpo → 6 draw calls para toda la horda.
     this.meshList = PART_NAMES.map((name) => {
@@ -197,7 +199,7 @@ export class ZombieSystem {
     const fx = Math.sin(zb.facing), fz = Math.cos(zb.facing);
     const r = zb.radius + 0.25;
     this.game.effects.burst(zb.pos.x + fx * r, 1.2 * zb.scale, zb.pos.z + fz * r, 5, 0xffe2a0, { speed: 2.5, up: 2, size: 0.05, life: 0.35, dirX: -dx, dirZ: -dz });
-    if (this.game.time - zb.shieldMsgAt > 1.2) {
+    if (this.game.time - zb.shieldMsgAt > zb.data.shield.msgCooldown) {
       zb.shieldMsgAt = this.game.time;
       this.game.floating?.spawn('¡Escudo!', zb.pos.x, 2.6 * zb.scale, zb.pos.z, 'neg');
     }
@@ -234,7 +236,9 @@ export class ZombieSystem {
     const build = this.game.build;
     const tcfg = build?.cfg.transformer;
     // Los jefes no se distraen con las instalaciones eléctricas.
-    zb.vandal = !d.boss && !!build && build.vandalTargetsAlive() &&
+    zb.big = zb.radius > this.ai.bigRadius;
+    // Los grandes no se distraen (solo siguen rutas anchas hacia el jugador).
+    zb.vandal = !zb.big && !d.boss && !!build && build.vandalTargetsAlive() &&
       this.game.dayNight.night >= tcfg.vandalFromNight && Math.random() < tcfg.vandalChance;
     zb.trapAcc = 0;
     const body = zb.body;
@@ -322,23 +326,24 @@ export class ZombieSystem {
     // Flow field hacia la celda transitable del jugador (si cambia de celda o cambian las construcciones).
     this.flowTimer -= dt;
     const pcell = grid.walkableCellAt(px, pz);
+    // Rutas de los vándalos al transformador y a los generadores (destinos fijos): solo al
+    // cambiar las construcciones o el estado del transformador.
+    const build = game.build;
+    const vandalKey = build?.transformer?.hp > 0 ? 1 : 0;
+    let vandalDue = !!build && this.vandalTarget !== vandalKey;
     if (this.flowTimer <= 0 && (pcell !== this.flowCell || this.flowDirty) && pcell >= 0) {
       flow.compute(pcell % grid.w, (pcell / grid.w) | 0);
+      this.bigFlow.compute(pcell % grid.w, (pcell / grid.w) | 0);
       this.flowCell = pcell;
       this.flowTimer = ai.flowFieldInterval;
-      // Rutas de los vándalos al transformador y a los generadores (destinos fijos): solo al
-      // cambiar las construcciones o el estado del transformador.
-      const build = game.build;
-      if (build) {
-        const key = build.transformer?.hp > 0 ? 1 : 0;
-        if (this.flowDirty || this.vandalTarget !== key) {
-          build.vandalTargetCells(this._vandalTargets);
-          this.vandalFlow.computeMulti(this._vandalTargets);
-          this.vandalTarget = key;
-        }
-      }
+      if (this.flowDirty) vandalDue = !!build;
       if (this.flowDirty && this.decoy.timer > 0) this.setDecoy(this.decoy.x, this.decoy.z, this.decoy.timer, this.decoy.radius);
       this.flowDirty = false;
+    }
+    if (vandalDue) {
+      build.vandalTargetCells(this._vandalTargets);
+      this.vandalFlow.computeMulti(this._vandalTargets);
+      this.vandalTarget = vandalKey;
     }
     const transformer = game.build?.transformer;
     const trAlive = !!transformer && transformer.hp > 0;
@@ -390,6 +395,12 @@ export class ZombieSystem {
         zb.losTimer = ai.losCheckInterval;
         zb.hasLos = dist < ai.directChaseRange &&
           raycastGrid(grid, zb.pos.x, zb.pos.z, ux, uz, dist, this.blockedWalk) >= dist;
+        // Un zombi grande solo va en línea recta si cabe: comprueba también los dos bordes.
+        if (zb.hasLos && zb.big) {
+          const ox = -uz * zb.radius, oz = ux * zb.radius;
+          zb.hasLos = raycastGrid(grid, zb.pos.x + ox, zb.pos.z + oz, ux, uz, dist, this.blockedWalk) >= dist &&
+            raycastGrid(grid, zb.pos.x - ox, zb.pos.z - oz, ux, uz, dist, this.blockedWalk) >= dist;
+        }
         // Escupidor: el ácido va en arco y pasa por encima de lo bajo (sacos, vallas).
         if (d.spit) {
           zb.spitLos = player.alive && dist < d.spit.range &&
@@ -401,7 +412,7 @@ export class ZombieSystem {
       // si no, la del flow field.
       let mx = ux, mz = uz;
       let toDecoy = false;
-      if (!zb.hasLos && decoy.timer > 0) {
+      if (!zb.hasLos && decoy.timer > 0 && !zb.big) {
         const dd = Math.hypot(decoy.x - zb.pos.x, decoy.z - zb.pos.z);
         toDecoy = dd < decoy.radius;
         if (toDecoy && dd < 1.5) { mx = 0; mz = 0; }
@@ -411,12 +422,17 @@ export class ZombieSystem {
       zb.targetCell = -1;
       if ((!zb.hasLos || goVandal) && !(toDecoy && mx === 0 && mz === 0)) {
         // Flow field hacia el jugador, el señuelo o el transformador.
-        const field = goVandal ? this.vandalFlow : toDecoy ? this.decoyFlow : flow;
         const cell = grid.walkableCellAt(zb.pos.x, zb.pos.z);
+        // Los grandes usan rutas anchas; si no hay ninguna (rincones), la normal.
+        const wide = zb.big && cell >= 0 && this.bigFlow.dist[cell] < Infinity;
+        const field = goVandal ? this.vandalFlow : toDecoy ? this.decoyFlow : wide ? this.bigFlow : flow;
         const nk = cell >= 0 ? field.next[cell] : -1;
         if (nk >= 0) {
-          const tx = grid.centerX(nk % grid.w) - zb.pos.x;
-          const tz = grid.centerZ((nk / grid.w) | 0) - zb.pos.z;
+          // Los grandes apuntan al centro del hueco libre de 2×2 entre esta celda y la
+          // siguiente (si no, se clavan en las esquinas de los muebles).
+          const t = field === this.bigFlow ? this.wideWaypoint(zb, cell, nk) : null;
+          const tx = (t ? t.x : grid.centerX(nk % grid.w)) - zb.pos.x;
+          const tz = (t ? t.z : grid.centerZ((nk / grid.w) | 0)) - zb.pos.z;
           const tl = Math.hypot(tx, tz) || 1;
           mx = tx / tl; mz = tz / tl;
           // La siguiente celda tiene una construcción que bloquea: hay que romperla.
@@ -447,9 +463,9 @@ export class ZombieSystem {
         } else if (zb.spitLos) {
           if (dist < sp.minRange) { mx = -ux; mz = -uz; }
           else if (dist <= sp.preferredRange) { mx = 0; mz = 0; }
-          if (zb.spitCd <= 0 && dist >= sp.minRange * 0.5) {
+          if (zb.spitCd <= 0 && dist >= sp.minRange * sp.minFireRangeMul) {
             zb.spitWindup = sp.windup;
-            zb.spitCd = sp.cooldown * rnd(0.2);
+            zb.spitCd = sp.cooldown * rnd(sp.cooldownJitter);
           }
         }
       }
@@ -569,6 +585,43 @@ export class ZombieSystem {
     }
   }
 
+  /**
+   * Centro del bloque libre de 2×2 que contiene las celdas a y b (o null si no hay). En
+   * diagonal es la esquina común; en recto, el lado libre más cercano al zombi.
+   */
+  blockCenter(zb, a, b, out) {
+    const g = this.game.grid, w = g.w;
+    const ai = a % w, aj = (a / w) | 0, bi = b % w, bj = (b / w) | 0;
+    let ox = 0, oz = 0;
+    if (ai !== bi && aj !== bj) {
+      // diagonal: el bloque es el que forman
+    } else if (ai !== bi) {
+      const pref = zb.pos.z >= g.centerZ(aj) ? 1 : -1;
+      if (g.isStaticWalkable(ai, aj + pref) && g.isStaticWalkable(bi, aj + pref)) oz = pref * 0.5;
+      else if (g.isStaticWalkable(ai, aj - pref) && g.isStaticWalkable(bi, aj - pref)) oz = -pref * 0.5;
+      else return null;
+    } else {
+      const pref = zb.pos.x >= g.centerX(ai) ? 1 : -1;
+      if (g.isStaticWalkable(ai + pref, aj) && g.isStaticWalkable(ai + pref, bj)) ox = pref * 0.5;
+      else if (g.isStaticWalkable(ai - pref, aj) && g.isStaticWalkable(ai - pref, bj)) ox = -pref * 0.5;
+      else return null;
+    }
+    out.x = g.originX + ((ai + bi) / 2 + 0.5 + ox) * g.cellSize;
+    out.z = g.originZ + ((aj + bj) / 2 + 0.5 + oz) * g.cellSize;
+    return out;
+  }
+
+  /** Punto al que se dirige un zombi grande: el hueco actual o, si ya está en él, el siguiente. */
+  wideWaypoint(zb, cell, nk) {
+    const out = this._wp;
+    let t = this.blockCenter(zb, cell, nk, out);
+    if (t && Math.hypot(t.x - zb.pos.x, t.z - zb.pos.z) < this.ai.bigLookahead) {
+      const nn = this.bigFlow.next[nk];
+      t = nn >= 0 ? this.blockCenter(zb, nk, nn, out) : null;
+    }
+    return t;
+  }
+
   /** Lanza ácido hacia el jugador (con algo de anticipación y error). */
   spit(zb, sp) {
     const { player, acid } = this.game;
@@ -579,7 +632,20 @@ export class ZombieSystem {
     const err = () => (Math.random() - 0.5) * 2 * sp.error;
     const tx = px + player.velocity.x * flight * sp.lead + err();
     const tz = pz + player.velocity.z * flight * sp.lead + err();
-    acid.launch(zb.pos.x, zb.pos.z, tx, tz, sp, 1.5 * zb.scale);
+    acid.launch(zb.pos.x, zb.pos.z, tx, tz, sp, sp.launchHeight * zb.scale);
+  }
+
+  dispose() {
+    const { scene } = this.game;
+    const meshes = [...this.meshList, this.eyes, ...Object.values(this.accessoryMeshes).map((a) => a.mesh)];
+    for (const m of meshes) {
+      scene.remove(m);
+      m.geometry.dispose();
+      m.dispose();
+    }
+    for (const m of this.meshList) m.material.dispose();
+    this.eyeMaterial.dispose();
+    this.accessoryMaterial.dispose();
   }
 
   render() {

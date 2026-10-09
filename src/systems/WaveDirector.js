@@ -13,13 +13,22 @@ export function typeWeight(t, n) {
   return Math.min(t.maxWeight ?? Infinity, t.weight + (t.perNight ?? 0) * (n - t.fromNight));
 }
 
-/** Tipo de zombi ponderado entre los disponibles en la noche n. */
-export function pickType(types, n, rnd = Math.random) {
+/** Tamaño medio de la manada de un tipo (1 si llega suelto). */
+export function packSize(type) {
+  const p = zombieData[type]?.pack;
+  return p ? (p[0] + p[1]) / 2 : 1;
+}
+
+/**
+ * Tipo de zombi ponderado entre los disponibles en la noche n. Los pesos son proporción de
+ * zombis: un tipo de manada se elige menos veces porque cada elección trae un grupo entero.
+ */
+export function pickType(types, n, rnd = Math.random, sizeOf = packSize) {
   let total = 0;
-  for (const t of types) total += typeWeight(t, n);
+  for (const t of types) total += typeWeight(t, n) / sizeOf(t.type);
   let r = rnd() * total;
   for (const t of types) {
-    const w = typeWeight(t, n);
+    const w = typeWeight(t, n) / sizeOf(t.type);
     if (!w) continue;
     r -= w;
     if (r <= 0) return t.type;
@@ -51,6 +60,8 @@ export class WaveDirector {
     this.bossPending = false;
     this.bossTimer = 0;
     this.bossCount = 0; // apariciones del jefe en esta partida (escala en cada una)
+    this.intros = [];
+    this.introTimer = 0;
     this.maxAlive = this.cfg.night.maxAliveBase;
     // Orden de apertura de los puntos de aparición, distinto en cada partida (Fisher-Yates).
     const order = this.game.grid.spawns.slice();
@@ -96,10 +107,13 @@ export class WaveDirector {
     this.bossPending = isBossNight(this.cfg.boss, n);
     this.bossTimer = this.cfg.boss?.delay ?? 0;
     // Presenta los tipos nuevos de esta noche (cómo se les hace frente).
+    // Si llegan varios a la vez, se presentan de uno en uno.
+    this.intros.length = 0;
     for (const t of c.types) {
       const intro = zombieData[t.type]?.intro;
-      if (t.fromNight === n && intro) this.game.hud?.toast(intro, 9);
+      if (t.fromNight === n && intro) this.intros.push(intro);
     }
+    this.introTimer = 0;
   }
 
   update(dt, dayNight) {
@@ -108,6 +122,10 @@ export class WaveDirector {
   }
 
   updateNight(dt) {
+    if (this.intros.length && (this.introTimer -= dt) <= 0) {
+      this.game.hud?.toast(this.intros.shift(), this.cfg.introSeconds);
+      this.introTimer = this.cfg.introSeconds * 0.8;
+    }
     if (this.bossPending && (this.bossTimer -= dt) <= 0) this.spawnBoss();
     if (this.toSpawn <= 0) return;
     this.spawnTimer -= dt;

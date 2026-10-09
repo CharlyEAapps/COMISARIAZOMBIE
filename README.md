@@ -25,7 +25,7 @@ De día preparas la comisaría; al anochecer suena la sirena y llega la horda. L
 | E (mantener) | Interactuar con lo que tengas delante |
 | Q | Usar botiquín |
 | N | Empezar la noche ya (de día) |
-| B | Modo construcción (1-6 eligen pieza · clic construye/repara/mejora · arrastrar = fila · clic dcho ×2 vende · clic dcho en vacío sale) |
+| B | Modo construcción (Tab cambia entre Defensas y Trampas · 1-7 eligen pieza · clic construye/repara/mejora · arrastrar = fila · clic dcho ×2 vende · clic dcho en vacío sale) |
 | Rueda | Zoom |
 | Esc | Pausa |
 | Enter | Reintentar tras morir |
@@ -51,10 +51,26 @@ Al empezar solo puedes construir barricadas y sacos de madera.
 | 📌 Pinchos | Madera → Acero | Daño continuo y ralentizan; se desgastan |
 | 🪤 Cepo | Normal → Reforzado | Inmoviliza unos segundos y se rearma solo (usos limitados) |
 | 💣 Mina | — | Explota una vez; ¡también te daña si estás cerca! |
+| ➰ Alambre de espino | Espino → Concertina | Frena mucho y hace algo de daño; se desgasta |
+| 🛢️ Barril explosivo | — | Dispárale (o deja que lo golpeen) y estalla; encadena con otros barriles. ¡También te daña! |
+| ⚡ Valla electrificada | Normal → Reforzada | Bloquea; con un generador en pie, electrocuta y aturde a quien la toque. Tus balas pasan |
+| 🔋 Generador | — | Da corriente a las vallas. Atrae a los vándalos |
+| 🎯 Torreta automática | Torreta → Pesada | Dispara sola al zombi más cercano. Munición limitada: recárgala con E pagando |
+| 💡 Foco | — | Ilumina una zona de noche |
 
 - Los zombis golpean lo que les cierra el paso. Si encierras la base, eligen el camino más barato (la pieza más débil o la más cercana).
 - Reparar cuesta en proporción al daño; vender (dos clics derechos) devuelve el 50 % de lo invertido según la vida que le quede. De noche todo cuesta un 50 % más, también reparar. Solo puedes actuar sobre piezas a menos de 10 m.
 - **Transformador** (patio norte): da luz a la comisaría. Desde la noche 2, algunos zombis (vándalos) van a por él; avisa cuando lo atacan. Si lo rompen, te quedas solo con la linterna. Repáralo con E.
+
+## Zombis
+| Tipo | Desde | Cómo hacerle frente |
+|---|---|---|
+| Caminante | Noche 1 | La base de la horda |
+| Corredor | Noche 2 | Rápido y frágil, llega en manadas: construye y no te dejes rodear |
+| Escupidor | Noche 3 | Lanza ácido por encima de los sacos y deja charcos que queman y corroen: muévete y cázalo primero |
+| Explosivo | Noche 3 | Revienta al morir o al alcanzarte y rompe barricadas: abátelo de lejos (o junto a sus amigos) |
+| Tanque | Noche 4 | Mucha vida, triple de daño a las construcciones y te empuja: fuego concentrado, trampas y distancia |
+| **Jefe Antidisturbios** | Cada 5 noches | Escudo frontal que para balas, porra, táser y torretas: rodéalo o usa explosivos (le hacen el doble). Barra de vida propia; la noche no acaba hasta abatirlo |
 
 ## Interacciones de la comisaría
 | Objeto | Efecto |

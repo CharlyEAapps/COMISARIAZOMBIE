@@ -106,9 +106,17 @@ export class Hud {
     bus.on('phase:atardecer', ({ night }) => this.banner(`Noche ${night}`, 'Suena la sirena… se acercan', 3.5));
     bus.on('phase:noche', ({ night }) => this.banner(`Noche ${night}`, 'Sobrevive hasta el amanecer', 2.5));
     bus.on('phase:dia', ({ night }) => { if (night > 1) this.banner(`Día ${night}`, 'Repara, compra y prepárate', 2.5); });
-    bus.on('score:nightSummary', ({ night, lines, total }) => this.banner(`¡Noche ${night} superada!`, `${lines.join(' · ')}<br><b>+${total}</b>`, 5));
+    // Si el jefe era el último zombi, su banner y el de la noche se juntan en uno.
+    this.bossKilledAt = -Infinity;
+    bus.on('score:nightSummary', ({ night, lines, total }) => {
+      const boss = game.time - this.bossKilledAt < 3 ? '¡Jefe abatido! ' : '';
+      this.banner(`${boss}¡Noche ${night} superada!`, `${lines.join(' · ')}<br><b>+${total}</b>`, 5);
+    });
     bus.on('run:start', () => this.banner('Turno de noche', 'Comisaría del Distrito 13 · Día 1', 3));
-    bus.on('boss:killed', () => this.banner('¡Jefe abatido!', 'El antidisturbios ha caído', 3.5));
+    bus.on('boss:killed', () => {
+      this.bossKilledAt = game.time;
+      this.banner('¡Jefe abatido!', 'El antidisturbios ha caído', 3.5);
+    });
     bus.on('phase:noche', ({ night }) => {
       if (isBossNight(game.waves.cfg.boss, night)) this.toast('📻 Central: algo grande viene hacia la comisaría esta noche…', 7);
     });
@@ -154,6 +162,10 @@ export class Hud {
     this.set('phaseBar', `${(dayNight.progress * 100).toFixed(1)}%`, 'width');
     const boss = this.game.zombies.boss;
     this.set('boss', !!boss, 'show');
+    if (this._last.bossOn !== !!boss) {
+      this._last.bossOn = !!boss;
+      this.root.classList.toggle('boss-on', !!boss);
+    }
     if (boss) {
       this.set('bossName', `☠ ${boss.data.name}`);
       this.set('bossHp', `${Math.max(0, (boss.hp / boss.maxHp) * 100).toFixed(1)}%`, 'width');
@@ -264,9 +276,12 @@ export class Hud {
     if (!b.active) return;
     const pts = this.game.run.points;
     const shop = this.game.shop;
-    this.tabs.forEach((el, p) => el.classList.toggle('selected', p === b.page));
+    if (this._last.page !== b.page) {
+      this._last.page = b.page;
+      this.tabs.forEach((el, p) => el.classList.toggle('selected', p === b.page));
+      for (const c of this.cards) c.el.classList.toggle('hidden', c.page !== b.page);
+    }
     for (const c of this.cards) {
-      c.el.classList.toggle('hidden', c.page !== b.page);
       if (c.page !== b.page) continue;
       const cost = b.costOf(c.type);
       const locked = !shop.isUnlocked(c.type, 0);

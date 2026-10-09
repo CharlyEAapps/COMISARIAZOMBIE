@@ -41,6 +41,7 @@
   "combat": {
     "shotHeight": 1.25,
     "fireBuffer": 0.15,
-    "explosionShake": 0.45
+    "explosionShake": 0.45,
+    "explosionBodyPad": 0.5
   }
 }

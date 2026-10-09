@@ -138,11 +138,16 @@ export class Player {
       (this.medkitTimer > 0 ? MEDKIT.moveMul : 1) * this.buff('speed');
     this.velocity.set(input.move.x * speed, 0, input.move.y * speed);
     const x0 = this.position.x, z0 = this.position.z;
-    this.position.x += (this.velocity.x + this.push.x) * dt;
-    this.position.z += (this.velocity.z + this.push.z) * dt;
+    // Movimiento en subpasos cortos: un empujón fuerte no atraviesa vallas ni rejas finas.
+    const mx = (this.velocity.x + this.push.x) * dt, mz = (this.velocity.z + this.push.z) * dt;
+    const sub = Math.max(1, Math.ceil(Math.hypot(mx, mz) / (this.radius * this.data.maxStepFraction)));
+    for (let k = 0; k < sub; k++) {
+      this.position.x += mx / sub;
+      this.position.z += mz / sub;
+      resolveCircleVsGrid(this.position, this.radius, this.game.grid);
+    }
     const decay = Math.exp(-this.data.pushDecay * dt);
     this.push.x *= decay; this.push.z *= decay;
-    resolveCircleVsGrid(this.position, this.radius, this.game.grid);
     // Solo gasta resistencia si realmente avanza (no al empujar contra un muro).
     const moved = Math.hypot(this.position.x - x0, this.position.z - z0);
     if (wantsSprint && moved > speed * dt * 0.3) {

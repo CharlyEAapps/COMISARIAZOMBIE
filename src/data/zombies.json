@@ -61,13 +61,13 @@
     "hp": 520,
     "speed": 1.15,
     "speedVariance": 0.05,
-    "radius": 0.55,
-    "scale": 1.45,
+    "radius": 0.52,
+    "scale": 1.2,
     "damage": 30,
     "attackRange": 0.5,
     "attackWindup": 0.6,
     "attackCooldown": 1.8,
-    "points": 70,
+    "points": 110,
     "color": "#66735c",
     "colorVariance": 0.06,
     "structureDamageMul": 3,
@@ -201,7 +201,13 @@
       "puddleRadius": 1.1,
       "puddleTime": 4,
       "puddleDps": 8,
-      "structureDps": 18
+      "structureDps": 18,
+      "minFireRangeMul": 0.5,
+      "cooldownJitter": 0.2,
+      "launchHeight": 1.5,
+      "damageTick": 0.25,
+      "shrinkFrom": 0.3,
+      "footprint": 0.5
     },
     "intro": "🤢 Escupidores: lanzan ácido por encima de los sacos y dejan charcos. Muévete y cázalos primero."
   },
@@ -210,26 +216,27 @@
     "hp": 2400,
     "speed": 1.35,
     "speedVariance": 0,
-    "radius": 0.62,
-    "scale": 1.75,
+    "radius": 0.48,
+    "scale": 1.35,
     "damage": 32,
     "attackRange": 0.55,
     "attackWindup": 0.55,
     "attackCooldown": 1.4,
-    "points": 600,
+    "points": 800,
     "color": "#8a9a7a",
     "colorVariance": 0.02,
     "structureDamageMul": 2.5,
     "playerKnockback": 2.8,
     "knockbackResist": 1,
     "stunResist": 0.75,
-    "turnSharpness": 2.2,
+    "turnSharpness": 2.0,
     "boss": true,
-    "hpPerAppearance": 0.5,
+    "hpPerAppearance": 0.35,
     "shield": {
-      "arcDeg": 120
+      "arcDeg": 120,
+      "msgCooldown": 1.2
     },
-    "explosionDamageMul": 1.5,
+    "explosionDamageMul": 2.0,
     "shirts": [
       "#1f2a3a"
     ],
@@ -275,6 +282,8 @@
     "playerPushShare": 0.15,
     "fallTime": 0.4,
     "sinkTime": 1,
-    "structureReach": 0.35
+    "structureReach": 0.35,
+    "bigRadius": 0.55,
+    "bigLookahead": 0.4
   }
 }

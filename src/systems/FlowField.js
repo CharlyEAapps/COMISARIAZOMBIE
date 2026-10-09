@@ -18,6 +18,7 @@ export class FlowField {
     this.heapD = new Float64Array(n * 8);
     this.target = { i: -1, j: -1 };
     this._single = [0];
+    this.checkEdges = false; // las subclases pueden filtrar también los pasos entre celdas
   }
 
   /**
@@ -86,6 +87,7 @@ export class FlowField {
         // Sin cortar esquinas: en diagonal, ambas celdas ortogonales deben estar libres AHORA
         // (incluidas las construcciones; si no, dos barricadas en diagonal dejarían una rendija).
         if (di && dj && (!grid.isWalkable(i + di, j) || !grid.isWalkable(i, j + dj))) continue;
+        if (this.checkEdges && !this.edgeOk(i, j, di, dj)) continue;
         const nk = nj * w + ni;
         const nd = d0 + c + grid.extraCost[nk];
         if (nd < dist[nk]) {
@@ -106,5 +108,53 @@ export class FlowField {
   distanceAt(i, j) {
     if (!this.grid.inBounds(i, j)) return Infinity;
     return this.dist[j * this.grid.w + i];
+  }
+}
+
+/**
+ * Flow field para zombis grandes (tanque, jefe): solo pasa por celdas que forman parte de
+ * algún bloque libre de 2×2 (pasillos y puertas de 2 celdas), para que no se metan en
+ * rendijas de 1 celda entre muebles. Junto al objetivo se admite cualquier celda libre.
+ */
+export class WideFlowField extends FlowField {
+  constructor(grid, nearTarget = 2) {
+    super(grid);
+    this.nearTarget = nearTarget;
+    this.checkEdges = true;
+    const { w, h } = grid;
+    this.wide = new Uint8Array(w * h);
+    const free = (i, j) => grid.isStaticWalkable(i, j);
+    for (let j = 0; j < h - 1; j++) {
+      for (let i = 0; i < w - 1; i++) {
+        if (!free(i, j) || !free(i + 1, j) || !free(i, j + 1) || !free(i + 1, j + 1)) continue;
+        for (const k of [j * w + i, j * w + i + 1, (j + 1) * w + i, (j + 1) * w + i + 1]) this.wide[k] = 1;
+      }
+    }
+  }
+
+  nearTargetCell(i, j) {
+    const t = this.target;
+    return Math.abs(i - t.i) <= this.nearTarget && Math.abs(j - t.j) <= this.nearTarget;
+  }
+
+  passable(i, j) {
+    if (!this.grid.isStaticWalkable(i, j)) return false;
+    return this.wide[j * this.grid.w + i] === 1 || this.nearTargetCell(i, j);
+  }
+
+  /**
+   * El paso de (i,j) a su vecino cabe si ambas celdas están en un mismo bloque libre de 2×2
+   * (en diagonal, el que forman; en recto, el de un lado o el del otro).
+   */
+  edgeOk(i, j, di, dj) {
+    if (this.nearTargetCell(i, j) || this.nearTargetCell(i + di, j + dj)) return true;
+    const g = this.grid;
+    if (di && dj) return g.isStaticWalkable(i + di, j) && g.isStaticWalkable(i, j + dj);
+    if (di) {
+      return (g.isStaticWalkable(i, j - 1) && g.isStaticWalkable(i + di, j - 1)) ||
+        (g.isStaticWalkable(i, j + 1) && g.isStaticWalkable(i + di, j + 1));
+    }
+    return (g.isStaticWalkable(i - 1, j) && g.isStaticWalkable(i - 1, j + dj)) ||
+      (g.isStaticWalkable(i + 1, j) && g.isStaticWalkable(i + 1, j + dj));
   }
 }

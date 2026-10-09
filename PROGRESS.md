@@ -6,8 +6,8 @@
 | 1. Núcleo jugable | ✅ Hecha |
 | 2. Día/noche, oleadas, decoración e interacciones | ✅ Hecha |
 | 3. Construcción, trampas y transformador | ✅ Hecha |
-| 4. Tiendas y armas | ✅ Hecha (pendiente del visto bueno de Carlos) |
-| 5. Enemigos y defensas completos | ⏳ Pendiente |
+| 4. Tiendas y armas | ✅ Hecha |
+| 5. Enemigos y defensas completos | ✅ Hecha (pendiente del visto bueno de Carlos) |
 | 6. Arte y sonido | ⏳ Pendiente |
 | 7. Meta-progresión y menús | ⏳ Pendiente |
 | 8. Controles y pulido | ⏳ Pendiente |
@@ -152,6 +152,23 @@
   - Mejoras de pistola: más caras.
   - Atención médica: 160 puntos.
   - Vida máxima: +40 por 250.
+
+## Fase 5: qué hay
+- **Zombis nuevos** (cuerpo por tipo y accesorios procedurales):
+  - Corredor (noche 2, en manadas), escupidor (noche 3, ácido en arco con charcos), explosivo (noche 3, revienta en cadena y daña construcciones) y tanque (noche 4, ×3 a construcciones y empuja).
+  - Jefe Antidisturbios cada 5 noches (a los 25 s): casco, escudo frontal que para balas, porra, táser y torretas; explosivos ×2; barra de vida en el HUD; +35 % de vida por aparición.
+  - Aviso al aparecer cada tipo por primera vez, de uno en uno.
+- **Defensas nuevas** (barra de construcción en 2 páginas, Tab): alambre de espino, barril explosivo, valla electrificada + generador, torreta automática (recarga con E) y foco. Desbloqueos en el almacén.
+- **IA:** los vándalos van al transformador y a los generadores (flow field con varios objetivos). Los zombis grandes usan rutas "anchas" (bloques libres de 2×2) y apuntan al centro del hueco para no clavarse en los muebles.
+- **QA (Sonnet), revisión (Opus) y equilibrado (Sonnet) hechos.** Corregidos:
+  - Jefe y tanque atascados en puertas y entre muebles (además, a petición de Carlos, ahora son más pequeños).
+  - Empujón del jefe que atravesaba vallas finas (movimiento en subpasos).
+  - Rutas de los vándalos obsoletas al romper o reparar el transformador.
+  - Mejora de torreta que recargaba gratis; torretas que gastaban munición contra el escudo; sus balas ahora detonan barriles.
+  - Vallas que no electrocutaban a zombis grandes; focos juntos que quemaban la imagen.
+  - Avisos tapados por la barra de construcción, barra del jefe en pantallas estrechas, banner del jefe pisado por el de la noche, texto del requisito de las vallas.
+  - Números mágicos llevados a JSON, `dispose` de los zombis y asignaciones en bucles calientes.
+- **Equilibrado:** el peso de los corredores cuenta zombis, no manadas (antes eran la mitad de la horda); horda ×1,06 por noche; tanque 110 puntos; jefe 800 puntos, +35 % por aparición; vallas 20/31 de descarga; torreta 500, 200 balas, 0,5 por bala; barril 80.
 
 ## Placeholders pendientes de sustituir
 - Arte: todo procedural en el estilo de la referencia (decisión de Carlos). Los packs CC0 solo se usarán para sonido y música (fase 6).

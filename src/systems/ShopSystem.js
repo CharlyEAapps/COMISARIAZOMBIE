@@ -176,7 +176,10 @@ export class ShopSystem {
       const key = it.id.slice('unlock:'.length);
       let state = null, note = '';
       if (this.unlocked.has(key)) state = 'owned';
-      else if (it.requires && !this.unlocked.has(it.requires.slice('unlock:'.length))) { state = 'locked'; note = 'Requiere la mejora anterior'; }
+      else if (it.requires && !this.unlocked.has(it.requires.slice('unlock:'.length))) {
+        state = 'locked';
+        note = `Requiere: ${shopData.almacen.find((o) => o.id === it.requires)?.name ?? 'la mejora anterior'}`;
+      }
       items.push({ id: it.id, section: 'Desbloqueos', name: it.name, desc: note || it.desc, price: this.price(it.price), state });
     }
     return this.finish(items);

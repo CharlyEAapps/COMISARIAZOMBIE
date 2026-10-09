@@ -2,7 +2,7 @@
   "night": {
     "baseCount": 14,
     "perNight": 7,
-    "growth": 1.07,
+    "growth": 1.06,
     "maxAliveBase": 40,
     "maxAlivePerNight": 6,
     "maxAliveCap": 130,
@@ -22,10 +22,10 @@
       },
       {
         "type": "corredor",
-        "weight": 0.22,
+        "weight": 0.25,
         "fromNight": 2,
-        "perNight": 0.04,
-        "maxWeight": 0.5
+        "perNight": 0.02,
+        "maxWeight": 0.4
       },
       {
         "type": "escupidor",
@@ -52,7 +52,8 @@
     "firstSpawnDelay": 2,
     "retryDelay": 1,
     "intervalJitter": 0.3,
-    "spawnScatter": 1.2
+    "spawnScatter": 1.2,
+    "_comment": "weight = proporción relativa de ZOMBIS (los tipos de manada se reparten en grupos)."
   },
   "day": {
     "fromDay": 2,
@@ -67,5 +68,6 @@
     "delay": 25,
     "title": "¡JEFE: ANTIDISTURBIOS!",
     "sub": "Su escudo para las balas de frente: flanquéalo o usa explosivos"
-  }
+  },
+  "introSeconds": 8
 }

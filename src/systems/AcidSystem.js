@@ -3,7 +3,6 @@ import { raycastGrid } from './Physics.js';
 
 const MAX_BLOBS = 32;
 const MAX_PUDDLES = 24;
-const TICK = 0.25; // el daño de los charcos se aplica a golpes (sin destello constante)
 const BLOB_COLOR = 0x9be03c;
 
 // Ácido de los escupidores: proyectiles en arco que dejan un charco temporal. El charco
@@ -91,12 +90,14 @@ export class AcidSystem {
       if (!p.active) continue;
       p.timer -= dt;
       if (p.timer <= 0) { p.active = false; continue; }
+      // El daño se aplica a golpes (sin destello constante).
+      const sp = p.sp, TICK = sp.damageTick;
       p.acc += dt;
       if (p.acc < TICK) continue;
       p.acc -= TICK;
-      const r = p.r * Math.min(1, p.timer / (p.life * 0.3)); // encoge al secarse
-      if (player.alive && Math.hypot(player.position.x - p.x, player.position.z - p.z) < r + player.radius * 0.5) {
-        player.damage(p.sp.puddleDps * TICK);
+      const r = this.radiusOf(p);
+      if (player.alive && Math.hypot(player.position.x - p.x, player.position.z - p.z) < r + player.radius * sp.footprint) {
+        player.damage(sp.puddleDps * TICK);
       }
       // Corroe lo construido en su celda y en las vecinas que toca.
       const i0 = grid.cellX(p.x - r), i1 = grid.cellX(p.x + r);
@@ -106,11 +107,16 @@ export class AcidSystem {
         const k = grid.index(i, j);
         const s = build.structures.get(k);
         if (!s || s.def.kind === 'trampa') continue;
-        const cx = Math.max(grid.centerX(i) - 0.5, Math.min(p.x, grid.centerX(i) + 0.5));
-        const cz = Math.max(grid.centerZ(j) - 0.5, Math.min(p.z, grid.centerZ(j) + 0.5));
-        if (Math.hypot(cx - p.x, cz - p.z) < r) build.damageCell(k, p.sp.structureDps * TICK / s.n, true);
+        const [x0, z0, x1, z1] = grid.cellBox(i, j);
+        const cx = Math.max(x0, Math.min(p.x, x1)), cz = Math.max(z0, Math.min(p.z, z1));
+        if (Math.hypot(cx - p.x, cz - p.z) < r) build.damageCell(k, sp.structureDps * TICK / s.n, true);
       }
     }
+  }
+
+  /** Radio actual de un charco: encoge al secarse. */
+  radiusOf(p) {
+    return p.r * Math.min(1, p.timer / (p.life * p.sp.shrinkFrom));
   }
 
   render(time) {
@@ -128,7 +134,7 @@ export class AcidSystem {
     n = 0;
     for (const p of this.puddles) {
       if (!p.active) continue;
-      const r = p.r * Math.min(1, p.timer / (p.life * 0.3)) * (1 + 0.04 * Math.sin(time * 6 + p.x));
+      const r = this.radiusOf(p) * (1 + 0.04 * Math.sin(time * 6 + p.x));
       _p.set(p.x, 0.03 + n * 0.001, p.z);
       _s.set(r, 1, r);
       _m.compose(_p, _q, _s);

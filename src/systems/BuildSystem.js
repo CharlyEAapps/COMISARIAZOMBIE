@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import buildData from '../data/build.json';
+import zombieData from '../data/zombies.json';
 import { PHASE } from './DayNight.js';
 import { explode } from './Explosions.js';
 import { raycastGrid, rayCircle } from './Physics.js';
@@ -9,6 +10,9 @@ export const PIECE_PAGES = buildData.pages;
 export const PIECE_ORDER = PIECE_PAGES.flatMap((p) => p.pieces);
 /** Piezas con lista propia (para recorrerlas sin filtrar todas las construcciones). */
 const LISTED = ['generador', 'torreta', 'valla', 'foco', 'barril'];
+/** Radio del zombi más grande (para buscar a los que tocan una valla). */
+const MAX_ZOMBIE_RADIUS = Math.max(...Object.entries(zombieData).filter(([k]) => !k.startsWith('_')).map(([, d]) => d.radius * d.scale * 1.1));
+const SELECT_ACTIONS = Array.from({ length: 9 }, (_, n) => `weapon${n + 1}`);
 const NO_BUILD_CHARS = new Set(['S', 'A', 'M', 'W']);
 const MAX_DOOR_WIDTH = 6;
 
@@ -353,7 +357,12 @@ export class BuildSystem {
     s.maxHp = s.def.levels[s.level].hp * s.n;
     s.hp = s.maxHp;
     s.invested += cost;
-    if (s.type === 'torreta') this.initTurret(s, true);
+    if (s.type === 'torreta') {
+      // La mejora amplía el cargador, pero no rellena gratis lo gastado.
+      const oldMax = s.ammoMax;
+      s.ammoMax = this.levelStat(s.def, s.level, 'ammo');
+      s.ammo += s.ammoMax - oldMax;
+    }
     this.applyGrid(s);
     this.game.floating?.spawn(`-${cost}`, s.cx, 1.6, s.cz, 'neg');
     this.changed(s.def.blocks);
@@ -395,7 +404,8 @@ export class BuildSystem {
     }
     this.all.delete(s);
     const list = this.lists[s.type];
-    if (list) list.splice(list.indexOf(s), 1);
+    const idx = list ? list.indexOf(s) : -1;
+    if (idx >= 0) list.splice(idx, 1);
     if (s.type === 'puerta') this.game.interactions.removeItem(`puerta_${s.id}`);
     if (s.type === 'torreta') this.game.interactions.removeItem(`torreta_${s.id}`);
     if (s.type === 'generador' && !this.generators.length && this.fences.length) {
@@ -418,7 +428,7 @@ export class BuildSystem {
     s.flash = 0.12;
     // Un barril golpeado hasta romperse estalla.
     if (s.type === 'barril') {
-      if (s.hp <= 0) this.detonateBarrel(s, 0.05);
+      if (s.hp <= 0) this.detonateBarrel(s, s.def.hitDelay);
       return;
     }
     const g = this.game.grid;
@@ -452,7 +462,7 @@ export class BuildSystem {
   barrelRaycast(ox, oz, dx, dz, maxT) {
     let best = null, bestT = maxT;
     for (const s of this.barrels) {
-      const t = rayCircle(ox, oz, dx, dz, s.cx, s.cz, 0.5 - s.def.inset);
+      const t = rayCircle(ox, oz, dx, dz, s.cx, s.cz, this.game.grid.cellSize / 2 - s.def.inset);
       if (t >= 0 && t < bestT) { bestT = t; best = s; }
     }
     return best ? { s: best, t: bestT } : null;
@@ -491,14 +501,10 @@ export class BuildSystem {
   }
 
   // ------------------------------------------------------------------ torretas
-  initTurret(s, refill = false) {
-    const max = this.levelStat(s.def, s.level, 'ammo');
-    if (!refill) {
-      s.yaw = 0; s.cooldown = 0; s.target = null; s.retarget = 0; s.emptyWarned = false;
-      this.game.interactions.addItem({ id: `torreta_${s.id}`, type: 'recargar_torreta', x: s.cx, z: s.cz, cell: s.k, dynamic: true });
-    }
-    s.ammoMax = max;
-    s.ammo = max;
+  initTurret(s) {
+    s.yaw = 0; s.cooldown = 0; s.target = null; s.retarget = 0; s.emptyWarned = false;
+    this.game.interactions.addItem({ id: `torreta_${s.id}`, type: 'recargar_torreta', x: s.cx, z: s.cz, cell: s.k, dynamic: true });
+    s.ammoMax = s.ammo = this.levelStat(s.def, s.level, 'ammo');
   }
 
   turretReloadCost(k) {
@@ -533,7 +539,8 @@ export class BuildSystem {
           if (z.state !== 0) continue;
           const dx = z.pos.x - s.cx, dz = z.pos.z - s.cz;
           const d = Math.hypot(dx, dz);
-          if (d >= bestD || d < 1e-3) continue;
+          // No malgasta munición contra un escudo que la mira de frente.
+          if (d >= bestD || d < 1e-3 || zombies.shieldBlocks(z, dx / d, dz / d)) continue;
           if (raycastGrid(grid, s.cx, s.cz, dx / d, dz / d, d, this.shotBlocked) < d) continue;
           bestD = d; best = z;
         }
@@ -558,9 +565,13 @@ export class BuildSystem {
       s.cooldown = 1 / this.levelStat(def, s.level, 'fireRate');
       const a = s.yaw + THREE.MathUtils.degToRad(def.spreadDeg) * (Math.random() - 0.5);
       const dx = Math.sin(a), dz = Math.cos(a);
-      const wall = raycastGrid(grid, s.cx, s.cz, dx, dz, def.range, this.shotBlocked);
+      // Igual que las balas del jugador: un barril en la trayectoria la para y estalla.
+      const wall0 = raycastGrid(grid, s.cx, s.cz, dx, dz, def.range, this.shotBlocked);
+      const barrel = this.barrelRaycast(s.cx, s.cz, dx, dz, wall0);
+      const wall = barrel ? barrel.t : wall0;
       const hit = zombies.raycast(s.cx, s.cz, dx, dz, wall);
       let end = wall;
+      if (!hit && barrel) this.detonateBarrel(barrel.s, 0);
       if (hit) {
         end = hit.t;
         if (zombies.shieldBlocks(hit.zombie, dx, dz)) zombies.shieldHit(hit.zombie, dx, dz);
@@ -570,7 +581,7 @@ export class BuildSystem {
       this._from.set(s.cx + dx * 0.55, h, s.cz + dz * 0.55);
       this._to.set(s.cx + dx * end, h, s.cz + dz * end);
       effects.tracer(this._from, this._to, 0xffd27a);
-      this.game.bus.emit('turret:fired', { s });
+      this.game.bus.emit('turret:fired', s);
     }
   }
 
@@ -583,7 +594,7 @@ export class BuildSystem {
       if (s.zap > 0) s.zap -= dt;
       if (!powered || s.zap > 0) continue;
       const reach = s.def.zapReach;
-      const n = zombies.hash.queryInto(s.cx, s.cz, 1.6, this._near);
+      const n = zombies.hash.queryInto(s.cx, s.cz, grid.cellSize / 2 + MAX_ZOMBIE_RADIUS + reach, this._near);
       let zapped = 0;
       for (let q = 0; q < n; q++) {
         const z = this._near[q];
@@ -749,7 +760,7 @@ export class BuildSystem {
     }
     const pieces = PIECE_PAGES[this.page].pieces;
     for (let n = 0; n < pieces.length; n++) {
-      if (input.consume(`weapon${n + 1}`)) this.selected = pieces[n];
+      if (input.consume(SELECT_ACTIONS[n])) this.selected = pieces[n];
     }
 
     // Celda bajo el cursor y huella de la pieza seleccionada.

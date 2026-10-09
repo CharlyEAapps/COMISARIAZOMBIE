@@ -180,6 +180,7 @@ export class Game {
     this.structureRenderer.dispose();
     this.grenadeRenderer.dispose();
     this.acid.dispose();
+    this.zombies.dispose();
     this.lighting.dispose();
     this.debug.gui.destroy();
     this.renderer.renderer.dispose();

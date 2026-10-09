@@ -21,7 +21,7 @@ export function explode(game, x, z, o) {
   for (const zb of zombies.active) {
     if (zb.state !== 0) continue;
     const d = Math.hypot(zb.pos.x - x, zb.pos.z - z);
-    if (d > R + zb.radius * 0.5 || !exposed(zb.pos.x, zb.pos.z, d)) continue;
+    if (d > R + zb.radius * config.combat.explosionBodyPad || !exposed(zb.pos.x, zb.pos.z, d)) continue;
     const k = 1 - Math.min(1, d / R) * F;
     const dx = (zb.pos.x - x) / (d || 1), dz = (zb.pos.z - z) / (d || 1);
     zombies.damage(zb, o.damage * k * (zb.data.explosionDamageMul ?? 1), dx, dz, o.knockback * k);

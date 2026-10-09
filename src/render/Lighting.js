@@ -68,6 +68,7 @@ export class Lighting {
       this.focoLights.push(pl);
     }
     this._focoVersion = -1;
+    this._focoDrawn = [];
     this._focoSorted = [];
 
     // Luz roja de alarma.
@@ -109,11 +110,23 @@ export class Lighting {
     const m = new THREE.Matrix4();
     const R = this.cfg.focoPoolRadius;
     const list = build.lights;
-    const n = Math.min(list.length, this.focoPools.instanceMatrix.count);
-    for (let k = 0; k < n; k++) {
+    const max = this.focoPools.instanceMatrix.count;
+    // Los charcos son aditivos: si dos focos están muy juntos, se dibuja solo uno (si no,
+    // la suma quema la imagen).
+    const minD2 = (R * this.cfg.focoPoolSpacing) ** 2;
+    let n = 0;
+    for (const f of list) {
+      if (n >= max) break;
+      let near = false;
+      for (let q = 0; q < n; q++) {
+        const o = list[this._focoDrawn[q]];
+        if ((o.cx - f.cx) ** 2 + (o.cz - f.cz) ** 2 < minD2) { near = true; break; }
+      }
+      if (near) continue;
+      this._focoDrawn[n] = list.indexOf(f);
       m.makeScale(R * 2, 1, R * 2);
-      m.setPosition(list[k].cx, 0.045, list[k].cz);
-      this.focoPools.setMatrixAt(k, m);
+      m.setPosition(f.cx, 0.045, f.cz);
+      this.focoPools.setMatrixAt(n++, m);
     }
     this.focoPools.count = n;
     this.focoPools.instanceMatrix.needsUpdate = true;

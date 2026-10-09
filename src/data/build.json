@@ -184,10 +184,11 @@
       "levels": [
         {
           "name": "Barril explosivo",
-          "cost": 60,
+          "cost": 80,
           "hp": 40
         }
-      ]
+      ],
+      "hitDelay": 0.05
     },
     "valla": {
       "name": "Valla electrificada",
@@ -196,7 +197,7 @@
       "blocks": true,
       "blocksShot": false,
       "height": 1.6,
-      "zapDamage": 22,
+      "zapDamage": 20,
       "zapInterval": 0.9,
       "zapStun": 0.5,
       "zapReach": 0.45,
@@ -210,7 +211,7 @@
           "name": "Valla reforzada",
           "cost": 130,
           "hp": 650,
-          "zapDamage": 34
+          "zapDamage": 31
         }
       ]
     },
@@ -241,8 +242,8 @@
       "range": 9,
       "fireRate": 4,
       "damage": 14,
-      "ammo": 150,
-      "ammoCost": 0.6,
+      "ammo": 200,
+      "ammoCost": 0.5,
       "turnSpeed": 6,
       "spreadDeg": 3,
       "aimTolerance": 0.25,
@@ -252,7 +253,7 @@
       "levels": [
         {
           "name": "Torreta",
-          "cost": 600,
+          "cost": 500,
           "hp": 350
         },
         {
@@ -261,7 +262,7 @@
           "hp": 600,
           "damage": 22,
           "fireRate": 5,
-          "ammo": 250
+          "ammo": 300
         }
       ]
     },
@@ -272,8 +273,6 @@
       "blocks": true,
       "blocksShot": false,
       "height": 2.4,
-      "lightRange": 9,
-      "lightIntensity": 30,
       "maxCount": 8,
       "levels": [
         {

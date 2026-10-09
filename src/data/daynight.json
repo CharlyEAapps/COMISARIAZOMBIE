@@ -83,6 +83,7 @@
     "focoPoolRadius": 6,
     "focoPoolOpacity": 0.4,
     "focoHeight": 2.3,
-    "focoMinNight": 0.15
+    "focoMinNight": 0.15,
+    "focoPoolSpacing": 0.9
   }
 }

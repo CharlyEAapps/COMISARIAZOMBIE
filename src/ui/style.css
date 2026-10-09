@@ -351,6 +351,20 @@ html, body {
 .build-tab.selected { color: var(--hud-fg); border-color: var(--accent); background: rgba(58, 48, 24, 0.92); }
 .build-tab-hint { font-size: 11px; color: var(--hud-dim); margin-left: 4px; }
 .build-card.hidden { display: none; }
+/* Con la barra del jefe arriba, los avisos bajan un poco. */
+.hud.boss-on .toasts { top: 84px; }
+.build-tab-hint { color: var(--hud-fg); opacity: 0.8; }
+.boss-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 1100px) {
   .boss-bar { left: 340px; right: 14px; width: auto; transform: none; }
+}
+@media (max-width: 1000px) {
+  .hud.boss-on .toasts { top: auto; }
+  /* En modo construcción los avisos suben por encima de la barra de piezas. */
+  .hud.building .toasts { bottom: 290px; }
+}
+@media (max-width: 700px) {
+  /* Arriba, a la derecha del panel de estado (200 px en móvil). */
+  .boss-bar { left: 228px; right: 12px; padding: 6px 10px 8px; }
+  .boss-name { font-size: 11px; letter-spacing: 0.06em; }
 }

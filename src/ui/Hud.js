@@ -165,7 +165,8 @@ export class Hud {
     el.className = 'toast panel';
     el.textContent = text;
     this.el.toasts.prepend(el);
-    while (this.el.toasts.children.length > 4) this.el.toasts.lastChild.remove();
+    // Como mucho 3 a la vez: con la barra del jefe y un banner no llegan a pisarse.
+    while (this.el.toasts.children.length > 3) this.el.toasts.lastChild.remove();
     setTimeout(() => el.classList.add('out'), seconds * 1000);
     setTimeout(() => el.remove(), seconds * 1000 + 400);
   }

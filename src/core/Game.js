@@ -111,6 +111,8 @@ export class Game {
     this._onResize = () => this.resize();
     window.addEventListener('resize', this._onResize);
     this.resize();
+    // Compila ya todos los shaders (efectos incluidos): sin tirón en el primer disparo o explosión.
+    this.renderer.renderer.compile(this.scene, this.cameraRig.camera);
     this.bus.emit('run:start');
 
     this._last = performance.now();

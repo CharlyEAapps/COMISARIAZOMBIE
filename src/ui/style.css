@@ -382,3 +382,8 @@ html, body {
 .volumes { display: grid; gap: 10px; margin-top: 16px; text-align: left; pointer-events: auto; }
 .volumes label { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 12px; font-size: 14px; }
 .volumes input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+
+@media (max-width: 1000px) {
+  /* En modo construcción el banner sube para no tapar la barra de piezas. */
+  .hud.building .banner { top: 30%; }
+}

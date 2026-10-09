@@ -7,8 +7,8 @@
 | 2. Día/noche, oleadas, decoración e interacciones | ✅ Hecha |
 | 3. Construcción, trampas y transformador | ✅ Hecha |
 | 4. Tiendas y armas | ✅ Hecha |
-| 5. Enemigos y defensas completos | ✅ Hecha (pendiente del visto bueno de Carlos) |
-| 6. Arte y sonido | ⏳ Pendiente |
+| 5. Enemigos y defensas completos | ✅ Hecha |
+| 6. Arte y sonido | ✅ Hecha (pendiente del visto bueno de Carlos) |
 | 7. Meta-progresión y menús | ⏳ Pendiente |
 | 8. Controles y pulido | ⏳ Pendiente |
 
@@ -170,6 +170,35 @@
   - Números mágicos llevados a JSON, `dispose` de los zombis y asignaciones en bucles calientes.
 - **Petición de Carlos:** la horda sale entera al empezar la noche (con el tope de vivos) y la noche termina en cuanto la abates, sin esperar al reloj.
 - **Equilibrado:** el peso de los corredores cuenta zombis, no manadas (antes eran la mitad de la horda); horda ×1,06 por noche; tanque 110 puntos; jefe 800 puntos, +35 % por aparición; vallas 20/31 de descarga; torreta 500, 200 balas, 0,5 por bala; barril 80.
+
+## Fase 6: qué hay
+- **Audio** (`src/audio/`, `src/data/audio.json`):
+  - Efectos posicionales con `THREE.PositionalAudio`: el oyente va sobre el policía, orientado como la cámara. Además hay voces planas para la interfaz.
+  - Límites de voces por sonido, normalización de volumen y audio suspendido con la pestaña oculta.
+  - ~55 efectos sintetizados por código (disparos de cada arma, recargas, explosiones, trampas, valla, ácido, interfaz, radio…) y 71 clips CC0: gruñidos de zombi, rugido del jefe, sirena, pasos y golpes por material (madera, metal, hormigón, sacos).
+  - Música CC0 con melodía: día (*Forget Me Not*), noche (*Zombies' March*) y jefe (*8bit Action Boss Battle*), con fundido cruzado.
+  - Volúmenes de música, efectos y general en la pausa, guardados en el navegador. Créditos en `CREDITS.md`.
+- **Partículas, calcomanías y animaciones:**
+  - Casquillos, humo y chispas de boca, e impactos en los muros.
+  - Zombis que reaccionan al impacto y caen en su dirección; manchas que se desvanecen.
+  - Explosiones con onda, humo, brasas y quemado; escombros según el material.
+  - Policía: recarga animada, retroceso, respiración, gesto de dolor e inclinación al esprintar, con polvo al correr.
+  - Los shaders se compilan al arrancar.
+- **HUD:** la ayuda y los avisos de acción van apilados, los toasts arriba a la derecha en pantallas estrechas (máximo 3) y no hay solapes de 414 a 1400 px.
+- **Peticiones de Carlos:**
+  - La horda sale entera y la noche acaba al abatirla (con prórroga máxima de 90 s si algo se atasca).
+  - Torretas sin límite.
+  - Humor negro en todo el juego.
+- **QA (Sonnet) y revisión (Opus) hechas.** Corregidos:
+  - Volumen, tono y posición de las voces reutilizadas, que se deslizaban.
+  - Sirena del señuelo sin sonido y rugido de muerte del jefe que se perdía.
+  - Respaldo sintetizado de los gruñidos.
+  - Contexto de audio compartido que no se cerraba al liberar.
+  - Volúmenes guardados sin validar.
+  - Clic de torreta vacía en cada paso.
+  - Voces que seguían sonando al reiniciar.
+  - Ráfagas antiguas duplicadas con los efectos nuevos.
+  - Banner sobre la barra de construcción y tirón del primer disparo.
 
 ## Humor negro (petición de Carlos, tras la fase 5)
 Tono ácido sin gore. Todo el texto en `src/data/humor.json` (más frases en tienda, pizarra y llamadas):

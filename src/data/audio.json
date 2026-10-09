@@ -222,8 +222,8 @@
     "zombie_death": {
       "vol": 0.4,
       "rate": 0.12,
-      "min": 0.12,
-      "max": 3
+      "min": 0.06,
+      "max": 4
     },
     "runner_screech": {
       "vol": 0.35,

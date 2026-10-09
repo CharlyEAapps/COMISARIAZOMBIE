@@ -131,20 +131,40 @@ describe('BuildSystem', () => {
     expect(build.canPlace('barricada', shop)).toMatch(/reservada/);
   });
 
-  it('una puerta reforzada se abre y se cierra (con interacción propia)', () => {
+  it('la puerta reforzada cubre el hueco entero y se abre y cierra para todos', () => {
     const d = findCell(grid, 'D');
     const di = d % grid.w, dj = (d / grid.w) | 0;
+    const hole = build.doorGroup(d);
+    expect(hole.length).toBeGreaterThanOrEqual(2); // los huecos del mapa miden 2
     game.player.position.x = grid.centerX(di) + 3; game.player.position.z = grid.centerZ(dj) + 3;
+    const before = game.run.points;
     expect(build.place('puerta', d)).toBe(true);
-    expect(game.interactions.items.some((it) => it.id === `puerta_${d}`)).toBe(true);
-    expect(grid.isWalkable(di, dj)).toBe(false);
+    expect(before - game.run.points).toBe(buildData.pieces.puerta.levels[0].cost * hole.length);
+    const s = build.structures.get(d);
+    expect(s.cells).toEqual(hole);
+    expect(s.maxHp).toBe(buildData.pieces.puerta.levels[0].hp * hole.length);
+    for (const c of hole) expect(build.structures.get(c)).toBe(s);
+    expect(build.all.size).toBe(1);
+    const doorItems = game.interactions.items.filter((it) => it.type === 'puerta_reforzada');
+    expect(doorItems.length).toBe(1);
+    // Cerrada: nadie pasa por ninguna celda del hueco.
+    for (const c of hole) expect(grid.isWalkable(c % grid.w, (c / grid.w) | 0)).toBe(false);
     build.toggleDoor(d);
-    expect(grid.isWalkable(di, dj)).toBe(true);
-    expect(grid.extraCost[d]).toBe(0);
+    for (const c of hole) {
+      expect(grid.isWalkable(c % grid.w, (c / grid.w) | 0)).toBe(true);
+      expect(grid.extraCost[c]).toBe(0);
+    }
+    // Abierta: los zombis no la dañan.
+    const hp = s.hp;
+    build.damageCell(hole[1], 100);
+    expect(s.hp).toBe(hp);
     build.toggleDoor(d);
-    expect(grid.isWalkable(di, dj)).toBe(false);
-    build.sell(build.structures.get(d));
-    expect(game.interactions.items.some((it) => it.id === `puerta_${d}`)).toBe(false);
+    for (const c of hole) expect(grid.isWalkable(c % grid.w, (c / grid.w) | 0)).toBe(false);
+    // Colocar en la otra celda del hueco no es posible: ya está ocupado.
+    expect(build.canPlace('puerta', hole[1])).toMatch(/ocupado/);
+    build.sell(s);
+    expect(game.interactions.items.some((it) => it.type === 'puerta_reforzada')).toBe(false);
+    for (const c of hole) expect(build.structures.has(c)).toBe(false);
   });
 
   it('las trampas no bloquean el paso', () => {

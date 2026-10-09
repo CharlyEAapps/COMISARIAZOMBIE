@@ -91,7 +91,7 @@
 - **Piezas:**
   - Barricada: madera, metal y hormigón.
   - Sacos de arena: sencillos y dobles; dejan pasar tus balas.
-  - Puerta reforzada: solo en huecos de puerta. Se abre y se cierra con E, y la bisagra va del lado del muro.
+  - Puerta reforzada: cubre el hueco de puerta entero (doble hoja en los huecos de 2), con coste y vida por celda. Cerrada bloquea a todos; abierta deja pasar a todos y no recibe daño. Se abre y se cierra con E.
 - **Trampas:**
   - Pinchos: daño por ticks, ralentizan y se desgastan.
   - Cepo: inmoviliza, se rearma solo y tiene usos limitados.

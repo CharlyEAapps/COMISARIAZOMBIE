@@ -34,7 +34,7 @@ De día preparas la comisaría; al anochecer suena la sirena y llega la horda. L
 |---|---|---|
 | 🧱 Barricada | Madera → Metal → Hormigón | Bloquea el paso y las balas |
 | 🪨 Sacos de arena | Sacos → Sacos dobles | Bloquean a los zombis, pero tus balas pasan por encima |
-| 🚪 Puerta reforzada | Seguridad → Blindada | Solo en huecos de puerta; ábrela y ciérrala con E |
+| 🚪 Puerta reforzada | Seguridad → Blindada | Cubre el hueco de puerta entero (coste y vida por celda). Cerrada no pasa nadie, tú tampoco: ábrela y ciérrala con E. Abierta pasan todos y los zombis la ignoran (no la dañan) |
 | 📌 Pinchos | Madera → Acero | Daño continuo y ralentizan; se desgastan |
 | 🪤 Cepo | Normal → Reforzado | Inmoviliza unos segundos y se rearma solo (usos limitados) |
 | 💣 Mina | — | Explota una vez; ¡también te daña si estás cerca! |

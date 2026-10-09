@@ -4,7 +4,10 @@ import { withCutaway } from './Cutaway.js';
 import { PIECE_ORDER } from '../systems/BuildSystem.js';
 
 const MAX_PER_KIND = 256;
+const MAX_PREVIEW = 8; // celdas de la vista previa (huecos de puerta anchos)
 const WHITE = new THREE.Color(1, 1, 1);
+const EMPTY = [];
+const IDENTITY_Q = new THREE.Quaternion();
 const DAMAGED = new THREE.Color(0.5, 0.47, 0.45);
 const FLASH = new THREE.Color(1.8, 1.6, 1.5);
 
@@ -72,17 +75,22 @@ export class StructureRenderer {
       const g = Models.structureGhostGeometry ? Models.structureGhostGeometry(type) : Models.structureGeometry(type, 0);
       this.ghostGeos.set(type, g);
     }
-    this.ghost = new THREE.Mesh(this.ghostGeos.get(PIECE_ORDER[0]), this.ghostMat);
-    this.ghost.visible = false;
+    // Fantasma instanciado: una puerta ancha se previsualiza en todas las celdas del hueco.
+    this.ghost = new THREE.InstancedMesh(this.ghostGeos.get(PIECE_ORDER[0]), this.ghostMat, MAX_PREVIEW);
+    this.ghost.count = 0;
+    this.ghost.frustumCulled = false;
     this.ghost.renderOrder = 3;
     this.group.add(this.ghost);
+    this.ghostCenter = new THREE.Vector3();
 
-    // Recuadro sobre una construcción existente (reparar / mejorar / vender).
-    this.highlight = new THREE.Mesh(
+    // Recuadro sobre una construcción existente (reparar / mejorar / vender), en todas sus celdas.
+    this.highlight = new THREE.InstancedMesh(
       new THREE.BoxGeometry(1.04, 0.04, 1.04).translate(0, 0.02, 0),
       new THREE.MeshBasicMaterial({ color: 0xf4c94a, transparent: true, opacity: 0.55, depthWrite: false }),
+      MAX_PREVIEW,
     );
-    this.highlight.visible = false;
+    this.highlight.count = 0;
+    this.highlight.frustumCulled = false;
     this.group.add(this.highlight);
 
     // Anillo de alcance de construcción alrededor del jugador.
@@ -133,46 +141,50 @@ export class StructureRenderer {
     this.mineLights.count = 0;
     const t = game.time;
 
-    for (const s of build.structures.values()) {
-      const x = grid.centerX(s.i), z = grid.centerZ(s.j);
+    for (const s of build.all) {
       // Color: se oscurece con el daño; destello al recibir un golpe.
       _c.copy(WHITE).lerp(DAMAGED, s.def.kind === 'trampa' ? 0 : 1 - s.hp / s.maxHp);
       if (s.flash > 0) _c.lerp(FLASH, 0.6);
-      let rotY = s.type === 'puerta' && s.axis === 'z' ? Math.PI / 2 : 0;
-      if (s.type === 'puerta' && s.open) {
-        // La bisagra va del lado del muro: si el muro está al otro lado, se gira 180°.
-        if (this.hingeOnFarSide(s)) rotY += Math.PI;
-        // Hoja abierta 90° sobre la bisagra (x = -0,5 en local):
-        // T(celda) · Ry(orientación) · T(-0,5) · Ry(90°) · T(+0,5).
-        const mesh = this.leafMeshes[s.level];
-        const frame = this.frameMeshes[s.level];
+      const baseRot = s.type === 'puerta' && s.axis === 'z' ? Math.PI / 2 : 0;
+      for (let c = 0; c < s.cells.length; c++) {
+        const k = s.cells[c];
+        const x = grid.centerX(k % grid.w), z = grid.centerZ((k / grid.w) | 0);
+        if (s.type === 'puerta' && s.open) {
+          // Puerta abierta: marco fijo y hoja girada 90° sobre su bisagra (x = -0,5 en local):
+          // T(celda) · Ry(orientación) · T(-0,5) · Ry(90°) · T(+0,5). Si la bisagra va al otro
+          // lado (mitad final de una puerta doble, o muro al otro lado), se gira 180°.
+          const rotY = baseRot + (this.hingeOnFarSide(s, c) ? Math.PI : 0);
+          const mesh = this.leafMeshes[s.level];
+          const frame = this.frameMeshes[s.level];
+          if (mesh.count >= MAX_PER_KIND) continue;
+          _q.setFromAxisAngle(_up, baseRot);
+          _p.set(x, 0, z);
+          _m.compose(_p, _q, _s);
+          frame.setMatrixAt(frame.count, _m);
+          frame.setColorAt(frame.count++, _c);
+          _q.setFromAxisAngle(_up, rotY);
+          _m.compose(_p, _q, _s).multiply(this._hingeOpen);
+          mesh.setMatrixAt(mesh.count, _m);
+          mesh.setColorAt(mesh.count++, _c);
+          continue;
+        }
+        const mesh = this.meshes[s.type][s.level];
         if (mesh.count >= MAX_PER_KIND) continue;
-        _q.setFromAxisAngle(_up, rotY);
-        _p.set(x, 0, z);
+        // Pequeño temblor al recibir un golpe.
+        const shake = s.flash > 0 ? (Math.random() - 0.5) * 0.06 : 0;
+        _q.setFromAxisAngle(_up, baseRot);
+        _p.set(x + shake, 0, z + shake);
         _m.compose(_p, _q, _s);
-        frame.setMatrixAt(frame.count, _m);
-        frame.setColorAt(frame.count++, _c);
-        _m.multiply(this._hingeOpen);
         mesh.setMatrixAt(mesh.count, _m);
         mesh.setColorAt(mesh.count++, _c);
-        continue;
-      }
-      const mesh = this.meshes[s.type][s.level];
-      if (mesh.count >= MAX_PER_KIND) continue;
-      // Pequeño temblor al recibir un golpe.
-      const shake = s.flash > 0 ? (Math.random() - 0.5) * 0.06 : 0;
-      _q.setFromAxisAngle(_up, rotY);
-      _p.set(x + shake, 0, z + shake);
-      _m.compose(_p, _q, _s);
-      mesh.setMatrixAt(mesh.count, _m);
-      mesh.setColorAt(mesh.count++, _c);
 
-      if (s.type === 'mina') {
-        const blink = s.fuse > 0 ? Math.sin(t * 40) > 0 : Math.sin(t * 4 + s.id) > 0.6;
-        _s.setScalar(blink ? 1 : 0.001);
-        _m.compose(_p, _q, _s);
-        _s.setScalar(1);
-        this.mineLights.setMatrixAt(this.mineLights.count++, _m);
+        if (s.type === 'mina') {
+          const blink = s.fuse > 0 ? Math.sin(t * 40) > 0 : Math.sin(t * 4 + s.id) > 0.6;
+          _s.setScalar(blink ? 1 : 0.001);
+          _m.compose(_p, _q, _s);
+          _s.setScalar(1);
+          this.mineLights.setMatrixAt(this.mineLights.count++, _m);
+        }
       }
     }
     for (const m of this.allMeshes) {
@@ -188,19 +200,29 @@ export class StructureRenderer {
     if (active) this.ring.position.set(game.player.position.x, 0.05, game.player.position.z);
     const k = build.hoverCell;
     const existing = build.structures.get(k);
-    this.ghost.visible = active && k >= 0 && !existing;
-    this.highlight.visible = active && !!existing;
-    if (k >= 0) {
+    const cells = active && k >= 0 ? build.hoverCells : EMPTY;
+    const n = Math.min(MAX_PREVIEW, cells.length);
+    this.ghost.count = !existing ? n : 0;
+    this.highlight.count = existing ? n : 0;
+    this.ghostCenter.set(0, 0, 0);
+    if (n) {
       const i = k % grid.w, j = (k / grid.w) | 0;
-      const x = grid.centerX(i), z = grid.centerZ(j);
-      if (this.ghost.visible) {
+      const axis = build.selected === 'puerta' ? build.doorAxis(i, j) : 'x';
+      _q.setFromAxisAngle(_up, axis === 'z' ? Math.PI / 2 : 0);
+      if (!existing) {
         this.ghost.geometry = this.ghostGeos.get(build.selected);
-        const axis = build.selected === 'puerta' ? build.doorAxis(i, j) : 'x';
-        this.ghost.rotation.y = axis === 'z' ? Math.PI / 2 : 0;
-        this.ghost.position.set(x, 0.01, z);
         this.ghostMat.color.set(build.hoverReason ? 0xff4a3a : 0x5cff7a);
       }
-      if (this.highlight.visible) this.highlight.position.set(x, 0.01, z);
+      const target = existing ? this.highlight : this.ghost;
+      for (let c = 0; c < n; c++) {
+        const ck = cells[c];
+        _p.set(grid.centerX(ck % grid.w), 0.01, grid.centerZ((ck / grid.w) | 0));
+        this.ghostCenter.add(_p);
+        _m.compose(_p, existing ? IDENTITY_Q : _q, _s);
+        target.setMatrixAt(c, _m);
+      }
+      this.ghostCenter.divideScalar(n);
+      target.instanceMatrix.needsUpdate = true;
     }
 
     // Transformador dañado.
@@ -208,13 +230,17 @@ export class StructureRenderer {
     if (this.trDamage && tr) this.trDamage.visible = tr.hp < tr.maxHp * build.cfg.transformer.damagedThreshold;
 
     // Radio de la mina al colocarla.
-    const showMine = this.ghost.visible && build.selected === 'mina';
+    const showMine = this.ghost.count > 0 && build.selected === 'mina';
     this.mineRing.visible = showMine;
-    if (showMine) this.mineRing.position.set(this.ghost.position.x, 0.06, this.ghost.position.z);
+    if (showMine) this.mineRing.position.set(this.ghostCenter.x, 0.06, this.ghostCenter.z);
   }
 
-  /** ¿El muro que sujeta la puerta está en el lado +X (o +Z) de su celda? Entonces la bisagra va allí. */
-  hingeOnFarSide(s) {
+  /**
+   * ¿La bisagra de la hoja c va en el lado +X (o +Z) de su celda? En una puerta doble, la
+   * mitad final abre hacia su extremo; en una sencilla, la bisagra va del lado del muro.
+   */
+  hingeOnFarSide(s, c) {
+    if (s.cells.length > 1) return c >= s.cells.length / 2;
     const g = this.game.grid;
     const [di, dj] = s.axis === 'x' ? [1, 0] : [0, 1];
     const near = !g.isStaticWalkable(s.i - di, s.j - dj);

@@ -233,14 +233,14 @@ export class Hud {
     if (s) {
       const lvl = s.def.levels[s.level];
       const parts = [`<b>${s.def.icon} ${lvl.name}</b> ${Math.ceil(s.hp)}/${s.maxHp}`];
-      if (!b.inReach(s.k)) {
+      if (!b.inReachXY(s.cx, s.cz)) {
         parts.push('<i>Demasiado lejos</i>');
       } else {
         const rc = b.repairCostOf(s), uc = b.upgradeCost(s);
         if (rc) parts.push(this.game.time < s.repairReady ? '<i>Reparando…</i>' : `<span class="key">Clic</span> Reparar (${rc})`);
         else if (uc) parts.push(`<span class="key">Clic</span> Mejorar a ${s.def.levels[s.level + 1].name} (${uc})`);
         else parts.push('Nivel máximo');
-        parts.push(b.sellArmed === s.k
+        parts.push(b.sellArmed === s.id
           ? `<b class="danger-text">Clic dcho otra vez: vender (+${b.sellValue(s)})</b>`
           : `<span class="key">Clic dcho</span> Vender (+${b.sellValue(s)})`);
       }
@@ -251,7 +251,9 @@ export class Hud {
       const def = b.pieces[b.selected];
       const drag = def.blocks && b.selected !== 'puerta' ? ' (arrastra para hacer una fila)' : '';
       const warn = b.selected === 'mina' ? ' · <i>¡También te daña a ti!</i>' : '';
-      info = `<span class="key">Clic</span> Construir ${def.name.toLowerCase()}${drag} · <span class="key">Clic dcho</span> Salir${b.isNight ? ` · <i>De noche +${surcharge} %</i>` : ''}${warn}`;
+      const width = b.hoverCells.length;
+      const what = width > 1 ? `${def.name.toLowerCase()} de ${width} celdas (${b.placeCost(b.selected, b.hoverCell)})` : def.name.toLowerCase();
+      info = `<span class="key">Clic</span> Construir ${what}${drag} · <span class="key">Clic dcho</span> Salir${b.isNight ? ` · <i>De noche +${surcharge} %</i>` : ''}${warn}`;
     }
     this.set('buildInfo', info, 'innerHTML');
   }

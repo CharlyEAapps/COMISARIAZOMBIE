@@ -4,6 +4,7 @@ import { raycastGrid } from './Physics.js';
 
 export const PIECE_ORDER = ['barricada', 'sacos', 'puerta', 'pinchos', 'cepo', 'mina'];
 const NO_BUILD_CHARS = new Set(['S', 'A', 'M', 'W']);
+const MAX_DOOR_WIDTH = 6;
 
 /** Coste de reparar una pieza (función pura): proporcional al daño y al coste del nivel actual. */
 export function repairCost(cfg, def, s, mul = 1) {
@@ -11,24 +12,28 @@ export function repairCost(cfg, def, s, mul = 1) {
   return Math.max(1, Math.ceil(((s.maxHp - s.hp) / s.maxHp) * def.levels[s.level].cost * cfg.repairCostFactor * mul));
 }
 
-// Construcción del jugador: barricadas, sacos, puertas y trampas (1 celda cada una), y el
-// transformador de la comisaría. Las piezas que bloquean se marcan en la capa dinámica de
-// NavGrid (colisión, balas, coste en el flow field) y los zombis las golpean al toparse con ellas.
+// Construcción del jugador: barricadas, sacos, puertas y trampas, y el transformador de la
+// comisaría. Casi todas las piezas ocupan 1 celda; la puerta reforzada cubre el hueco entero
+// de la puerta del mapa (varias celdas 'D' seguidas), con coste y vida por celda.
+// Las piezas que bloquean se marcan en la capa dinámica de NavGrid (colisión, balas, coste en
+// el flow field) y los zombis las golpean al toparse con ellas.
 export class BuildSystem {
   constructor(game) {
     this.game = game;
     this.cfg = buildData;
     this.pieces = buildData.pieces;
-    this.structures = new Map(); // celda → estructura
+    this.structures = new Map(); // celda → estructura (una pieza de varias celdas aparece en todas)
+    this.all = new Set();        // estructuras únicas
     this.active = false;         // modo construcción
     this.selected = PIECE_ORDER[0];
     this.hoverCell = -1;
+    this.hoverCells = [];        // huella de la pieza seleccionada bajo el cursor
     this.hoverReason = null;
     this.dragging = false;
     this.lastDragCell = -1;
     this.version = 0;            // sube en cada cambio (para el render)
     this.nextId = 1;
-    this.sellArmed = -1;
+    this.sellArmed = -1;         // id de la pieza con la venta "armada"
     this.sellArmedUntil = 0;
     this.initTransformer();
     this.reset();
@@ -93,11 +98,12 @@ export class BuildSystem {
   // ------------------------------------------------------------------ estado
   reset() {
     const { grid } = this.game;
-    for (const s of this.structures.values()) {
-      grid.clearDynamic(s.k);
-      if (s.type === 'puerta') this.game.interactions?.removeItem(`puerta_${s.k}`);
+    for (const s of this.all) {
+      for (const k of s.cells) grid.clearDynamic(k);
+      if (s.type === 'puerta') this.game.interactions?.removeItem(`puerta_${s.id}`);
     }
     this.structures.clear();
+    this.all.clear();
     this.active = false;
     this.dragging = false;
     if (this.transformer) { this.transformer.hp = this.transformer.maxHp; this.transformer.flash = 0; this.transformer.alertAt = -Infinity; }
@@ -119,25 +125,70 @@ export class BuildSystem {
     return this.isNight ? this.cfg.nightSurcharge : 1;
   }
 
+  /** Coste por celda (con recargo nocturno). */
   costOf(type, level = 0) {
     return Math.ceil(this.pieces[type].levels[level].cost * this.surcharge);
   }
 
-  /** ¿Está la celda k al alcance del jugador para construir, reparar o vender? */
+  /** Coste total de colocar `type` en la celda k (la puerta cubre todo el hueco). */
+  placeCost(type, k) {
+    return this.costOf(type) * Math.max(1, this.footprint(type, k).length);
+  }
+
+  /** ¿Está el punto (x, z) al alcance del jugador para construir, reparar o vender? */
+  inReachXY(x, z) {
+    const p = this.game.player.position;
+    return Math.hypot(x - p.x, z - p.z) <= this.cfg.buildRange;
+  }
+
   inReach(k) {
-    const { grid, player } = this.game;
-    const i = k % grid.w, j = (k / grid.w) | 0;
-    return Math.hypot(grid.centerX(i) - player.position.x, grid.centerZ(j) - player.position.z) <= this.cfg.buildRange;
+    const g = this.game.grid;
+    return this.inReachXY(g.centerX(k % g.w), g.centerZ((k / g.w) | 0));
   }
 
   countOf(type) {
     let n = 0;
-    for (const s of this.structures.values()) if (s.type === type) n++;
+    for (const s of this.all) if (s.type === type) n++;
     return n;
   }
 
   levelStat(def, level, key) {
     return def.levels[level][key] ?? def[key];
+  }
+
+  // ------------------------------------------------------------------ huecos de puerta
+  /** Orientación de una puerta: 'x' si el hueco corre a lo largo de X (muros a izquierda y derecha). */
+  doorAxis(i, j) {
+    const g = this.game.grid;
+    const isD = (a, b) => g.inBounds(a, b) && g.chars[g.index(a, b)] === 'D';
+    if (isD(i - 1, j) || isD(i + 1, j)) return 'x';
+    if (isD(i, j - 1) || isD(i, j + 1)) return 'z';
+    const wallX = !g.isStaticWalkable(i - 1, j) || !g.isStaticWalkable(i + 1, j);
+    const wallZ = !g.isStaticWalkable(i, j - 1) || !g.isStaticWalkable(i, j + 1);
+    if (wallX && !wallZ) return 'x';
+    return 'z';
+  }
+
+  /** Celdas 'D' seguidas que forman el hueco de la puerta que contiene k (ordenadas). */
+  doorGroup(k) {
+    const g = this.game.grid;
+    const i = k % g.w, j = (k / g.w) | 0;
+    if (g.chars[k] !== 'D') return [k];
+    const [di, dj] = this.doorAxis(i, j) === 'x' ? [1, 0] : [0, 1];
+    const isD = (a, b) => g.inBounds(a, b) && g.chars[g.index(a, b)] === 'D';
+    let a = 0, b = 0;
+    while (a < MAX_DOOR_WIDTH && isD(i - (a + 1) * di, j - (a + 1) * dj)) a++;
+    while (a + b + 1 < MAX_DOOR_WIDTH && isD(i + (b + 1) * di, j + (b + 1) * dj)) b++;
+    const cells = [];
+    for (let n = -a; n <= b; n++) cells.push(g.index(i + n * di, j + n * dj));
+    return cells;
+  }
+
+  /** Celdas que ocuparía `type` colocado en k. */
+  footprint(type, k) {
+    if (k < 0) return [];
+    if (type === 'puerta' && this.game.grid.chars[k] === 'D') return this.doorGroup(k);
+    return [k];
   }
 
   // ------------------------------------------------------------------ reglas de colocación
@@ -146,57 +197,59 @@ export class BuildSystem {
     const { grid, player, zombies, interactions } = this.game;
     const def = this.pieces[type];
     if (k < 0) return 'Fuera del mapa';
-    const i = k % grid.w, j = (k / grid.w) | 0;
-    if (!grid.isStaticWalkable(i, j)) return 'No se puede construir ahí';
-    if (this.structures.has(k)) return 'Ya hay algo construido';
-    const ch = grid.chars[k];
-    if (NO_BUILD_CHARS.has(ch)) return 'Zona reservada';
-    if (def.onlyOn && ch !== def.onlyOn) return 'Solo en el hueco de una puerta';
-    const cx = grid.centerX(i), cz = grid.centerZ(j);
-    if (!this.inReach(k)) return 'Demasiado lejos';
+    if (def.onlyOn && grid.chars[k] !== def.onlyOn) return 'Solo en el hueco de una puerta';
+    const cells = this.footprint(type, k);
+    let sx = 0, sz = 0;
+    for (const c of cells) {
+      const i = c % grid.w, j = (c / grid.w) | 0;
+      if (!grid.isStaticWalkable(i, j)) return 'No se puede construir ahí';
+      if (this.structures.has(c)) return cells.length > 1 ? 'El hueco ya está ocupado' : 'Ya hay algo construido';
+      if (NO_BUILD_CHARS.has(grid.chars[c])) return 'Zona reservada';
+      sx += grid.centerX(i); sz += grid.centerZ(j);
+    }
+    if (!this.inReachXY(sx / cells.length, sz / cells.length)) return 'Demasiado lejos';
     if (this.countOf(type) >= this.cfg.maxPerType) return 'Límite de piezas de este tipo';
     for (const it of interactions.items) {
-      if (!it.dynamic && grid.walkableCellAt(it.x, it.z) === k) return 'Bloquearía un objeto útil';
+      if (!it.dynamic && cells.includes(grid.walkableCellAt(it.x, it.z))) return 'Bloquearía un objeto útil';
     }
     if (def.blocks) {
       const half = grid.cellSize / 2 + this.cfg.placeMargin;
-      const overlaps = (x, z, r) => Math.abs(x - cx) < half + r && Math.abs(z - cz) < half + r;
-      if (overlaps(player.position.x, player.position.z, player.radius)) return 'Estás encima';
-      for (const z of zombies.active) {
-        if (z.state === 0 && overlaps(z.pos.x, z.pos.z, z.radius)) return 'Hay un zombi en medio';
+      for (const c of cells) {
+        const cx = grid.centerX(c % grid.w), cz = grid.centerZ((c / grid.w) | 0);
+        const overlaps = (x, z, r) => Math.abs(x - cx) < half + r && Math.abs(z - cz) < half + r;
+        if (overlaps(player.position.x, player.position.z, player.radius)) return 'Estás encima';
+        for (const z of zombies.active) {
+          if (z.state === 0 && overlaps(z.pos.x, z.pos.z, z.radius)) return 'Hay un zombi en medio';
+        }
       }
     }
-    if (this.game.run.points < this.costOf(type)) return `Necesitas ${this.costOf(type)} puntos`;
+    const cost = this.costOf(type) * cells.length;
+    if (this.game.run.points < cost) return `Necesitas ${cost} puntos`;
     return null;
   }
 
-  /** Orientación de una puerta: 'x' si los muros están a izquierda y derecha (hoja a lo largo de X). */
-  doorAxis(i, j) {
+  /** Caja de colisión de la pieza s en su celda k. */
+  boxFor(s, k) {
     const g = this.game.grid;
-    const wallX = !g.isStaticWalkable(i - 1, j) || !g.isStaticWalkable(i + 1, j) || g.chars[g.index(i - 1, j)] === 'D' || g.chars[g.index(i + 1, j)] === 'D';
-    const wallZ = !g.isStaticWalkable(i, j - 1) || !g.isStaticWalkable(i, j + 1);
-    if (wallX && !wallZ) return 'x';
-    if (wallZ && !wallX) return 'z';
-    return g.chars[g.index(i - 1, j)] === 'D' || g.chars[g.index(i + 1, j)] === 'D' ? 'x' : 'z';
-  }
-
-  /** Caja de colisión de una pieza en su celda. */
-  boxFor(s) {
-    const g = this.game.grid;
+    const i = k % g.w, j = (k / g.w) | 0;
     if (s.type === 'puerta') {
-      const [x0, z0, x1, z1] = g.cellBox(s.i, s.j);
+      const [x0, z0, x1, z1] = g.cellBox(i, j);
       const half = this.pieces.puerta.thickness / 2;
       const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
       return s.axis === 'x' ? [x0, cz - half, x1, cz + half] : [cx - half, z0, cx + half, z1];
     }
-    return g.cellBox(s.i, s.j, 0);
+    return g.cellBox(i, j, 0);
   }
 
   applyGrid(s) {
     const g = this.game.grid;
     const blocks = s.def.blocks && !s.open;
-    g.setDynamic(s.k, blocks, s.def.blocksShot && !s.open, this.boxFor(s));
-    g.extraCost[s.k] = blocks ? s.hp * this.cfg.flowCostPerHp : 0;
+    // Cruzar cualquier celda de la pieza obliga a romperla entera: el coste usa la vida total.
+    const cost = blocks ? s.hp * this.cfg.flowCostPerHp : 0;
+    for (const k of s.cells) {
+      g.setDynamic(k, blocks, s.def.blocksShot && !s.open, this.boxFor(s, k));
+      g.extraCost[k] = cost;
+    }
   }
 
   // ------------------------------------------------------------------ acciones
@@ -204,26 +257,32 @@ export class BuildSystem {
     if (this.canPlace(type, k)) return false;
     const { grid, run } = this.game;
     const def = this.pieces[type];
-    const cost = this.costOf(type);
+    const cells = this.footprint(type, k);
+    const n = cells.length;
+    const cost = this.costOf(type) * n;
     run.points -= cost;
-    const i = k % grid.w, j = (k / grid.w) | 0;
-    const hp = def.levels[0].hp;
+    const i = cells[0] % grid.w, j = (cells[0] / grid.w) | 0;
+    let cx = 0, cz = 0;
+    for (const c of cells) { cx += grid.centerX(c % grid.w); cz += grid.centerZ((c / grid.w) | 0); }
+    const hp = def.levels[0].hp * n;
     const s = {
-      id: this.nextId++, type, def, k, i, j, level: 0, hp, maxHp: hp, invested: cost,
+      id: this.nextId++, type, def, cells, n, k: cells[0], i, j, cx: cx / n, cz: cz / n,
+      level: 0, hp, maxHp: hp, invested: cost,
       flash: 0, open: false, axis: type === 'puerta' ? this.doorAxis(i, j) : 'x',
       rearm: 0, fuse: -1, repairReady: 0,
     };
-    this.structures.set(k, s);
+    for (const c of cells) this.structures.set(c, s);
+    this.all.add(s);
     this.applyGrid(s);
     if (type === 'puerta') this.registerDoor(s);
-    this.game.floating?.spawn(`-${cost}`, grid.centerX(i), 1.6, grid.centerZ(j), 'neg');
+    this.game.floating?.spawn(`-${cost}`, s.cx, 1.6, s.cz, 'neg');
     this.game.bus.emit('build:placed', { type, k });
     this.changed(def.blocks);
     return true;
   }
 
   upgradeCost(s) {
-    return s.level + 1 < s.def.levels.length ? this.costOf(s.type, s.level + 1) : 0;
+    return s.level + 1 < s.def.levels.length ? this.costOf(s.type, s.level + 1) * s.n : 0;
   }
 
   upgrade(s) {
@@ -232,17 +291,17 @@ export class BuildSystem {
     if (!cost || s.hp < s.maxHp || this.game.run.points < cost) return false;
     this.game.run.points -= cost;
     s.level++;
-    s.maxHp = s.def.levels[s.level].hp;
+    s.maxHp = s.def.levels[s.level].hp * s.n;
     s.hp = s.maxHp;
     s.invested += cost;
     this.applyGrid(s);
-    this.game.floating?.spawn(`-${cost}`, this.game.grid.centerX(s.i), 1.6, this.game.grid.centerZ(s.j), 'neg');
+    this.game.floating?.spawn(`-${cost}`, s.cx, 1.6, s.cz, 'neg');
     this.changed(s.def.blocks);
     return true;
   }
 
   repairCostOf(s) {
-    return repairCost(this.cfg, s.def, s, this.surcharge);
+    return repairCost(this.cfg, s.def, s, this.surcharge * s.n);
   }
 
   repair(s) {
@@ -253,7 +312,7 @@ export class BuildSystem {
     s.repairReady = this.game.time + this.cfg.repairCooldown;
     // La reparación no cuenta como inversión: vender devuelve sobre lo construido/mejorado.
     this.applyGrid(s);
-    this.game.floating?.spawn(`-${cost}`, this.game.grid.centerX(s.i), 1.6, this.game.grid.centerZ(s.j), 'neg');
+    this.game.floating?.spawn(`-${cost}`, s.cx, 1.6, s.cz, 'neg');
     this.changed(false);
     return true;
   }
@@ -265,53 +324,61 @@ export class BuildSystem {
   sell(s) {
     const v = this.sellValue(s);
     this.game.run.points += v;
-    this.game.floating?.spawn(`+${v}`, this.game.grid.centerX(s.i), 1.6, this.game.grid.centerZ(s.j), 'pts');
+    this.game.floating?.spawn(`+${v}`, s.cx, 1.6, s.cz, 'pts');
     this.remove(s);
   }
 
   remove(s) {
-    this.game.grid.clearDynamic(s.k);
-    this.structures.delete(s.k);
-    if (s.type === 'puerta') this.game.interactions.removeItem(`puerta_${s.k}`);
-    if (this.sellArmed === s.k) this.sellArmed = -1;
+    for (const k of s.cells) {
+      this.game.grid.clearDynamic(k);
+      this.structures.delete(k);
+    }
+    this.all.delete(s);
+    if (s.type === 'puerta') this.game.interactions.removeItem(`puerta_${s.id}`);
+    if (this.sellArmed === s.id) this.sellArmed = -1;
     this.changed(s.def.blocks);
   }
 
-  /** Daño de un zombi a la pieza de la celda k. */
+  /** Daño de un zombi a la pieza que ocupa la celda k. */
   damageCell(k, amount) {
     const s = this.structures.get(k);
-    if (!s || s.hp <= 0) return;
+    // Una puerta abierta no se interpone: los zombis la ignoran y no le hacen daño
+    // (aunque alguno estuviera a mitad de golpe cuando se abrió).
+    if (!s || s.hp <= 0 || s.open) return;
     s.hp -= amount;
     s.flash = 0.12;
     const g = this.game.grid;
-    const x = g.centerX(s.i), z = g.centerZ(s.j);
+    const x = g.centerX(k % g.w), z = g.centerZ((k / g.w) | 0);
     const debris = s.level === 0 && s.type === 'barricada' ? 0x8a5a32 : s.type === 'sacos' ? 0xc9b48a : 0x9a9a9a;
     this.game.effects.burst(x, 0.9, z, 4, debris, { speed: 2, up: 2.5, size: 0.07, life: 0.7 });
     if (s.hp <= 0) {
-      this.game.effects.burst(x, 0.7, z, 22, debris, { speed: 3.5, up: 4, size: 0.12, life: 1.5 });
+      for (const c of s.cells) {
+        this.game.effects.burst(g.centerX(c % g.w), 0.7, g.centerZ((c / g.w) | 0), 22, debris, { speed: 3.5, up: 4, size: 0.12, life: 1.5 });
+      }
       this.game.effects.shake(0.12);
       this.game.bus.emit('build:destroyed', { type: s.type, k });
       this.remove(s);
       return;
     }
     // El coste en el flow field baja con la vida: la horda insiste en lo que ya está roto.
-    if (s.def.blocks && !s.open) g.extraCost[k] = s.hp * this.cfg.flowCostPerHp;
+    if (s.def.blocks && !s.open) for (const c of s.cells) g.extraCost[c] = s.hp * this.cfg.flowCostPerHp;
   }
 
   // ------------------------------------------------------------------ puertas
   registerDoor(s) {
-    const g = this.game.grid;
     this.game.interactions.addItem({
-      id: `puerta_${s.k}`, type: 'puerta_reforzada', x: g.centerX(s.i), z: g.centerZ(s.j), cell: s.k, dynamic: true,
+      id: `puerta_${s.id}`, type: 'puerta_reforzada', x: s.cx, z: s.cz, cell: s.k, dynamic: true,
     });
   }
 
   doorBlocked(s) {
-    const [x0, z0, x1, z1] = this.boxFor(s);
     const { player, zombies } = this.game;
-    const hit = (x, z, r) => x + r > x0 && x - r < x1 && z + r > z0 && z - r < z1;
-    if (hit(player.position.x, player.position.z, player.radius)) return true;
-    for (const z of zombies.active) if (z.state === 0 && hit(z.pos.x, z.pos.z, z.radius)) return true;
+    for (const k of s.cells) {
+      const [x0, z0, x1, z1] = this.boxFor(s, k);
+      const hit = (x, z, r) => x + r > x0 && x - r < x1 && z + r > z0 && z - r < z1;
+      if (hit(player.position.x, player.position.z, player.radius)) return true;
+      for (const z of zombies.active) if (z.state === 0 && hit(z.pos.x, z.pos.z, z.radius)) return true;
+    }
     return false;
   }
 
@@ -332,7 +399,7 @@ export class BuildSystem {
   // ------------------------------------------------------------------ trampas
   updateTraps(dt) {
     const { grid, zombies, effects } = this.game;
-    for (const s of this.structures.values()) {
+    for (const s of this.all) {
       if (s.rearm > 0) s.rearm -= dt;
       s.flash = Math.max(0, s.flash - dt);
       if (s.fuse > 0) {
@@ -357,7 +424,7 @@ export class BuildSystem {
       } else if (s.type === 'cepo') {
         if (s.rearm > 0 || z.stunTimer > 0) continue;
         z.stunTimer = this.levelStat(s.def, s.level, 'holdTime');
-        z.pos.x = grid.centerX(s.i); z.pos.z = grid.centerZ(s.j);
+        z.pos.x = s.cx; z.pos.z = s.cz;
         zombies.damage(z, s.def.damage);
         effects.burst(z.pos.x, 0.3, z.pos.z, 8, 0x4a1d1d, { speed: 2, up: 2, size: 0.07, life: 0.8 });
         s.rearm = this.levelStat(s.def, s.level, 'holdTime') + s.def.rearmTime;
@@ -373,7 +440,7 @@ export class BuildSystem {
 
   explodeMine(s) {
     const { grid, zombies, effects, player } = this.game;
-    const x = grid.centerX(s.i), z = grid.centerZ(s.j);
+    const x = s.cx, z = s.cz;
     const R = s.def.radius, F = s.def.falloff;
     const blocked = this.game.weapons.shotBlocked;
     // Solo alcanza a lo que tiene línea de tiro desde la mina (no atraviesa muros ni puertas).
@@ -409,7 +476,7 @@ export class BuildSystem {
   primaryAction(k) {
     const s = this.structures.get(k);
     if (s) {
-      if (!this.inReach(k)) return null;
+      if (!this.inReachXY(s.cx, s.cz)) return null;
       if (s.hp < s.maxHp) return this.repair(s) ? 'repair' : null;
       return this.upgrade(s) ? 'upgrade' : null;
     }
@@ -418,12 +485,12 @@ export class BuildSystem {
 
   /** Clic derecho: el primero arma la venta, el segundo (en sellConfirmTime s) vende. */
   sellAction(s) {
-    if (!this.inReach(s.k)) return;
-    if (this.sellArmed === s.k && this.game.time < this.sellArmedUntil) {
+    if (!this.inReachXY(s.cx, s.cz)) return;
+    if (this.sellArmed === s.id && this.game.time < this.sellArmedUntil) {
       this.sellArmed = -1;
       this.sell(s);
     } else {
-      this.sellArmed = s.k;
+      this.sellArmed = s.id;
       this.sellArmedUntil = this.game.time + this.cfg.sellConfirmTime;
     }
   }
@@ -450,12 +517,13 @@ export class BuildSystem {
       if (input.consume(`weapon${n + 1}`)) this.selected = PIECE_ORDER[n];
     }
 
-    // Celda bajo el cursor.
+    // Celda bajo el cursor y huella de la pieza seleccionada.
     const g = game.grid;
     const gp = game.groundPoint;
     const i = g.cellX(gp.x), j = g.cellZ(gp.z);
     this.hoverCell = g.inBounds(i, j) ? g.index(i, j) : -1;
     const hovered = this.structures.get(this.hoverCell);
+    this.hoverCells = hovered ? hovered.cells : this.footprint(this.selected, this.hoverCell);
     this.hoverReason = hovered ? null : this.canPlace(this.selected, this.hoverCell);
 
     if (input.consume('alt')) {
@@ -463,7 +531,7 @@ export class BuildSystem {
       else this.setActive(false);
       return;
     }
-    if (this.sellArmed >= 0 && (this.sellArmed !== this.hoverCell || this.game.time >= this.sellArmedUntil)) this.sellArmed = -1;
+    if (this.sellArmed >= 0 && (hovered?.id !== this.sellArmed || this.game.time >= this.sellArmedUntil)) this.sellArmed = -1;
     if (input.consume('fire')) {
       const action = this.primaryAction(this.hoverCell);
       // Arrastrar solo para colocar piezas que bloquean (filas de muro o sacos).

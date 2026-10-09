@@ -6,7 +6,7 @@
 | 1. Núcleo jugable | ✅ Hecha |
 | 2. Día/noche, oleadas, decoración e interacciones | ✅ Hecha |
 | 3. Construcción, trampas y transformador | ✅ Hecha |
-| 4. Tiendas y armas | 🔍 En revisión |
+| 4. Tiendas y armas | ✅ Hecha (pendiente del visto bueno de Carlos) |
 | 5. Enemigos y defensas completos | ⏳ Pendiente |
 | 6. Arte y sonido | ⏳ Pendiente |
 | 7. Meta-progresión y menús | ⏳ Pendiente |
@@ -119,6 +119,39 @@
   - Cepo: 45 de daño y 3,5 s de rearme.
   - Transformador: 700 de vida, vándalos desde la noche 2.
   - Reparar: factor de coste 1,0 y espera de 1,5 s.
+
+## Fase 4: qué hay
+- **Tiendas físicas** (E en el mostrador; 1-9 o clic para comprar; E, Esc o alejarse para cerrar). No pausan el juego; de noche, +50 %.
+  - **Armería:**
+    - Escopeta, subfusil, fusil (atraviesa 2), rifle de precisión (atraviesa 3), táser (aturde y salta en cadena) y porra (cuerpo a cuerpo).
+    - Munición con tope (se cobra en proporción si casi está lleno) y granadas (máx. 5).
+    - 3 mejoras por arma. Táser: aturdimiento, saltos y recarga. Porra: solo daño.
+  - **Enfermería:** botiquín, atención médica, chaleco (absorbe el 60 %, se paga lo que falta) y +40 de vida máxima ×3.
+  - **Almacén:**
+    - Al empezar solo barricada y sacos de madera.
+    - Desbloquea puertas, pinchos, cepos, minas, metal, hormigón, blindadas y niveles 2.
+    - Kit para reparar todo con −30 %, respetando la espera de reparación.
+- **Armas con modelo propio en la mano** (7, procedurales). Las de dos manos llevan el brazo izquierdo al guardamanos; la porra tiene animación de golpe.
+- **Granadas (G):** vuelo parabólico, pasan por encima de lo bajo, parpadean antes de explotar y no atraviesan muros.
+- **HUD:** tira de armas con su tecla, granadas, botiquines y barra de armadura.
+- **QA (Sonnet) y revisión (Opus) hechas.** Corregidos:
+  - B con la tienda abierta.
+  - Fogonazo del táser saliendo de un zombi y cadena del táser atravesando muros.
+  - Granadas que chocaban con tus sacos o se perdían dentro de un muro.
+  - Clics perdidos en la tienda y tienda anterior visible un instante al reabrir.
+  - Kit de reparación sin espera.
+  - Compras parciales cobradas enteras.
+  - Lista que se reordenaba al comprar.
+  - Panel que tapaba al jugador en pantallas estrechas.
+- **Equilibrado:**
+  - Subfusil: 18 de daño y 5° de dispersión.
+  - Escopeta: 13° de dispersión.
+  - Rifle de precisión: atraviesa 3, cuesta 1500.
+  - Fusil: atraviesa 2, cuesta 1200.
+  - Porra: más lenta, cuesta 250.
+  - Mejoras de pistola: más caras.
+  - Atención médica: 160 puntos.
+  - Vida máxima: +40 por 250.
 
 ## Placeholders pendientes de sustituir
 - Arte: todo procedural en el estilo de la referencia (decisión de Carlos). Los packs CC0 solo se usarán para sonido y música (fase 6).

@@ -2,11 +2,21 @@ import shopData from '../data/shop.json';
 import weaponsData from '../data/weapons.json';
 import interactions from '../data/interactions.json';
 import { PHASE } from './DayNight.js';
-import { WEAPON_IDS } from './WeaponSystem.js';
+import { WEAPON_IDS, tracksOf } from './WeaponSystem.js';
 
 const MEDKIT_MAX = interactions._medkit.max;
 const GRENADE = weaponsData._granada;
 const TRACKS = weaponsData._upgrades.tracks;
+const LEVELS = weaponsData._upgrades.levels;
+
+/** Motivo legible por el que no se puede comprar un artículo. */
+export const STATE_REASON = {
+  poor: 'No tienes puntos suficientes',
+  max: 'Ya está al máximo',
+  owned: 'Ya lo tienes',
+  locked: 'Requiere la mejora anterior',
+  none: 'No hay nada que reparar',
+};
 
 // Tiendas físicas (armería, enfermería, almacén). Cada tienda genera su catálogo según el
 // estado de la partida: armas que ya tienes, munición, mejoras, curas, desbloqueos de
@@ -82,24 +92,34 @@ export class ShopSystem {
     const items = [];
     for (const id of WEAPON_IDS) {
       const d = weaponsData[id];
-      if (!W.has(id)) {
-        items.push({ id: `weapon:${id}`, section: 'Armas', name: `${d.icon} ${d.name}`, desc: this.weaponDesc(d), price: this.price(d.price) });
-        continue;
-      }
-      if (d.ammoPack) {
-        const full = W.ammoFull(id);
+      // Las armas siguen en la lista aunque ya las tengas: así los números 1-9 no se mueven.
+      if (d.price > 0) {
         items.push({
-          id: `ammo:${id}`, section: 'Munición', name: `${d.icon} Munición de ${d.name.toLowerCase()} (+${d.ammoPack.amount})`,
-          desc: `Reserva ${W.owned.get(id).reserve}/${d.maxReserve}`, price: this.price(d.ammoPack.price), state: full ? 'max' : null,
+          id: `weapon:${id}`, section: 'Armas', name: `${d.icon} ${d.name}`, desc: this.weaponDesc(d),
+          price: this.price(d.price), state: W.has(id) ? 'owned' : null,
         });
       }
-      for (const [track, t] of Object.entries(TRACKS)) {
-        if (d.melee && track !== 'damage') continue;
+      if (!W.has(id)) continue;
+      if (d.ammoPack) {
+        // Si solo cabe parte del paquete, se cobra la parte proporcional.
+        const w = W.owned.get(id);
+        const room = Math.max(0, d.maxReserve - w.reserve);
+        const amount = Math.min(d.ammoPack.amount, room);
+        items.push({
+          id: `ammo:${id}`, section: 'Munición', name: `${d.icon} Munición de ${d.name.toLowerCase()} (+${amount || d.ammoPack.amount})`,
+          desc: `Reserva ${w.reserve}/${d.maxReserve}`, amount,
+          price: this.price(Math.max(1, Math.ceil(d.ammoPack.price * (amount || d.ammoPack.amount) / d.ammoPack.amount))),
+          state: amount ? null : 'max',
+        });
+      }
+      for (const track of tracksOf(d)) {
+        const t = TRACKS[track];
         const lvl = W.upgradeLevel(id, track);
         const cost = W.nextUpgradeCost(id, track);
+        const amount = t.flat ? `+${t.perLevel}${t.unit ? ` ${t.unit}` : ''}` : `+${Math.round(t.perLevel * 100)} %`;
         items.push({
-          id: `upgrade:${id}:${track}`, section: 'Mejoras', name: `${d.icon} ${d.name}: ${t.name} ${'★'.repeat(lvl)}${'☆'.repeat(3 - lvl)}`,
-          desc: `+${Math.round(t.perLevel * 100)} % ${t.name.toLowerCase()}${track === 'reload' ? ' (más rápida)' : ''}`,
+          id: `upgrade:${id}:${track}`, section: 'Mejoras', name: `${d.icon} ${d.name}: ${t.name} ${'★'.repeat(lvl)}${'☆'.repeat(LEVELS - lvl)}`,
+          desc: `${amount} ${t.name.toLowerCase()}${track === 'reload' ? ' (más rápida)' : ''}`,
           price: cost ? this.price(cost) : 0, state: cost ? null : 'max',
         });
       }
@@ -133,7 +153,12 @@ export class ShopSystem {
       let state = null;
       if (it.id === 'botiquin' && p.medkits >= MEDKIT_MAX) state = 'max';
       if (it.id === 'curacion' && p.hp >= p.maxHp) state = 'max';
-      if (it.id === 'chaleco' && p.armor >= it.armor) state = 'max';
+      if (it.id === 'chaleco') {
+        // Chaleco dañado: se paga solo la parte que falta.
+        const missing = Math.max(0, it.armor - p.armor);
+        if (!missing) state = 'max';
+        else price = this.price(Math.ceil(it.price * missing / it.armor));
+      }
       if (it.max && times >= it.max) { state = 'max'; price = 0; }
       items.push({ id: it.id, section: 'Enfermería', name: it.name, desc: it.desc, price, state });
     }
@@ -145,7 +170,7 @@ export class ShopSystem {
     for (const it of shopData.almacen) {
       if (it.id === 'kit_reparacion') {
         const cost = this.repairKitCost();
-        items.push({ id: it.id, section: 'Mantenimiento', name: `🔧 ${it.name}`, desc: it.desc, price: cost, state: cost ? null : 'max' });
+        items.push({ id: it.id, section: 'Mantenimiento', name: `🔧 ${it.name}`, desc: it.desc, price: cost, state: cost ? null : 'none' });
         continue;
       }
       const key = it.id.slice('unlock:'.length);
@@ -157,15 +182,30 @@ export class ShopSystem {
     return this.finish(items);
   }
 
-  /** Reparar todas las construcciones con descuento. */
+  /** Piezas que el kit puede reparar ahora (dañadas y fuera de su espera de reparación). */
+  repairablePieces() {
+    const b = this.game.build;
+    const out = [];
+    for (const s of b.all) if (s.hp < s.maxHp && this.game.time >= s.repairReady) out.push(s);
+    return out;
+  }
+
+  /** Reparar todas las construcciones con descuento (repairCostOf ya incluye el recargo nocturno). */
   repairKitCost() {
     const kit = shopData.almacen.find((i) => i.id === 'kit_reparacion');
     let total = 0;
-    for (const s of this.game.build.all) total += this.game.build.repairCostOf(s);
+    for (const s of this.repairablePieces()) total += this.game.build.repairCostOf(s);
     return Math.ceil(total * (1 - kit.repairDiscount));
   }
 
   // ------------------------------------------------------------------ compras
+  /** Motivo por el que no se puede comprar `itemId` ahora, o null si se puede. */
+  whyNot(itemId) {
+    const item = this.catalog().find((i) => i.id === itemId);
+    if (!item) return 'No disponible';
+    return item.state === 'ok' ? null : STATE_REASON[item.state] ?? 'No disponible';
+  }
+
   /** @returns {string|null} mensaje de resultado (o null si no se pudo comprar) */
   buy(itemId) {
     const item = this.catalog().find((i) => i.id === itemId);
@@ -178,9 +218,9 @@ export class ShopSystem {
     if (kind === 'weapon') {
       W.give(a);
       W.switchTo(a);
-      msg = `${weaponsData[a].icon} ¡${weaponsData[a].name} comprado! (tecla ${weaponsData[a].slot})`;
+      msg = `${weaponsData[a].icon} Nueva arma: ${weaponsData[a].name} (tecla ${weaponsData[a].slot})`;
     } else if (kind === 'ammo') {
-      W.addAmmo(a, weaponsData[a].ammoPack.amount);
+      W.addAmmo(a, item.amount);
     } else if (kind === 'upgrade') {
       W.applyUpgrade(a, b);
     } else if (kind === 'grenade') {
@@ -189,7 +229,11 @@ export class ShopSystem {
       this.unlocked.add(`${a}:${b}`);
       msg = `🔓 Desbloqueado: ${item.name}`;
     } else if (kind === 'kit_reparacion') {
-      for (const s of game.build.all) { s.hp = s.maxHp; game.build.applyGrid(s); }
+      for (const s of this.repairablePieces()) {
+        s.hp = s.maxHp;
+        s.repairReady = game.time + game.build.cfg.repairCooldown;
+        game.build.applyGrid(s);
+      }
       game.build.changed(false);
       msg = '🔧 Todas las construcciones reparadas';
     } else if (kind === 'botiquin') {
@@ -199,6 +243,7 @@ export class ShopSystem {
     } else if (kind === 'chaleco') {
       const def = shopData.enfermeria.find((i) => i.id === 'chaleco');
       p.armor = def.armor;
+      p.armorMax = def.armor;
       p.armorAbsorb = def.absorb;
     } else if (kind === 'vida_max') {
       const def = shopData.enfermeria.find((i) => i.id === 'vida_max');

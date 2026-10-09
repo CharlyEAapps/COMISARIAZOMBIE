@@ -71,9 +71,11 @@ describe('Tiendas', () => {
     expect(g.run.points).toBe(before - weapons.escopeta.price);
     expect(g.weapons.has('escopeta')).toBe(true);
     expect(g.weapons.current).toBe('escopeta');
-    // Ya no aparece para comprar; ahora hay munición y mejoras.
-    const ids = g.shop.catalog().map((i) => i.id);
-    expect(ids).not.toContain('weapon:escopeta');
+    // Sigue en la lista (los números 1-9 no se mueven) pero marcada como "Tienes"; ahora hay munición y mejoras.
+    const cat = g.shop.catalog();
+    const ids = cat.map((i) => i.id);
+    expect(cat.find((i) => i.id === 'weapon:escopeta').state).toBe('owned');
+    expect(g.shop.buy('weapon:escopeta')).toBe(null);
     expect(ids).toContain('ammo:escopeta');
     expect(ids).toContain('upgrade:escopeta:damage');
   });
@@ -115,7 +117,7 @@ describe('Tiendas', () => {
     g.shop.buy('chaleco');
     expect(g.player.armor).toBe(100);
     for (let n = 0; n < 3; n++) g.shop.buy('vida_max');
-    expect(g.player.maxHp).toBe(175);
+    expect(g.player.maxHp).toBe(100 + 3 * shopData.enfermeria.find((i) => i.id === 'vida_max').amount);
     expect(g.shop.catalog().find((i) => i.id === 'vida_max').state).toBe('max');
     g.player.medkits = 3;
     expect(g.shop.catalog().find((i) => i.id === 'botiquin').state).toBe('max');
@@ -131,6 +133,33 @@ describe('Tiendas', () => {
     expect(g.shop.isUnlocked('barricada', 1)).toBe(true);
     expect(g.shop.buy('unlock:barricada:2')).toBeTruthy();
     expect(g.shop.catalog().find((i) => i.id === 'unlock:barricada:2').state).toBe('owned');
+  });
+
+  it('la munición casi llena se cobra en proporción', () => {
+    g.shop.open = 'armeria';
+    g.weapons.give('escopeta');
+    const w = g.weapons.owned.get('escopeta');
+    w.reserve = weapons.escopeta.maxReserve - 3;
+    const it = g.shop.catalog().find((i) => i.id === 'ammo:escopeta');
+    expect(it.amount).toBe(3);
+    expect(it.price).toBe(Math.ceil(weapons.escopeta.ammoPack.price * 3 / weapons.escopeta.ammoPack.amount));
+  });
+
+  it('el táser mejora aturdimiento y saltos (no daño)', () => {
+    g.shop.open = 'armeria';
+    g.shop.buy('weapon:taser');
+    const ids = g.shop.catalog().map((i) => i.id);
+    expect(ids).toContain('upgrade:taser:stun');
+    expect(ids).toContain('upgrade:taser:chain');
+    expect(ids).not.toContain('upgrade:taser:damage');
+    g.shop.buy('upgrade:taser:chain');
+    expect(g.weapons.owned.get('taser').stats.chain).toBe(weapons.taser.chain + 1);
+  });
+
+  it('whyNot explica por qué no se puede comprar', () => {
+    g.shop.open = 'armeria';
+    g.run.points = 0;
+    expect(g.shop.whyNot('weapon:fusil')).toMatch(/puntos/);
   });
 
   it('reset vuelve a los desbloqueos iniciales', () => {

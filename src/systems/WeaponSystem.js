@@ -10,16 +10,25 @@ const UPG = weapons._upgrades;
 export const WEAPON_IDS = Object.keys(weapons)
   .filter((k) => !k.startsWith('_'))
   .sort((a, b) => weapons[a].slot - weapons[b].slot);
-const SWITCH_TIME = 0.25;
-const MAX_GRENADES_IN_AIR = 6;
+const SWITCH_TIME = weapons._switchTime;
+
+/** Mejoras disponibles para un arma (por defecto: daño, cargador y recarga). */
+export function tracksOf(def) {
+  return def.tracks ?? UPG.defaultTracks;
+}
+
+const ZERO_LV = { damage: 0, mag: 0, reload: 0, stun: 0, chain: 0 };
 
 /** Estadísticas efectivas de un arma con sus mejoras (función pura, testeable). */
-export function weaponStats(def, lv = { damage: 0, mag: 0, reload: 0 }) {
+export function weaponStats(def, lv = ZERO_LV) {
   const t = UPG.tracks;
+  const l = { ...ZERO_LV, ...lv };
   return {
-    damage: def.damage * (1 + t.damage.perLevel * lv.damage),
-    magSize: def.magSize ? Math.round(def.magSize * (1 + t.mag.perLevel * lv.mag)) : 0,
-    reloadTime: def.reloadTime * (1 - t.reload.perLevel * lv.reload),
+    damage: def.damage * (1 + t.damage.perLevel * l.damage),
+    magSize: def.magSize ? Math.round(def.magSize * (1 + t.mag.perLevel * l.mag)) : 0,
+    reloadTime: def.reloadTime * (1 - t.reload.perLevel * l.reload),
+    stun: (def.stun ?? 0) + t.stun.perLevel * l.stun,
+    chain: (def.chain ?? 0) + t.chain.perLevel * l.chain,
   };
 }
 
@@ -39,9 +48,10 @@ export class WeaponSystem {
     this.owned = new Map();
     this._from = new THREE.Vector3();
     this._to = new THREE.Vector3();
+    this._muzzle = new THREE.Vector3(); // boca del arma (no se reutiliza para otros trazos)
     this._exclude = new Set();
+    this._chainHit = new Set();
     this.shotBlocked = (i, j) => game.grid.isShotBlocked(i, j);
-    this.walkBlocked = (i, j) => !game.grid.isWalkable(i, j);
     this.grenadesInAir = [];
     this.reset();
   }
@@ -62,7 +72,7 @@ export class WeaponSystem {
     const d = this.defs[id];
     if (this.owned.has(id)) return this.owned.get(id);
     const w = {
-      id, data: d, lv: { damage: 0, mag: 0, reload: 0 }, stats: weaponStats(d),
+      id, data: d, lv: { ...ZERO_LV }, stats: weaponStats(d),
       mag: d.magSize, reserve: d.reserve, reloading: 0, cooldown: 0, buffer: 0,
     };
     this.owned.set(id, w);
@@ -105,7 +115,7 @@ export class WeaponSystem {
   /** Coste de la siguiente mejora de `track`, o 0 si está al máximo / no aplica / no se tiene el arma. */
   nextUpgradeCost(id, track) {
     const w = this.owned.get(id);
-    if (!w || (w.data.melee && track !== 'damage')) return 0;
+    if (!w || !tracksOf(w.data).includes(track)) return 0;
     const next = w.lv[track] + 1;
     return next > UPG.levels ? 0 : upgradeCost(w.data, next);
   }
@@ -191,7 +201,7 @@ export class WeaponSystem {
   /** Punto de salida del disparo, sin atravesar el muro que el jugador tenga pegado. */
   muzzlePoint() {
     const { player, grid } = this.game;
-    const muzzle = player.getMuzzleWorld(this._from);
+    const muzzle = player.getMuzzleWorld(this._muzzle);
     const ox = player.position.x, oz = player.position.z;
     const mdx = muzzle.x - ox, mdz = muzzle.z - oz;
     const muzzleDist = Math.hypot(mdx, mdz);
@@ -230,7 +240,7 @@ export class WeaponSystem {
         this._exclude.add(hit.zombie);
         zombies.damage(hit.zombie, w.stats.damage, dx, dz, d.knockback);
         effects.burst(hit.zombie.pos.x, 1.2, hit.zombie.pos.z, 7, 0x4a1d1d, { speed: 2.5, dirX: dx, dirZ: dz, size: 0.08 });
-        if (d.stun) this.taserChain(hit.zombie, d);
+        if (d.stun) this.taserChain(hit.zombie, w);
         // Sin perforación restante, la trazadora acaba en este zombi; si no, sigue hasta el muro.
         endDist = pierce === d.pierce ? hit.t : wallDist;
       }
@@ -245,23 +255,29 @@ export class WeaponSystem {
     game.bus.emit('weapon:fired', { weapon: d });
   }
 
-  /** Táser: aturde al zombi alcanzado y salta a los más cercanos. */
-  taserChain(first, d) {
-    const { zombies, effects } = this.game;
-    first.stunTimer = Math.max(first.stunTimer, d.stun);
+  /** Táser: aturde al zombi alcanzado y salta a los más cercanos (sin atravesar muros). */
+  taserChain(first, w) {
+    const { zombies, effects, grid } = this.game;
+    const d = w.data, st = w.stats;
+    first.stunTimer = Math.max(first.stunTimer, st.stun);
     let from = first;
-    const hit = new Set([first]);
-    for (let n = 0; n < d.chain; n++) {
+    const hit = this._chainHit;
+    hit.clear();
+    hit.add(first);
+    for (let n = 0; n < st.chain; n++) {
       let best = null, bestD = d.chainRange;
       for (const z of zombies.active) {
         if (z.state !== 0 || hit.has(z)) continue;
-        const dd = Math.hypot(z.pos.x - from.pos.x, z.pos.z - from.pos.z);
-        if (dd < bestD) { bestD = dd; best = z; }
+        const dx = z.pos.x - from.pos.x, dz = z.pos.z - from.pos.z;
+        const dd = Math.hypot(dx, dz);
+        if (dd >= bestD || dd < 1e-4) continue;
+        if (raycastGrid(grid, from.pos.x, from.pos.z, dx / dd, dz / dd, dd, this.shotBlocked) < dd) continue;
+        bestD = dd; best = z;
       }
       if (!best) break;
       hit.add(best);
-      best.stunTimer = Math.max(best.stunTimer, d.stun);
-      zombies.damage(best, d.damage * 0.5);
+      best.stunTimer = Math.max(best.stunTimer, st.stun);
+      zombies.damage(best, st.damage * d.chainDamageMul);
       this._from.set(from.pos.x, 1.2, from.pos.z);
       this._to.set(best.pos.x, 1.2, best.pos.z);
       effects.tracer(this._from, this._to, d.tracerColor);
@@ -295,7 +311,7 @@ export class WeaponSystem {
 
   // ------------------------------------------------------------------ granadas
   throwGrenade() {
-    if (this.grenades <= 0 || this.grenadeCooldown > 0 || this.grenadesInAir.length >= MAX_GRENADES_IN_AIR) return;
+    if (this.grenades <= 0 || this.grenadeCooldown > 0 || this.grenadesInAir.length >= GRENADE.maxInAir) return;
     const { player, aimPoint, grid } = this.game;
     const ox = player.position.x, oz = player.position.z;
     let dx = aimPoint.x - ox, dz = aimPoint.z - oz;
@@ -303,15 +319,16 @@ export class WeaponSystem {
     if (dist < 1e-3) { dx = player.aimDir.x; dz = player.aimDir.z; dist = 1; }
     dx /= dist; dz /= dist;
     dist = Math.min(dist, GRENADE.maxRange);
-    // Se detiene contra el primer obstáculo del camino (rebota un poco hacia atrás).
-    const wall = raycastGrid(grid, ox, oz, dx, dz, dist, this.walkBlocked);
-    if (wall < dist) dist = Math.max(0.5, wall - 0.4);
-    const flight = Math.max(0.35, dist / GRENADE.throwSpeed);
+    // Pasa por encima de lo bajo (sacos, mesas, vallas) y se detiene antes del primer obstáculo
+    // alto (muros, puertas cerradas, coches), sin acabar nunca dentro de él.
+    const wall = raycastGrid(grid, ox, oz, dx, dz, dist, this.shotBlocked);
+    if (wall < dist) dist = Math.max(0, wall - GRENADE.wallMargin);
+    const flight = Math.max(GRENADE.minFlight, dist / GRENADE.throwSpeed);
     this.grenades--;
     this.grenadeCooldown = GRENADE.cooldown;
     this.grenadesInAir.push({
       x0: ox, z0: oz, x1: ox + dx * dist, z1: oz + dz * dist, t: 0, flight,
-      fuse: GRENADE.fuse, x: ox, y: 1.4, z: oz, spin: 0,
+      fuse: GRENADE.fuse, x: ox, y: GRENADE.handHeight, z: oz, spin: 0,
     });
     this.game.bus.emit('grenade:thrown');
   }
@@ -326,8 +343,11 @@ export class WeaponSystem {
       g.x = g.x0 + (g.x1 - g.x0) * k;
       g.z = g.z0 + (g.z1 - g.z0) * k;
       // Parábola: sale a la altura de la mano, sube y cae al suelo.
-      g.y = k < 1 ? 1.4 * (1 - k) + Math.sin(k * Math.PI) * Math.min(2.5, g.flight * 3) + 0.09 * k : 0.09;
-      g.spin += dt * (k < 1 ? 12 : 0);
+      const G = GRENADE;
+      g.y = k < 1
+        ? G.handHeight * (1 - k) + Math.sin(k * Math.PI) * Math.min(G.arcHeight, g.flight * G.arcPerSecond) + G.groundY * k
+        : G.groundY;
+      g.spin += dt * (k < 1 ? G.spin : 0);
       if (g.fuse <= 0) {
         list.splice(n, 1);
         explode(this.game, g.x, g.z, GRENADE);

@@ -187,11 +187,14 @@ export class Hud {
     this.set('reload', `${(rl * 100).toFixed(0)}%`, 'width');
     this.el.mag.classList.toggle('low', !w.data.melee && w.mag <= Math.ceil(w.stats.magSize * 0.25));
     // Tira de armas: número de tecla e icono; resaltada la actual.
-    const slots = WEAPON_IDS.filter((id) => weapons.has(id))
-      .map((id) => `<span class="wslot${id === weapons.current ? ' on' : ''}"><b>${weapons.defs[id].slot}</b>${weapons.defs[id].icon}</span>`).join('');
-    this.set('slots', slots, 'innerHTML');
+    const slotsKey = `${weapons.current}|${weapons.owned.size}`;
+    if (this._last.slotsKey !== slotsKey) {
+      this._last.slotsKey = slotsKey;
+      this.set('slots', WEAPON_IDS.filter((id) => weapons.has(id))
+        .map((id) => `<span class="wslot${id === weapons.current ? ' on' : ''}"><b>${weapons.defs[id].slot}</b>${weapons.defs[id].icon}</span>`).join(''), 'innerHTML');
+    }
     this.set('armorBar', player.armor > 0, 'show');
-    this.set('armor', `${Math.min(100, player.armor)}%`, 'width');
+    this.set('armor', `${player.armorMax ? (player.armor / player.armorMax) * 100 : 0}%`, 'width');
 
     const hurt = Math.max(player.hurtTimer / player.data.hurtFlashTime, player.hp < 30 ? 0.35 : 0);
     this.set('hurt', hurt.toFixed(2), 'opacity');

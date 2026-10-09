@@ -493,7 +493,8 @@ export class BuildSystem {
     }
     this.updateTraps(dt);
 
-    if (input.consume('build') && player.alive) this.setActive(!this.active);
+    if (input.consume('build') && player.alive && !game.shop?.open) this.setActive(!this.active);
+    if (this.active && game.shop?.open) this.setActive(false);
     if (!player.alive && this.active) this.setActive(false);
     if (!this.active) return;
 

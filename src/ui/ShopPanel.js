@@ -18,9 +18,10 @@ export class ShopPanel {
     this.k = {};
     el.querySelectorAll('[data-k]').forEach((e) => { this.k[e.dataset.k] = e; });
     el.addEventListener('mousedown', (e) => e.stopPropagation());
-    this.k.list.addEventListener('click', (e) => {
+    // pointerdown (no click): si la lista se re-renderiza entre pulsar y soltar, la compra no se pierde.
+    this.k.list.addEventListener('pointerdown', (e) => {
       const row = e.target.closest('[data-id]');
-      if (row) this.buy(row.dataset.id);
+      if (row) { e.preventDefault(); this.buy(row.dataset.id); }
     });
     this.items = [];
     this.signature = '';
@@ -28,6 +29,8 @@ export class ShopPanel {
   }
 
   buy(id) {
+    const why = this.game.shop.whyNot(id);
+    if (why) { this.game.hud.toast(`✋ ${why}`, 2); return; }
     const msg = this.game.shop.buy(id);
     if (msg) this.game.hud.toast(msg, 3);
     this.render(true);
@@ -44,6 +47,8 @@ export class ShopPanel {
     const open = !!shop.open;
     this.el.classList.toggle('show', open);
     if (!open) { this.signature = ''; return; }
+    // Recién abierta: pintar ya (si no, durante un instante se vería la tienda anterior).
+    if (this.signature === '') { this.render(true); this.refreshTimer = 0.25; return; }
     this.refreshTimer -= dt;
     if (this.refreshTimer <= 0) { this.refreshTimer = 0.25; this.render(); }
   }
@@ -51,15 +56,15 @@ export class ShopPanel {
   render(force = false) {
     const { shop, run } = this.game;
     const items = shop.catalog();
-    // Solo se reconstruye el DOM si algo ha cambiado.
-    const sig = `${shop.open}|${run.points}|${items.map((i) => i.id + i.state + i.price + i.name + i.desc).join(',')}`;
+    this.k.points.textContent = String(run.points);
+    // Solo se reconstruye la lista si cambia algo (los puntos ya se reflejan en el estado poor/ok).
+    const sig = `${shop.open}|${items.map((i) => i.id + i.state + i.price + i.name + i.desc).join(',')}`;
     if (!force && sig === this.signature) return;
     this.signature = sig;
     this.items = items;
     const info = shop.cfg.shops[shop.open];
     this.k.title.textContent = `${info.icon} ${info.name}`;
     this.k.sub.textContent = info.subtitle;
-    this.k.points.textContent = String(run.points);
     this.k.night.style.display = shop.surcharge > 1 ? '' : 'none';
     let html = '', section = '';
     items.forEach((it, n) => {
@@ -70,6 +75,7 @@ export class ShopPanel {
         owned: '<span class="tag ok">✔ Tienes</span>',
         max: '<span class="tag">Máx.</span>',
         locked: '<span class="tag">🔒</span>',
+        none: '<span class="tag">Nada que reparar</span>',
       }[it.state];
       const key = n < 9 ? `<span class="key">${n + 1}</span>` : '<span class="key blank"></span>';
       html += `<div class="shop-row ${it.state}" data-id="${it.id}">${key}<div class="shop-text"><div class="name">${it.name}</div><div class="desc">${it.desc}</div></div>${tag}</div>`;

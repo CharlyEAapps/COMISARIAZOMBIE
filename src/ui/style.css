@@ -326,6 +326,11 @@ html, body {
   .hint { display: none; }
   .panel-case { top: 290px; width: 200px; }
 }
+@media (max-width: 900px) {
+  /* La tienda pasa a ser una hoja inferior: el policía (centro de la pantalla) queda a la vista. */
+  .shop { top: auto; left: 12px; right: 12px; width: auto; max-height: 46vh; }
+  .prompt-wrap { bottom: 130px; }
+}
 @media (max-width: 1000px) {
   .banner { top: 58%; }
   .toasts { top: auto; bottom: 150px; }

@@ -134,7 +134,7 @@ export class Game {
     d.addAction('Trucos', 'Romper transformador', () => this.build.damageTransformer(1e9));
     d.addAction('Trucos', 'Todas las armas', () => {
       for (const id of WEAPON_IDS) { this.weapons.give(id); this.weapons.addAmmo(id, 999); }
-      this.weapons.grenades = 5;
+      this.weapons.grenades = this.weapons.defs._granada.max;
     });
     d.addAction('Trucos', 'Desbloquear construcción', () => {
       for (const [type, def] of Object.entries(this.build.pieces)) def.levels.forEach((_, l) => this.shop.unlocked.add(`${type}:${l}`));

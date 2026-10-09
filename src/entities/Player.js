@@ -52,6 +52,7 @@ export class Player {
     this.hurtTimer = 0;
     this.medkits = 1;
     this.armor = 0;        // chaleco antibalas
+    this.armorMax = 0;
     this.armorAbsorb = 0;  // fracción del daño que absorbe
     this.medkitTimer = 0;
     this.buffs = {}; // nombre → { value, timer }
@@ -165,7 +166,8 @@ export class Player {
       const z = Math.asin(THREE.MathUtils.clamp(t.x, -1, 1));
       this.leftArmAim = { x: Math.atan2(-t.z, -t.y), z };
     } else {
-      this.leftArmAim = null;
+      // Pistola: sujeción a dos manos de siempre; táser y porra: brazo izquierdo relajado.
+      this.leftArmAim = id === 'pistola' ? null : { x: 0, z: 0.08, relaxed: true };
     }
   }
 
@@ -175,15 +177,17 @@ export class Player {
     const moving = this.velocity.lengthSq() > 0.01;
     computePose(this.pose, this.walkPhase, moving ? 1 : 0, 'police');
     if (this.leftArmAim) {
-      this.pose.armL.x = this.leftArmAim.x;
+      // Relajado: cuelga y se balancea al andar (como las piernas, en contrafase).
+      this.pose.armL.x = this.leftArmAim.relaxed ? -this.pose.legL.x * 0.6 : this.leftArmAim.x;
       this.pose.armL.z = this.leftArmAim.z;
     }
     // Porra: golpe de arriba abajo mientras dura el ataque.
     const W = this.game.weapons;
     if (this.weaponId === 'porra' && W?.meleeTimer > 0) {
-      const k = 1 - W.meleeTimer * W.defs.porra.fireRate; // 0 → 1 durante el golpe
-      this.pose.armR.x = -2.7 + Math.min(1, k * 2.2) * 2.3;
-      this.pose.armR.z = -0.35 + k * 0.5;
+      const p = W.defs.porra, sw = p.swing;
+      const k = 1 - W.meleeTimer * p.fireRate; // 0 → 1 durante el golpe
+      this.pose.armR.x = sw.raise + Math.min(1, k * sw.speed) * sw.sweep;
+      this.pose.armR.z = sw.twistFrom + k * sw.twist;
     }
     // Las piernas se balancean respecto a la dirección de marcha, no de la mirada:
     // basta con el balanceo simple para el blockout.

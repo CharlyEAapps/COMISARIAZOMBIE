@@ -53,6 +53,7 @@ export class WeaponSystem {
     this._chainHit = new Set();
     this.shotBlocked = (i, j) => game.grid.isShotBlocked(i, j);
     this.grenadesInAir = [];
+    this.reloadMul = 1; // mejora permanente "Prácticas de tiro"
     this.reset();
   }
 
@@ -133,7 +134,7 @@ export class WeaponSystem {
   startReload() {
     const w = this.weapon;
     if (w.data.melee || w.reloading > 0 || w.mag >= w.stats.magSize || w.reserve === 0) return;
-    w.reloading = w.stats.reloadTime;
+    w.reloading = w.reloadTotal = w.stats.reloadTime * this.reloadMul;
     this.game.bus.emit('weapon:reload', { weapon: w });
   }
 

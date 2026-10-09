@@ -58,30 +58,12 @@ export class Hud {
         </div>
         <div class="prompt panel subtle" data-k="ready"><span class="key">B</span> Construir<span data-k="readyNight"> <span class="key">N</span> Empezar la noche ya</span></div>
       </div>
-      <div class="overlay" data-k="pause"><div class="panel modal"><h1>Pausa</h1><p>Pulsa <span class="key">Esc</span> para continuar</p>
-        <div class="volumes">
-          <label><span>🎵 Música</span><input type="range" min="0" max="1" step="0.05" data-vol="music"></label>
-          <label><span>🔊 Efectos</span><input type="range" min="0" max="1" step="0.05" data-vol="sfx"></label>
-          <label><span>🎚️ General</span><input type="range" min="0" max="1" step="0.05" data-vol="master"></label>
-        </div></div></div>
-      <div class="overlay" data-k="over">
-        <div class="panel modal">
-          <h1 class="danger">Has caído</h1>
-          <div class="summary">
-            <div><span class="label">Noches</span><span class="val big" data-k="oNights">0</span></div>
-            <div><span class="label">Tiempo</span><span class="val big" data-k="oTime">0:00</span></div>
-            <div><span class="label">Bajas</span><span class="val big" data-k="oKills">0</span></div>
-            <div><span class="label">Puntos</span><span class="val big" data-k="oPoints">0</span></div>
-          </div>
-          <p class="obit" data-k="obit"></p>
-          <button class="btn interactive" data-k="retry">Reintentar <span class="key">Enter</span></button>
-        </div>
+      <p class="obit hidden-obit" data-k="obit"></p>
       </div>`;
     game.uiRoot.appendChild(root);
     this.root = root;
     this.el = {};
     root.querySelectorAll('[data-k]').forEach((e) => { this.el[e.dataset.k] = e; });
-    this.el.retry.addEventListener('click', () => game.restart());
     // Tarjetas de piezas del modo construcción, por páginas (Tab o clic en la pestaña).
     this.tabs = PIECE_PAGES.map((page, p) => {
       const el = document.createElement('div');
@@ -128,16 +110,6 @@ export class Hud {
     bus.on('phase:noche', ({ night }) => {
       if (isBossNight(game.waves.cfg.boss, night)) this.toast(game.humor.pick('events.bossWarning'), 8);
     });
-  }
-
-  /** Conecta los deslizadores de volumen del menú de pausa con el audio. */
-  bindAudio(audio) {
-    for (const input of this.root.querySelectorAll('[data-vol]')) {
-      const kind = input.dataset.vol;
-      input.value = String(audio.volumes[kind]);
-      input.addEventListener('input', () => audio.setVolume(kind, Number(input.value)));
-      input.addEventListener('mousedown', (e) => e.stopPropagation());
-    }
   }
 
   /** Solo toca el DOM cuando cambia un valor. */
@@ -239,7 +211,7 @@ export class Hud {
       this.set('mag', w.reloading > 0 ? '··' : String(w.mag));
       this.set('res', w.reserve < 0 ? '/ ∞' : `/ ${w.reserve}`);
     }
-    const rl = w.reloading > 0 ? 1 - w.reloading / w.stats.reloadTime : player.medkitTimer > 0 ? 1 - player.medkitTimer / MEDKIT_TIME : 0;
+    const rl = w.reloading > 0 ? 1 - w.reloading / (w.reloadTotal || w.stats.reloadTime) : player.medkitTimer > 0 ? 1 - player.medkitTimer / MEDKIT_TIME : 0;
     this.set('reload', `${(rl * 100).toFixed(0)}%`, 'width');
     this.el.mag.classList.toggle('low', !w.data.melee && w.mag <= Math.ceil(w.stats.magSize * 0.25));
     // Tira de armas: número de tecla e icono; resaltada la actual.
@@ -276,14 +248,6 @@ export class Hud {
 
     if (this.bannerTimer > 0 && (this.bannerTimer -= dt) <= 0) this.el.banner.classList.remove('show');
 
-    this.el.pause.classList.toggle('show', state === 'paused');
-    this.el.over.classList.toggle('show', state === 'gameover');
-    if (state === 'gameover') {
-      this.set('oNights', String(run.nights ?? 0));
-      this.set('oTime', fmt(run.time));
-      this.set('oKills', String(run.kills));
-      this.set('oPoints', String(run.points));
-    }
   }
 
   /** Barra del modo construcción: piezas con coste y la acción sobre la celda señalada. */

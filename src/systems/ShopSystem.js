@@ -34,6 +34,7 @@ export class ShopSystem {
     this.open = null;
     this.bought = {}; // id de artículo → veces comprado (vida máxima, etc.)
     this.unlocked = new Set(shopData.startUnlocked);
+    this.armeriaDiscount = 0;
   }
 
   get surcharge() {
@@ -42,6 +43,11 @@ export class ShopSystem {
 
   price(base) {
     return Math.ceil(base * this.surcharge);
+  }
+
+  /** Precio en la armería (con el descuento del tablón de mejoras). */
+  armPrice(base) {
+    return Math.ceil(base * (1 - this.armeriaDiscount) * this.surcharge);
   }
 
   isUnlocked(type, level) {
@@ -96,7 +102,7 @@ export class ShopSystem {
       if (d.price > 0) {
         items.push({
           id: `weapon:${id}`, section: 'Armas', name: `${d.icon} ${d.name}`, desc: this.weaponDesc(d), flavor: d.flavor,
-          price: this.price(d.price), state: W.has(id) ? 'owned' : null,
+          price: this.armPrice(d.price), state: W.has(id) ? 'owned' : null,
         });
       }
       if (!W.has(id)) continue;
@@ -108,7 +114,7 @@ export class ShopSystem {
         items.push({
           id: `ammo:${id}`, section: 'Munición', name: `${d.icon} Munición de ${d.name.toLowerCase()} (+${amount || d.ammoPack.amount})`,
           desc: `Reserva ${w.reserve}/${d.maxReserve}`, amount,
-          price: this.price(Math.max(1, Math.ceil(d.ammoPack.price * (amount || d.ammoPack.amount) / d.ammoPack.amount))),
+          price: this.armPrice(Math.max(1, Math.ceil(d.ammoPack.price * (amount || d.ammoPack.amount) / d.ammoPack.amount))),
           state: amount ? null : 'max',
         });
       }
@@ -120,13 +126,13 @@ export class ShopSystem {
         items.push({
           id: `upgrade:${id}:${track}`, section: 'Mejoras', name: `${d.icon} ${d.name}: ${t.name} ${'★'.repeat(lvl)}${'☆'.repeat(LEVELS - lvl)}`,
           desc: `${amount} ${t.name.toLowerCase()}${track === 'reload' ? ' (más rápida)' : ''}`,
-          price: cost ? this.price(cost) : 0, state: cost ? null : 'max',
+          price: cost ? this.armPrice(cost) : 0, state: cost ? null : 'max',
         });
       }
     }
     items.push({
       id: 'grenade', section: 'Munición', name: `💣 Granada (${W.grenades}/${GRENADE.max})`,
-      desc: 'Se lanza con G hacia el cursor. ¡También te daña!', flavor: GRENADE.flavor, price: this.price(GRENADE.price),
+      desc: 'Se lanza con G hacia el cursor. ¡También te daña!', flavor: GRENADE.flavor, price: this.armPrice(GRENADE.price),
       state: W.grenades >= GRENADE.max ? 'max' : null,
     });
     // Agrupado por secciones en un orden fijo: primero lo que se puede comprar de nuevo.

@@ -27,7 +27,7 @@ De día preparas la comisaría; al anochecer suena la sirena y llega la horda. A
 | N | Empezar la noche ya (de día) |
 | B | Modo construcción (Tab cambia entre Defensas y Trampas · 1-7 eligen pieza · clic construye/repara/mejora · arrastrar = fila · clic dcho ×2 vende · clic dcho en vacío sale) |
 | Rueda | Zoom |
-| Esc | Pausa (con volumen de música, efectos y general) |
+| Esc | Pausa / volver (en la pausa: continuar, opciones, controles o abandonar el turno) |
 | Enter | Reintentar tras morir |
 | F1 | Panel de depuración (modo dios, saltar a la noche, generar zombis, ver flow field…) |
 
@@ -90,6 +90,15 @@ Al empezar solo puedes construir barricadas y sacos de madera.
 | 📋 Pizarra de casos | Objetivo para la noche con recompensa |
 | 🚓 Coches patrulla | La sirena atrae a los zombis cercanos durante 10 s |
 | 🚨 Alarma | Luces de emergencia y zombis más lentos durante 20 s (una vez por noche) |
+
+## Menús, medallas y récords
+- **Menú principal:** empezar el turno (Enter), Tablón de la comisaría, Récords, Opciones y Controles.
+- **Medallas:** al acabar cada turno ganas medallas por noche sobrevivida, hitos (3, 5, 10 y 15 noches) y logros (jefe abatido, 100/300/600 bajas, combo de 20, noches sin un rasguño, casos resueltos, 25 construcciones, 5 armas usadas).
+- **Tablón de la comisaría:** mejoras permanentes que se compran con medallas: vida máxima, puntos iniciales, botiquines, empezar con escopeta, descuento en la armería, recarga más rápida, linterna más potente y barricadas gratis al empezar.
+- **Récords:** los 10 mejores turnos (puntos, noches, bajas, tiempo, arma favorita y fecha).
+- **Fin de turno:** resumen con bajas por tipo, arma favorita, mejor combo, medallas ganadas y si has entrado en los récords. Desde la pausa también puedes abandonar el turno (cuenta como terminado).
+- **Opciones:** volúmenes, calidad gráfica, temblor de cámara y borrar el progreso.
+- Todo se guarda en el navegador (`localStorage`). Si el navegador no deja guardar, el juego funciona igual y lo avisa.
 
 ## Sonido
 - Efectos posicionales: los oyes desde donde ocurren (el oyente va con el policía). La mayoría se sintetizan por código; los gruñidos, el rugido del jefe, la sirena, los pasos, los golpes y la música son grabaciones CC0 (ver `CREDITS.md`).

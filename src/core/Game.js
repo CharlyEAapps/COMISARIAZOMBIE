@@ -33,6 +33,8 @@ import { BlastQueue } from '../systems/Explosions.js';
 import { AcidSystem } from '../systems/AcidSystem.js';
 import { Humor } from '../systems/Humor.js';
 import { AudioSystem } from '../audio/AudioSystem.js';
+import { Meta } from '../systems/Meta.js';
+import { Menus } from '../ui/Menus.js';
 import zombieData from '../data/zombies.json';
 import { ShopPanel } from '../ui/ShopPanel.js';
 import { WEAPON_IDS } from '../systems/WeaponSystem.js';
@@ -55,7 +57,7 @@ export class Game {
     this.cameraRig = new CameraRig(config.camera, 1);
     this.input = new Input(canvas);
     this.debug = new DebugPanel(uiRoot);
-    this.state = STATE.PLAYING;
+    this.state = STATE.MENU;
     this.time = 0; // tiempo de simulación total (para cooldowns)
 
     this.grid = new NavGrid(map.rows, tiles, config.world.cellSize);
@@ -89,7 +91,8 @@ export class Game {
     this.hud = new Hud(this);
     this.shopPanel = new ShopPanel(this);
     this.audio = new AudioSystem(this);
-    this.hud.bindAudio(this.audio);
+    this.meta = new Meta(this);
+    this.menus = new Menus(this);
 
     this.aimPoint = new THREE.Vector3();
     this._raycaster = new THREE.Raycaster();
@@ -110,10 +113,14 @@ export class Game {
 
     this._onResize = () => this.resize();
     window.addEventListener('resize', this._onResize);
+    // Opciones guardadas.
+    const st = this.meta.settings;
+    if (st.quality && config.quality.presets[st.quality]) this.setQuality(st.quality);
+    if (st.shake === false) this.effects.shakeMul = 0;
     this.resize();
     // Compila ya todos los shaders (efectos incluidos): sin tirón en el primer disparo o explosión.
     this.renderer.renderer.compile(this.scene, this.cameraRig.camera);
-    this.bus.emit('run:start');
+    this.menus.show('main', true);
 
     this._last = performance.now();
     this._frame = this.frame.bind(this);
@@ -192,6 +199,7 @@ export class Game {
     this.decals.dispose();
     this.audio.dispose();
     this.humor.dispose();
+    this.meta.dispose();
     this.lighting.dispose();
     this.debug.gui.destroy();
     this.renderer.renderer.dispose();
@@ -238,6 +246,39 @@ export class Game {
     this.bus.emit('run:start');
   }
 
+  // ------------------------------------------------------------------ partidas y menús
+  /** Empieza un turno nuevo con las mejoras permanentes del tablón. */
+  startRun() {
+    this.restart();
+    this.meta.applyUpgrades();
+    this.menus.hide();
+  }
+
+  pause() {
+    if (this.state !== STATE.PLAYING) return;
+    this.state = STATE.PAUSED;
+    this.menus.show('pause', true);
+  }
+
+  resume() {
+    if (this.state !== STATE.PAUSED) return;
+    this.state = STATE.PLAYING;
+    this.menus.hide();
+  }
+
+  /** Abandonar desde la pausa: cuenta como fin de turno (medallas y récord incluidos). */
+  abandonRun() {
+    this.deathTimer = 0;
+    this.state = STATE.GAMEOVER;
+    this.bus.emit('run:over', { ...this.run });
+  }
+
+  quitToMenu() {
+    this.restart();
+    this.state = STATE.MENU;
+    this.menus.show('main', true);
+  }
+
   updateAimPoint() {
     const p = this.input.pointer;
     if (!p.inside) return;
@@ -269,12 +310,13 @@ export class Game {
     // Acciones a nivel de frame (deben funcionar aunque la lógica esté en pausa).
     if (input.consume('debug')) this.debug.toggle();
     if (input.consume('pause')) {
-      // Con una tienda abierta, Esc la cierra en lugar de pausar.
-      if (this.shop.open) this.shop.close();
-      else if (this.state === STATE.PLAYING) this.state = STATE.PAUSED;
-      else if (this.state === STATE.PAUSED) this.state = STATE.PLAYING;
+      // Con una tienda abierta, Esc la cierra; en un menú, vuelve atrás.
+      if (this.state === STATE.PLAYING) {
+        if (this.shop.open) this.shop.close();
+        else this.pause();
+      } else this.menus.back();
     }
-    if (this.state === STATE.GAMEOVER && input.consume('confirm')) this.restart();
+    if (this.state !== STATE.PLAYING && input.consume('confirm')) this.menus.confirm();
     const wheel = input.takeWheel();
     if (wheel) this.cameraRig.zoom(wheel);
 

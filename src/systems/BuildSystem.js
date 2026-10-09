@@ -161,6 +161,7 @@ export class BuildSystem {
     this.dragging = false;
     if (this.transformer) { this.transformer.hp = this.transformer.maxHp; this.transformer.flash = 0; this.transformer.alertAt = -Infinity; }
     this.sellArmed = -1;
+    this.freeBarricades = 0;
     this.changed(true);
   }
 
@@ -180,6 +181,8 @@ export class BuildSystem {
 
   /** Coste por celda (con recargo nocturno). */
   costOf(type, level = 0) {
+    // Mejora permanente: las primeras barricadas de madera de la partida son gratis.
+    if (type === 'barricada' && level === 0 && this.freeBarricades > 0) return 0;
     return Math.ceil(this.pieces[type].levels[level].cost * this.surcharge);
   }
 
@@ -329,6 +332,7 @@ export class BuildSystem {
     for (const c of cells) this.structures.set(c, s);
     this.all.add(s);
     this.lists[type]?.push(s);
+    if (type === 'barricada' && this.freeBarricades > 0) this.freeBarricades = Math.max(0, this.freeBarricades - n);
     this.applyGrid(s);
     if (type === 'puerta') this.registerDoor(s);
     if (type === 'torreta') this.initTurret(s);

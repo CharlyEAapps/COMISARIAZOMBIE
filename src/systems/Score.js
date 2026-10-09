@@ -93,6 +93,7 @@ export class Score {
     }
     if (this.objective && this.objective.night === night) {
       if (this.objectiveMet()) {
+        game.bus.emit('case:solved', { id: this.objective.id });
         lines.push(`Caso resuelto +${this.objective.reward}`);
         total += this.objective.reward;
       } else {

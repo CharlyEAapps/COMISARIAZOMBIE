@@ -8,8 +8,8 @@
 | 3. Construcción, trampas y transformador | ✅ Hecha |
 | 4. Tiendas y armas | ✅ Hecha |
 | 5. Enemigos y defensas completos | ✅ Hecha |
-| 6. Arte y sonido | ✅ Hecha (pendiente del visto bueno de Carlos) |
-| 7. Meta-progresión y menús | ⏳ Pendiente |
+| 6. Arte y sonido | ✅ Hecha |
+| 7. Meta-progresión y menús | ✅ Hecha (pendiente del visto bueno de Carlos) |
 | 8. Controles y pulido | ⏳ Pendiente |
 
 ## Fase 0: qué hay
@@ -170,6 +170,14 @@
   - Números mágicos llevados a JSON, `dispose` de los zombis y asignaciones en bucles calientes.
 - **Petición de Carlos:** la horda sale entera al empezar la noche (con el tope de vivos) y la noche termina en cuanto la abates, sin esperar al reloj.
 - **Equilibrado:** el peso de los corredores cuenta zombis, no manadas (antes eran la mitad de la horda); horda ×1,06 por noche; tanque 110 puntos; jefe 800 puntos, +35 % por aparición; vallas 20/31 de descarga; torreta 500, 200 balas, 0,5 por bala; barril 80.
+
+## Fase 7: qué hay
+- **Guardado** (`src/save/SaveStore.js`): esquema versionado en `localStorage`, validado al cargar y envuelto en try/catch. Si el almacenamiento falla, el juego sigue sin guardar y lo avisa.
+- **Meta-progresión** (`src/systems/Meta.js`, `src/data/meta.json`):
+  - Medallas por noche, hitos y logros.
+  - 8 mejoras permanentes con niveles y coste creciente, que se aplican al empezar cada turno.
+  - Top 10 de récords y estadísticas totales.
+- **Menús** (`src/ui/Menus.js`): principal, tablón, récords, opciones (volúmenes, calidad, temblor y borrar progreso), controles, pausa (con abandonar) y resumen de fin de turno. Esc vuelve atrás y Enter juega o reintenta.
 
 ## Fase 6: qué hay
 - **Audio** (`src/audio/`, `src/data/audio.json`):

@@ -40,6 +40,7 @@ export class Lighting {
     this.r = game.renderer;
     this.nightFactor = 0;
     this.alarmTimer = 0;
+    this.flashlightMul = 1; // mejora permanente "Linterna LED"
 
     // Linterna del policía.
     const L = this.cfg;
@@ -216,7 +217,8 @@ export class Lighting {
     const fl = this.flashlight;
     const dir = p.aimDir;
     const [curveA, curveB] = cfg.flashlightNightCurve;
-    fl.intensity = p.alive ? cfg.flashlightIntensity * Math.max(0, night * curveA - curveB) : 0;
+    fl.intensity = p.alive ? cfg.flashlightIntensity * this.flashlightMul * Math.max(0, night * curveA - curveB) : 0;
+    fl.distance = cfg.flashlightDistance * this.flashlightMul;
     // Sin luz no hace falta el pase de sombra (WebGLShadowMap no mira la intensidad). Pero el
     // mapa de sombras debe existir: si nunca se ha renderizado, los shaders muestrean una
     // textura de tipo incorrecto y WebGL descarta todos los draws que reciben sombra.

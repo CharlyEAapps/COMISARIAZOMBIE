@@ -72,6 +72,7 @@ const AXIS_Z = new THREE.Vector3(0, 0, 1);
 
 export class Effects {
   constructor(scene) {
+    this.shakeMul = 1; // opción "Temblor de cámara"
     this.scene = scene;
     this.game = null; // se enlaza con bind(game)
 
@@ -478,7 +479,7 @@ export class Effects {
   }
 
   shake(amount) {
-    this.trauma = Math.min(1, this.trauma + amount);
+    this.trauma = Math.min(1, this.trauma + amount * this.shakeMul);
   }
 
   // ------------------------------------------------------------------ actualización

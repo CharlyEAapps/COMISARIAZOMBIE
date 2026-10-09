@@ -1,0 +1,218 @@
+{
+  "_comment": "Meta-progresión: medallas por partida, mejoras permanentes del tablón (coste en medallas por nivel) y récords.",
+  "storageKey": "turno-de-noche.save",
+  "version": 1,
+  "maxRecords": 10,
+  "medals": {
+    "perNight": 1,
+    "milestones": [
+      {
+        "night": 3,
+        "medals": 1,
+        "label": "Aguantar 3 noches"
+      },
+      {
+        "night": 5,
+        "medals": 2,
+        "label": "Aguantar 5 noches"
+      },
+      {
+        "night": 10,
+        "medals": 4,
+        "label": "Aguantar 10 noches"
+      },
+      {
+        "night": 15,
+        "medals": 6,
+        "label": "Aguantar 15 noches"
+      }
+    ],
+    "achievements": [
+      {
+        "id": "boss",
+        "label": "Antidisturbios abatido",
+        "stat": "bossKills",
+        "min": 1,
+        "medals": 3,
+        "perUnit": true,
+        "maxUnits": 5
+      },
+      {
+        "id": "kills100",
+        "label": "100 bajas",
+        "stat": "kills",
+        "min": 100,
+        "medals": 1
+      },
+      {
+        "id": "kills300",
+        "label": "300 bajas",
+        "stat": "kills",
+        "min": 300,
+        "medals": 2
+      },
+      {
+        "id": "kills600",
+        "label": "600 bajas",
+        "stat": "kills",
+        "min": 600,
+        "medals": 3
+      },
+      {
+        "id": "combo20",
+        "label": "Combo de 20",
+        "stat": "maxCombo",
+        "min": 20,
+        "medals": 1
+      },
+      {
+        "id": "perfect",
+        "label": "Noche sin un rasguño",
+        "stat": "perfectNights",
+        "min": 1,
+        "medals": 1,
+        "perUnit": true,
+        "maxUnits": 5
+      },
+      {
+        "id": "cases",
+        "label": "Caso resuelto",
+        "stat": "cases",
+        "min": 1,
+        "medals": 1,
+        "perUnit": true,
+        "maxUnits": 5
+      },
+      {
+        "id": "builder",
+        "label": "Arquitecto (25 construcciones)",
+        "stat": "built",
+        "min": 25,
+        "medals": 1
+      },
+      {
+        "id": "arsenal",
+        "label": "Arsenal (5 armas usadas)",
+        "stat": "weaponsUsed",
+        "min": 5,
+        "medals": 1
+      }
+    ]
+  },
+  "upgrades": [
+    {
+      "id": "vida",
+      "icon": "❤️",
+      "name": "Revisión médica",
+      "desc": "+10 de vida máxima por nivel.",
+      "flavor": "El médico de empresa dice que estás 'apto'. Con reservas.",
+      "maxLevel": 5,
+      "cost": [
+        2,
+        3,
+        4,
+        6,
+        8
+      ],
+      "per": 10
+    },
+    {
+      "id": "puntos",
+      "icon": "💰",
+      "name": "Partida presupuestaria",
+      "desc": "+150 puntos al empezar por nivel.",
+      "flavor": "Desviada de la cena de Navidad. Nadie la echará de menos.",
+      "maxLevel": 5,
+      "cost": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "per": 150
+    },
+    {
+      "id": "botiquin",
+      "icon": "🩹",
+      "name": "Botiquín de taquilla",
+      "desc": "+1 botiquín al empezar por nivel.",
+      "flavor": "Estaban detrás de los tápers caducados.",
+      "maxLevel": 2,
+      "cost": [
+        3,
+        5
+      ],
+      "per": 1
+    },
+    {
+      "id": "escopeta",
+      "icon": "💥",
+      "name": "Escopeta reglamentaria",
+      "desc": "Empiezas con la escopeta y 24 cartuchos.",
+      "flavor": "Por fin ha llegado el pedido de 2019.",
+      "maxLevel": 1,
+      "cost": [
+        8
+      ],
+      "per": 0
+    },
+    {
+      "id": "descuento",
+      "icon": "🏷️",
+      "name": "Proveedor amigo",
+      "desc": "−5 % en la armería por nivel.",
+      "flavor": "El cuñado del armero hace precio.",
+      "maxLevel": 4,
+      "cost": [
+        3,
+        4,
+        6,
+        8
+      ],
+      "per": 0.05
+    },
+    {
+      "id": "recarga",
+      "icon": "⏱️",
+      "name": "Prácticas de tiro",
+      "desc": "−8 % de tiempo de recarga por nivel.",
+      "flavor": "Tres tardes en la galería y un curso online con diploma.",
+      "maxLevel": 3,
+      "cost": [
+        3,
+        5,
+        7
+      ],
+      "per": 0.08
+    },
+    {
+      "id": "linterna",
+      "icon": "🔦",
+      "name": "Linterna LED",
+      "desc": "+20 % de alcance y brillo de la linterna por nivel.",
+      "flavor": "Ya no hace falta darle golpes para que encienda.",
+      "maxLevel": 3,
+      "cost": [
+        2,
+        4,
+        6
+      ],
+      "per": 0.2
+    },
+    {
+      "id": "barricadas",
+      "icon": "🧱",
+      "name": "Madera del almacén",
+      "desc": "Las 2 primeras barricadas de madera son gratis por nivel.",
+      "flavor": "Eran los palés de la mudanza de 2008.",
+      "maxLevel": 3,
+      "cost": [
+        2,
+        3,
+        5
+      ],
+      "per": 2
+    }
+  ]
+}

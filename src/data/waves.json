@@ -53,7 +53,9 @@
     "retryDelay": 1,
     "intervalJitter": 0.3,
     "spawnScatter": 1.2,
-    "_comment": "weight = proporción relativa de ZOMBIS (los tipos de manada se reparten en grupos)."
+    "_comment": "weight = proporción relativa de ZOMBIS (los tipos de manada se reparten en grupos).",
+    "spawnAll": true,
+    "burstInterval": 0.3
   },
   "day": {
     "fromDay": 2,

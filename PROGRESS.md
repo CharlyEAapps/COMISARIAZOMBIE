@@ -168,6 +168,7 @@
   - Vallas que no electrocutaban a zombis grandes; focos juntos que quemaban la imagen.
   - Avisos tapados por la barra de construcción, barra del jefe en pantallas estrechas, banner del jefe pisado por el de la noche, texto del requisito de las vallas.
   - Números mágicos llevados a JSON, `dispose` de los zombis y asignaciones en bucles calientes.
+- **Petición de Carlos:** la horda sale entera al empezar la noche (con el tope de vivos) y la noche termina en cuanto la abates, sin esperar al reloj.
 - **Equilibrado:** el peso de los corredores cuenta zombis, no manadas (antes eran la mitad de la horda); horda ×1,06 por noche; tanque 110 puntos; jefe 800 puntos, +35 % por aparición; vallas 20/31 de descarga; torreta 500, 200 balas, 0,5 por bala; barril 80.
 
 ## Placeholders pendientes de sustituir

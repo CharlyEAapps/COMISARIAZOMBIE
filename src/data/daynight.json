@@ -85,5 +85,7 @@
     "focoHeight": 2.3,
     "focoMinNight": 0.15,
     "focoPoolSpacing": 0.9
-  }
+  },
+  "nightEndsWhenCleared": true,
+  "nightMinTime": 5
 }

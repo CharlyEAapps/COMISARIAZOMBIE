@@ -97,7 +97,8 @@ export class WaveDirector {
     const c = this.cfg.night;
     this.total = this.toSpawn = nightCount(c, n);
     const avgGroup = (c.groupMin + c.groupMax) / 2;
-    this.interval = (c.spawnWindow * nightDuration) / Math.max(1, this.total / avgGroup);
+    // Toda la horda de golpe (en grupos muy seguidos, con el tope de vivos) o repartida.
+    this.interval = c.spawnAll ? c.burstInterval : (c.spawnWindow * nightDuration) / Math.max(1, this.total / avgGroup);
     this.spawnTimer = c.firstSpawnDelay;
     this.maxAlive = Math.min(c.maxAliveCap, c.maxAliveBase + c.maxAlivePerNight * (n - 1));
     this.mods.hpMul = 1 + c.hpBonusPerNight * (n - 1);

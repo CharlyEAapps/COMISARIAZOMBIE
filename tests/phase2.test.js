@@ -18,11 +18,20 @@ describe('DayNight', () => {
     const bus = new EventBus();
     const phases = [];
     for (const p of Object.values(PHASE)) bus.on(`phase:${p}`, () => phases.push(p));
-    const dn = new DayNight(daynight, bus);
+    const dn = new DayNight({ ...daynight, nightEndsWhenCleared: false }, bus);
     expect(dn.phase).toBe(PHASE.DAY);
     run(dn, daynight.firstDayDuration + daynight.duskDuration + dn.nightDuration(1) + daynight.dawnDuration + 0.5);
     expect(phases).toEqual([PHASE.DUSK, PHASE.NIGHT, PHASE.DAWN, PHASE.DAY]);
     expect(dn.night).toBe(2);
+  });
+
+  it('con nightEndsWhenCleared, la noche acaba al abatir la horda (tras el mínimo)', () => {
+    const dn = new DayNight({ ...daynight, nightEndsWhenCleared: true, nightMinTime: 5 }, null);
+    dn.enter(PHASE.NIGHT);
+    dn.update(1, () => true);
+    expect(dn.phase).toBe(PHASE.NIGHT);
+    run(dn, 5, () => true);
+    expect(dn.phase).toBe(PHASE.DAWN);
   });
 
   it('la noche no termina mientras queden zombis', () => {

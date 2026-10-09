@@ -10,7 +10,7 @@ npm run dev
 Después abre http://localhost:5173.
 
 ## Cómo se juega
-De día preparas la comisaría; al anochecer suena la sirena y llega la horda. La noche termina cuando se acaba el tiempo **y** no queda ningún zombi. Cada noche hay más zombis, más rápidos y más resistentes. Al amanecer cobras un bonus (más si no te han tocado o si has resuelto el caso de la pizarra).
+De día preparas la comisaría; al anochecer suena la sirena y llega la horda. Al caer la noche sale toda la horda de golpe (con un tope de zombis vivos a la vez; el resto entra según caen) y la noche termina en cuanto no queda ninguno. Cada noche hay más zombis, más rápidos y más resistentes. Al amanecer cobras un bonus (más si no te han tocado o si has resuelto el caso de la pizarra).
 
 ## Controles
 | Tecla | Acción |

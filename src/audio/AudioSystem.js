@@ -7,6 +7,10 @@ import { PHASE } from '../systems/DayNight.js';
 const STORE_KEY = 'turno-de-noche.audio';
 const BASE = import.meta.env?.BASE_URL ?? '/';
 const MATERIAL_SOUND = { madera: 'hit_wood', metal: 'hit_metal', blando: 'hit_soft', hormigon: 'hit_concrete' };
+const TYPE_VOICE = { corredor: 'runner_screech', tanque: 'tank_grunt', explosivo: 'bloat_hiss' };
+const HIT_OPTS = { vol: cfg.ambient.hitVolume };
+const BOSS_OPTS = { rate: cfg.ambient.bossVoiceRate };
+const NORMAL_OPTS = { rate: 1 };
 
 /** Material de una pieza para su sonido de golpe (según tipo y nivel). */
 export function structureMaterial(type, level) {
@@ -31,8 +35,15 @@ export function normalize(buffer, peak) {
   return buffer;
 }
 
+/** Volúmenes guardados (solo números entre 0 y 1; lo demás se ignora). */
 function loadVolumes() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) ?? {}; } catch { return {}; }
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(STORE_KEY)); } catch { return {}; }
+  const out = {};
+  if (raw && typeof raw === 'object') {
+    for (const [k, v] of Object.entries(raw)) if (typeof v === 'number' && v >= 0 && v <= 1) out[k] = v;
+  }
+  return out;
 }
 
 // Audio del juego: efectos posicionales (THREE.PositionalAudio, el oyente va con el policía y
@@ -82,14 +93,15 @@ export class AudioSystem {
     this.unlocked = false;
     this._unlock = () => {
       this.unlocked = true;
-      if (ctx.state !== 'running' && !document.hidden) ctx.resume();
+      if (ctx.state === 'suspended' && !document.hidden) ctx.resume().catch(() => {});
     };
     window.addEventListener('pointerdown', this._unlock);
     window.addEventListener('keydown', this._unlock);
     // Con la pestaña oculta no suena nada (ni la música de fondo).
     this._visibility = () => {
-      if (document.hidden) ctx.suspend();
-      else if (this.unlocked) ctx.resume();
+      if (ctx.state === 'closed') return;
+      if (document.hidden) ctx.suspend().catch(() => {});
+      else if (this.unlocked) ctx.resume().catch(() => {});
     };
     document.addEventListener('visibilitychange', this._visibility);
 
@@ -144,6 +156,9 @@ export class AudioSystem {
     if (!g) return this.buffers.has(name) ? name : null;
     let pick = null, seen = 0;
     for (const m of g) if (this.buffers.has(m) && Math.random() * ++seen < 1) pick = m;
+    // Si no ha cargado ningún archivo del grupo, la versión sintetizada.
+    const fb = cfg.fallbacks[name];
+    if (!pick && fb) for (const m of fb) if (this.buffers.has(m) && Math.random() * ++seen < 1) pick = m;
     return pick;
   }
 
@@ -175,16 +190,32 @@ export class AudioSystem {
     voice ??= oldest;
     if (voice.isPlaying) voice.stop();
     voice.setBuffer(this.buffers.get(real));
-    const varRate = s.rate ?? 0;
-    voice.setPlaybackRate((o?.rate ?? 1) * (1 + (Math.random() * 2 - 1) * varRate));
-    voice.setVolume((s.vol ?? 1) * (o?.vol ?? 1));
+    const rate = (o?.rate ?? 1) * (1 + (Math.random() * 2 - 1) * (s.rate ?? 0));
+    const vol = (s.vol ?? 1) * (o?.vol ?? 1);
+    voice.playbackRate = rate;
     if (x !== undefined) {
+      // Posición del panner al instante (si no, se desliza desde donde sonó lo anterior).
       voice.position.set(x, cfg.sourceHeight, z);
-      voice.updateMatrixWorld();
+      const p = voice.panner;
+      for (const [param, v] of [[p.positionX, x], [p.positionY, cfg.sourceHeight], [p.positionZ, z]]) {
+        param.cancelScheduledValues(now);
+        param.setValueAtTime(v, now);
+      }
     }
     voice.userData.name = name;
     voice.userData.t = now;
     voice.play();
+    // Volumen y tono al instante (setVolume/setPlaybackRate de three se deslizan ~30 ms).
+    voice.gain.gain.cancelScheduledValues(now);
+    voice.gain.gain.setValueAtTime(vol, now);
+    voice.source.playbackRate.cancelScheduledValues(now);
+    voice.source.playbackRate.setValueAtTime(rate, now);
+  }
+
+  /** Para todas las voces (al reiniciar la partida). */
+  stopAll() {
+    for (const v of [...this.positional, ...this.flat]) if (v.isPlaying) v.stop();
+    this.repeats.length = 0;
   }
 
   /** Repite un sonido sin posición `times` veces cada `gap` s (sirena, alarma). */
@@ -203,7 +234,8 @@ export class AudioSystem {
 
   // ------------------------------------------------------------------ eventos del juego
   bindEvents() {
-    const { bus } = this.game;
+    this._unsub = [];
+    const bus = { on: (type, fn) => this._unsub.push(this.game.bus.on(type, fn)) };
     const P = () => this.game.player.position;
     bus.on('weapon:fired', ({ id }) => this.playAt(`shot_${id}`, P()));
     bus.on('weapon:melee', ({ hits }) => { this.playAt('swing', P()); if (hits) this.playAt('melee_hit', P()); });
@@ -212,10 +244,10 @@ export class AudioSystem {
     bus.on('weapon:switched', () => this.play('switch'));
     bus.on('weapon:empty', () => this.play('empty'));
     bus.on('grenade:thrown', () => this.playAt('grenade_throw', P()));
-    bus.on('zombie:hit', ({ zombie }) => this.playAt('hit_flesh', zombie.pos, { vol: 0.8 }));
+    bus.on('zombie:hit', ({ zombie }) => this.playAt('hit_flesh', zombie.pos, HIT_OPTS));
     bus.on('zombie:blocked', ({ zombie }) => this.playAt('hit_shield', zombie.pos));
     bus.on('zombie:killed', ({ type, x, z, selfDestruct }) => {
-      if (type === 'antidisturbios') this.play('boss_roar', x, z, { rate: 0.8 });
+      if (type === 'antidisturbios') this.play('boss_death', x, z, BOSS_OPTS);
       else if (!selfDestruct) this.play('zombie_death', x, z);
     });
     bus.on('explosion', ({ x, z }) => this.play('explosion', x, z));
@@ -230,7 +262,7 @@ export class AudioSystem {
     bus.on('trap', ({ kind, x, z }) => this.play(kind, x, z));
     bus.on('fence:zap', ({ s }) => this.play('zap', s.cx, s.cz));
     bus.on('turret:fired', (s) => this.play('shot_torreta', s.cx, s.cz));
-    bus.on('turret:empty', ({ s }) => this.play('turret_empty', s.cx, s.cz));
+    bus.on('turret:empty', (s) => this.play('turret_empty', s.cx, s.cz));
     bus.on('acid:spit', ({ x, z }) => this.play('spit', x, z));
     bus.on('acid:splash', ({ x, z }) => this.play('splash', x, z));
     bus.on('door:toggle', ({ x, z }) => this.play('door', x, z));
@@ -241,16 +273,21 @@ export class AudioSystem {
     bus.on('interact', ({ type }) => this.play(type === 'cafetera' ? 'coffee' : 'interact'));
     bus.on('radio', () => this.play('radio'));
     bus.on('combo', () => this.play('combo'));
-    bus.on('phase:atardecer', () => this.repeat('siren', cfg.ambient.sirenRepeats, 4));
+    bus.on('phase:atardecer', () => this.repeat('siren', cfg.ambient.sirenRepeats, cfg.ambient.sirenGap));
+    // Señuelo: la sirena del coche patrulla suena donde está el coche.
+    bus.on('siren', ({ id }) => {
+      const it = this.game.interactions.items.find((i) => i.id === id);
+      if (it) this.play('siren_car', it.x, it.z);
+    });
     bus.on('phase:noche', () => this.play('night_start'));
     bus.on('night:survived', () => this.play('dawn'));
-    bus.on('alarm', () => this.repeat('alarm', cfg.ambient.alarmRepeats, 1));
+    bus.on('alarm', () => this.repeat('alarm', cfg.ambient.alarmRepeats, cfg.ambient.alarmGap));
     bus.on('boss:spawned', () => {
       this.play('boss_horn');
       const b = this.game.zombies.boss;
       if (b) this.play('boss_roar', b.pos.x, b.pos.z);
     });
-    bus.on('run:start', () => { this.repeats.length = 0; });
+    bus.on('run:start', () => this.stopAll());
   }
 
   // ------------------------------------------------------------------ cada frame
@@ -286,8 +323,8 @@ export class AudioSystem {
       if (list.length && Math.random() < A.groanChance) {
         const z = list[(Math.random() * list.length) | 0];
         if (z.state === 0 && Math.hypot(z.pos.x - p.position.x, z.pos.z - p.position.z) < A.groanRange) {
-          const voice = { corredor: 'runner_screech', tanque: 'tank_grunt', explosivo: 'bloat_hiss' }[z.type] ?? 'groan';
-          this.play(Math.random() < 0.5 ? 'groan' : voice, z.pos.x, z.pos.z, { rate: z.data.boss ? 0.7 : 1 });
+          const voice = TYPE_VOICE[z.type] ?? 'groan';
+          this.play(Math.random() < A.typeVoiceChance ? voice : 'groan', z.pos.x, z.pos.z, z.data.boss ? BOSS_OPTS : NORMAL_OPTS);
         }
       }
     }
@@ -308,12 +345,14 @@ export class AudioSystem {
     window.removeEventListener('pointerdown', this._unlock);
     window.removeEventListener('keydown', this._unlock);
     document.removeEventListener('visibilitychange', this._visibility);
+    for (const off of this._unsub) off();
     this.music.dispose();
     for (const v of [...this.positional, ...this.flat]) {
       if (v.isPlaying) v.stop();
       this.game.scene.remove(v);
     }
     this.game.scene.remove(this.listener);
-    this.ctx.close();
+    // El AudioContext es el global de three (compartido): no se cierra, solo se suspende.
+    this.ctx.suspend().catch(() => {});
   }
 }

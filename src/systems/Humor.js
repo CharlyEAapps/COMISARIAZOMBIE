@@ -38,9 +38,15 @@ export class Humor {
     this.cfg = humorData;
     this.bags = new Map();
     this.reset();
-    game.bus.on('phase:noche', () => { this.radioTimer = this.cfg.radio.firstNightDelay; });
-    game.bus.on('phase:dia', ({ night }) => { if (night > 1) this.dayTimer = this.cfg.radio.dayDelay; });
-    game.bus.on('zombie:killed', (e) => this.onKill(e));
+    this._unsub = [
+      game.bus.on('phase:noche', () => { this.radioTimer = this.cfg.radio.firstNightDelay; }),
+      game.bus.on('phase:dia', ({ night }) => { if (night > 1) this.dayTimer = this.cfg.radio.dayDelay; }),
+      game.bus.on('zombie:killed', (e) => this.onKill(e)),
+    ];
+  }
+
+  dispose() {
+    for (const off of this._unsub) off();
   }
 
   reset() {

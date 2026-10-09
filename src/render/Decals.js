@@ -111,10 +111,10 @@ export class Decals {
     ];
   }
 
-  onKilled({ type, x, z, fallX = 0, fallZ = 0, selfDestruct }) {
+  onKilled({ type, x, z, fallX = 0, fallZ = 0, selfDestruct, scale: zScale }) {
     // Un explosivo que revienta deja la chamusquina de la explosión, no una mancha.
     if (selfDestruct) return;
-    const scale = zombieData[type]?.scale ?? 1;
+    const scale = zScale ?? zombieData[type]?.scale ?? 1;
     const r = D.stainRadius * scale * (1 + (Math.random() - 0.5) * 2 * D.stainRadiusJitter);
     this.add(TILE_STAIN, x + fallX * D.stainOffset * scale, z + fallZ * D.stainOffset * scale, r, D.stainLife, D.stainFadeFraction, D.stainAlpha, hex(D.stainColor));
   }

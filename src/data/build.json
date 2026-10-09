@@ -238,7 +238,6 @@
       "blocks": true,
       "blocksShot": false,
       "height": 1.25,
-      "maxCount": 4,
       "range": 9,
       "fireRate": 4,
       "damage": 14,

@@ -555,7 +555,9 @@ export class BuildSystem {
       s.yaw += Math.max(-step, Math.min(step, dy));
       if (Math.abs(dy) > def.aimTolerance || s.cooldown > 0) continue;
       if (s.ammo <= 0) {
-        this.game.bus.emit('turret:empty', { s });
+        // Clic de vacío como mucho una vez por cadencia de disparo (sin evento en cada paso).
+        s.cooldown = 1 / this.levelStat(def, s.level, 'fireRate');
+        this.game.bus.emit('turret:empty', s);
         if (!s.emptyWarned) {
           s.emptyWarned = true;
           this.game.hud?.toast(`🎯 Una torreta se ha quedado sin munición: recárgala con E.${this.game.humor?.tag('turretEmpty') ?? ''}`, 5);

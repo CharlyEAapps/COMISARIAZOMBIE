@@ -189,6 +189,7 @@ export class Game {
     this.effects.dispose();
     this.decals.dispose();
     this.audio.dispose();
+    this.humor.dispose();
     this.lighting.dispose();
     this.debug.gui.destroy();
     this.renderer.renderer.dispose();

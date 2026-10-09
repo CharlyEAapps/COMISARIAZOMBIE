@@ -151,7 +151,6 @@ export const RECIPES = {
 
   // ---------------------------------------------------------------- impactos
   hit_flesh: [0.15, (k) => { k.burst(0, 0.08, 'lowpass', 600, 1, 0.6); k.thump(0, 110, 60, 0.08, 0.5); }],
-  hit_wall: [0.1, (k) => k.burst(0, 0.05, 'bandpass', 2600, 3, 0.4)],
   hit_shield: [0.35, (k) => { k.ping(0, 1100, 0.25, 0.35); k.click(0, 0.5, 2000); }],
   explosion: [2.0, (k) => {
     k.burst(0, 1.6, 'lowpass', 500, 0.7, 1, 80);

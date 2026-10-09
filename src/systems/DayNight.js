@@ -58,7 +58,9 @@ export class DayNight {
         break;
       case PHASE.NIGHT:
         // La noche acaba al abatir a toda la horda (o, si no, al acabarse el tiempo y la horda).
-        if ((this.cfg.nightEndsWhenCleared ? this.t >= this.cfg.nightMinTime : this.t >= this.duration) && nightCleared()) {
+        // Tope de seguridad: si algo queda atascado, la noche acaba igualmente tras la prórroga.
+        const forced = this.t >= this.duration + this.cfg.nightOvertimeMax;
+        if (forced || ((this.cfg.nightEndsWhenCleared ? this.t >= this.cfg.nightMinTime : this.t >= this.duration) && nightCleared())) {
           this.bus?.emit('night:survived', { night: this.night });
           this.enter(PHASE.DAWN);
         }

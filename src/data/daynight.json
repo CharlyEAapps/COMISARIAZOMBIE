@@ -87,5 +87,6 @@
     "focoPoolSpacing": 0.9
   },
   "nightEndsWhenCleared": true,
-  "nightMinTime": 5
+  "nightMinTime": 5,
+  "nightOvertimeMax": 90
 }

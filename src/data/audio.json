@@ -108,6 +108,12 @@
       "plate_3",
       "plate_4",
       "plate_5"
+    ],
+    "siren_car": [
+      "siren"
+    ],
+    "boss_death": [
+      "boss_roar"
     ]
   },
   "sounds": {
@@ -440,6 +446,24 @@
       "rate": 0,
       "min": 2,
       "max": 1
+    },
+    "siren_car": {
+      "vol": 0.5,
+      "rate": 0.03,
+      "min": 2,
+      "max": 2
+    },
+    "boss_death": {
+      "vol": 0.9,
+      "rate": 0.03,
+      "min": 0.5,
+      "max": 1
+    },
+    "empty": {
+      "vol": 0.45,
+      "rate": 0,
+      "min": 0.1,
+      "max": 1
     }
   },
   "ambient": {
@@ -449,8 +473,13 @@
     "bossRoarEvery": 9,
     "heartbeatBelow": 0.3,
     "heartbeatInterval": 0.95,
-    "sirenRepeats": 2,
-    "alarmRepeats": 6
+    "sirenRepeats": 1,
+    "alarmRepeats": 6,
+    "hitVolume": 0.8,
+    "bossVoiceRate": 0.75,
+    "typeVoiceChance": 0.5,
+    "sirenGap": 8,
+    "alarmGap": 1
   },
   "music": {
     "crossfade": 2.5,
@@ -544,5 +573,13 @@
     "zombie_32": "audio/zombie_32.ogg",
     "zombie_33": "audio/zombie_33.ogg"
   },
-  "normalizePeak": 0.9
+  "normalizePeak": 0.9,
+  "fallbacks": {
+    "groan": [
+      "groan_1",
+      "groan_2",
+      "groan_3",
+      "groan_4"
+    ]
+  }
 }

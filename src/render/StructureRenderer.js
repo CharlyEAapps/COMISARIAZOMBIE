@@ -128,9 +128,13 @@ export class StructureRenderer {
     this._s = new THREE.Vector3(1, 1, 1);
     this._c = new THREE.Color();
     this._up = new THREE.Vector3(0, 1, 0);
-    this._hingeOpen = new THREE.Matrix4().makeTranslation(-0.5, 0, 0)
-      .multiply(new THREE.Matrix4().makeRotationY(Math.PI / 2))
+    // Giro de la hoja sobre su bisagra (x = -0,5 en local). Las hojas "espejo" (bisagra al otro
+    // lado, giradas 180°) giran en sentido contrario para que todas abran hacia el mismo lado (+Z local).
+    const hinge = (angle) => new THREE.Matrix4().makeTranslation(-0.5, 0, 0)
+      .multiply(new THREE.Matrix4().makeRotationY(angle))
       .multiply(new THREE.Matrix4().makeTranslation(0.5, 0, 0));
+    this._hingeOpen = hinge(-Math.PI / 2);
+    this._hingeOpenMirror = hinge(Math.PI / 2);
   }
 
   update() {
@@ -146,6 +150,10 @@ export class StructureRenderer {
       _c.copy(WHITE).lerp(DAMAGED, s.def.kind === 'trampa' ? 0 : 1 - s.hp / s.maxHp);
       if (s.flash > 0) _c.lerp(FLASH, 0.6);
       const baseRot = s.type === 'puerta' && s.axis === 'z' ? Math.PI / 2 : 0;
+      if (s.type === 'puerta' && s.cells.length > 1) {
+        this.drawWideDoor(s, baseRot);
+        continue;
+      }
       for (let c = 0; c < s.cells.length; c++) {
         const k = s.cells[c];
         const x = grid.centerX(k % grid.w), z = grid.centerZ((k / grid.w) | 0);
@@ -153,7 +161,8 @@ export class StructureRenderer {
           // Puerta abierta: marco fijo y hoja girada 90° sobre su bisagra (x = -0,5 en local):
           // T(celda) · Ry(orientación) · T(-0,5) · Ry(90°) · T(+0,5). Si la bisagra va al otro
           // lado (mitad final de una puerta doble, o muro al otro lado), se gira 180°.
-          const rotY = baseRot + (this.hingeOnFarSide(s, c) ? Math.PI : 0);
+          const mirror = this.hingeOnFarSide(s, c);
+          const rotY = baseRot + (mirror ? Math.PI : 0);
           const mesh = this.leafMeshes[s.level];
           const frame = this.frameMeshes[s.level];
           if (mesh.count >= MAX_PER_KIND) continue;
@@ -163,7 +172,7 @@ export class StructureRenderer {
           frame.setMatrixAt(frame.count, _m);
           frame.setColorAt(frame.count++, _c);
           _q.setFromAxisAngle(_up, rotY);
-          _m.compose(_p, _q, _s).multiply(this._hingeOpen);
+          _m.compose(_p, _q, _s).multiply(mirror ? this._hingeOpenMirror : this._hingeOpen);
           mesh.setMatrixAt(mesh.count, _m);
           mesh.setColorAt(mesh.count++, _c);
           continue;
@@ -233,6 +242,36 @@ export class StructureRenderer {
     const showMine = this.ghost.count > 0 && build.selected === 'mina';
     this.mineRing.visible = showMine;
     if (showMine) this.mineRing.position.set(this.ghostCenter.x, 0.06, this.ghostCenter.z);
+  }
+
+  /**
+   * Puerta de varias celdas: un único marco estirado a todo el hueco (jambas solo en los
+   * extremos, sin barra central) y una hoja por celda que se juntan en el centro. Abiertas,
+   * cada mitad gira hacia su extremo.
+   */
+  drawWideDoor(s, baseRot) {
+    const { grid } = this.game;
+    const { _m, _q, _p, _s, _c, _up } = this;
+    const frame = this.frameMeshes[s.level];
+    const leaves = this.leafMeshes[s.level];
+    if (frame.count >= MAX_PER_KIND || leaves.count + s.cells.length > MAX_PER_KIND) return;
+    _q.setFromAxisAngle(_up, baseRot);
+    _p.set(s.cx, 0, s.cz);
+    _s.set(s.cells.length, 1, 1);
+    _m.compose(_p, _q, _s);
+    _s.set(1, 1, 1);
+    frame.setMatrixAt(frame.count, _m);
+    frame.setColorAt(frame.count++, _c);
+    for (let c = 0; c < s.cells.length; c++) {
+      const k = s.cells[c];
+      _p.set(grid.centerX(k % grid.w), 0, grid.centerZ((k / grid.w) | 0));
+      const mirror = this.hingeOnFarSide(s, c);
+      _q.setFromAxisAngle(_up, baseRot + (mirror ? Math.PI : 0));
+      _m.compose(_p, _q, _s);
+      if (s.open) _m.multiply(mirror ? this._hingeOpenMirror : this._hingeOpen);
+      leaves.setMatrixAt(leaves.count, _m);
+      leaves.setColorAt(leaves.count++, _c);
+    }
   }
 
   /**

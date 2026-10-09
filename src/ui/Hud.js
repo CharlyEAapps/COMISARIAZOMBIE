@@ -48,7 +48,7 @@ export class Hud {
           <span class="key">E</span><span data-k="promptText"></span>
           <div class="bar thin"><div class="fill prompt-fill" data-k="promptFill"></div></div>
         </div>
-        <div class="prompt panel subtle" data-k="ready"><span class="key">B</span> Construir <span class="key">N</span> Empezar la noche ya</div>
+        <div class="prompt panel subtle" data-k="ready"><span class="key">B</span> Construir<span data-k="readyNight"> <span class="key">N</span> Empezar la noche ya</span></div>
       </div>
       <div class="hint panel" data-k="hint">
         <span class="key">WASD</span> mover <span class="key">Ratón</span> apuntar y disparar <span class="key">R</span> recargar <span class="key">E</span> interactuar <span class="key">Q</span> botiquín <span class="key">Esc</span> pausa
@@ -148,7 +148,7 @@ export class Hud {
     // Chips de estado (como "Ausente / Pijama" de la referencia).
     const chips = [];
     if (player.buff('staminaRegen') > 1) chips.push('☕ Cafeinado');
-    if (power.generator) chips.push(power.lightsOn ? '💡 Luces' : '⚡ Generador');
+    if (power.generator) chips.push(power.lightsOn ? '💡 Luces' : '🌑 Luces apagadas');
     if (this.game.lighting.alarmTimer > 0) chips.push('🚨 Alarma');
     if (this.game.zombies.decoy.timer > 0) chips.push('🚓 Sirena');
     const tr = this.game.build.transformer;
@@ -192,6 +192,8 @@ export class Hud {
       this.set('promptFill', `${(interactions.progress * 100).toFixed(0)}%`, 'width');
     }
     this.set('ready', !it && player.alive && !this.game.build.active, 'show');
+    this.set('readyNight', dayNight.phase === PHASE.DAY ? '1' : '0', 'opacity');
+    this.el.readyNight.style.display = dayNight.phase === PHASE.DAY ? '' : 'none';
     this.updateBuild();
 
     this.hintTimer -= dt;
@@ -226,22 +228,30 @@ export class Hud {
       c.cost.textContent = String(cost);
     }
     const s = b.structures.get(b.hoverCell);
+    const surcharge = Math.round((b.cfg.nightSurcharge - 1) * 100);
     let info;
     if (s) {
       const lvl = s.def.levels[s.level];
       const parts = [`<b>${s.def.icon} ${lvl.name}</b> ${Math.ceil(s.hp)}/${s.maxHp}`];
-      const rc = b.repairCostOf(s), uc = b.upgradeCost(s);
-      if (rc) parts.push(`<span class="key">Clic</span> Reparar (${rc})`);
-      else if (uc) parts.push(`<span class="key">Clic</span> Mejorar a ${s.def.levels[s.level + 1].name} (${uc})`);
-      else parts.push('Nivel máximo');
-      parts.push(`<span class="key">Clic dcho</span> Vender (+${b.sellValue(s)})`);
+      if (!b.inReach(s.k)) {
+        parts.push('<i>Demasiado lejos</i>');
+      } else {
+        const rc = b.repairCostOf(s), uc = b.upgradeCost(s);
+        if (rc) parts.push(this.game.time < s.repairReady ? '<i>Reparando…</i>' : `<span class="key">Clic</span> Reparar (${rc})`);
+        else if (uc) parts.push(`<span class="key">Clic</span> Mejorar a ${s.def.levels[s.level + 1].name} (${uc})`);
+        else parts.push('Nivel máximo');
+        parts.push(b.sellArmed === s.k
+          ? `<b class="danger-text">Clic dcho otra vez: vender (+${b.sellValue(s)})</b>`
+          : `<span class="key">Clic dcho</span> Vender (+${b.sellValue(s)})`);
+      }
       info = parts.join(' · ');
     } else if (b.hoverReason) {
       info = `<i>${b.hoverReason}</i> · <span class="key">Clic dcho</span> Salir`;
     } else {
       const def = b.pieces[b.selected];
       const drag = def.blocks && b.selected !== 'puerta' ? ' (arrastra para hacer una fila)' : '';
-      info = `<span class="key">Clic</span> Construir ${def.name.toLowerCase()}${drag} · <span class="key">Clic dcho</span> Salir${b.isNight ? ' · <i>De noche +50 %</i>' : ''}`;
+      const warn = b.selected === 'mina' ? ' · <i>¡También te daña a ti!</i>' : '';
+      info = `<span class="key">Clic</span> Construir ${def.name.toLowerCase()}${drag} · <span class="key">Clic dcho</span> Salir${b.isNight ? ` · <i>De noche +${surcharge} %</i>` : ''}${warn}`;
     }
     this.set('buildInfo', info, 'innerHTML');
   }

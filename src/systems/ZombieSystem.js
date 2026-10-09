@@ -156,7 +156,9 @@ export class ZombieSystem {
     zb.flash = 0; zb.deathTimer = 0; zb.fall = 0; zb.sink = 0;
     zb.stunTimer = 0; zb.slowMul = 1; zb.attackTarget = 0; zb.targetCell = -1;
     const tr = this.game.build?.transformer;
-    zb.vandal = !!tr && tr.hp > 0 && Math.random() < this.game.build.cfg.transformer.vandalChance;
+    const tcfg = this.game.build?.cfg.transformer;
+    zb.vandal = !!tr && tr.hp > 0 && this.game.dayNight.night >= tcfg.vandalFromNight && Math.random() < tcfg.vandalChance;
+    zb.trapAcc = 0;
     const skin = this._c.set(d.color).multiplyScalar(rnd(d.colorVariance));
     const shirt = SHIRTS[(Math.random() * SHIRTS.length) | 0];
     const pants = PANTS[(Math.random() * PANTS.length) | 0];
@@ -171,15 +173,22 @@ export class ZombieSystem {
     return zb;
   }
 
-  /** Aplica daño. Devuelve true si lo mata. */
-  damage(zb, amount, dirX = 0, dirZ = 0, knockback = 0) {
+  /**
+   * Aplica daño. Devuelve true si lo mata.
+   * @param {boolean} [quiet] daño continuo (trampas): sin destello, empuje ni evento de impacto
+   */
+  damage(zb, amount, dirX = 0, dirZ = 0, knockback = 0, quiet = false) {
     if (zb.state === Z_STATE.DYING) return false;
     zb.hp -= amount;
-    zb.flash = 0.1;
-    zb.pos.x += dirX * knockback;
-    zb.pos.z += dirZ * knockback;
-    resolveCircleVsGrid(zb.pos, zb.radius, this.game.grid);
-    this.game.bus.emit('zombie:hit', { zombie: zb, amount });
+    if (!quiet) {
+      zb.flash = 0.1;
+      if (knockback) {
+        zb.pos.x += dirX * knockback;
+        zb.pos.z += dirZ * knockback;
+        resolveCircleVsGrid(zb.pos, zb.radius, this.game.grid);
+      }
+      this.game.bus.emit('zombie:hit', { zombie: zb, amount });
+    }
     if (zb.hp <= 0) {
       zb.state = Z_STATE.DYING;
       zb.deathTimer = 0;
@@ -284,7 +293,7 @@ export class ZombieSystem {
         if (toDecoy && dd < 1.5) { mx = 0; mz = 0; }
       }
       // Los vándalos van a por el transformador salvo que tengan al jugador encima.
-      const goVandal = zb.vandal && vandalsActive && !(zb.hasLos && dist < 6);
+      const goVandal = zb.vandal && vandalsActive && !(zb.hasLos && dist < game.build.cfg.transformer.vandalIgnoreRange);
       zb.targetCell = -1;
       if ((!zb.hasLos || goVandal) && !(toDecoy && mx === 0 && mz === 0)) {
         // Flow field hacia el jugador, el señuelo o el transformador.
@@ -299,7 +308,7 @@ export class ZombieSystem {
           // La siguiente celda tiene una construcción que bloquea: hay que romperla.
           if (grid.blocked[nk] && this.nearBox(zb, grid.dynBox, nk * 4, zb.radius + ai.structureReach)) zb.targetCell = nk;
         }
-        if (goVandal && this.nearBox(zb, transformer.box, 0, zb.radius + game.build.cfg.transformer.attackRange * 0.5)) {
+        if (goVandal && this.nearBox(zb, transformer.box, 0, zb.radius + game.build.cfg.transformer.attackRange)) {
           zb.targetCell = -2;
           mx = 0; mz = 0;
         }

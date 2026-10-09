@@ -72,7 +72,7 @@ export class InteractionSystem {
       return { ok: false, reason: d.availability === 'night' ? 'Ya usado esta noche' : 'Ya usado hoy' };
     }
     if (d.cost && game.run.points < d.cost) return { ok: false, reason: `Necesitas ${d.cost} puntos` };
-    if (d.requiresPower && !game.power.generator) return { ok: false, reason: 'Sin corriente: arranca el generador' };
+    if (d.requiresPower && !game.power.generator) return { ok: false, reason: 'Sin corriente: repara el transformador' };
     const e = d.effect;
     const p = game.player;
     if (e.repairTransformer) {
@@ -87,7 +87,7 @@ export class InteractionSystem {
 
   label(it) {
     const d = it.def;
-    if (d.effect.toggleLights) return this.game.power.lightsOn ? 'Apagar las luces' : 'Encender las luces';
+    if (d.effect.toggleLights) return !this.game.power.generator ? 'Luces de la comisaría' : this.game.power.lightsOn ? 'Apagar las luces' : 'Encender las luces';
     if (d.effect.toggleDoor) return this.game.build.structures.get(it.cell)?.open ? 'Cerrar puerta' : 'Abrir puerta';
     if (d.effect.repairTransformer) {
       const t = this.game.build.transformer;
@@ -172,7 +172,6 @@ export class InteractionSystem {
       game.power.lightsOn = !game.power.lightsOn;
       msg = game.power.lightsOn ? '💡 Luces de la comisaría encendidas' : '🌑 Luces apagadas';
     }
-    if (e.startGenerator) game.power.generator = true;
     if (e.skipDay) game.dayNight.skipDay();
     if (e.objective) {
       const o = game.score.pickObjective(game.dayNight.night);

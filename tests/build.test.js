@@ -57,7 +57,7 @@ describe('BuildSystem', () => {
     expect(resolveCircleVsGrid(pos, 0.35, grid)).toBe(true);
     expect(pos.x).toBeLessThan(cx - 0.5 - 0.3);
     const shot = raycastGrid(grid, cx - 3, cz, 1, 0, 10, (i, j) => grid.isShotBlocked(i, j));
-    expect(shot).toBeCloseTo(2.5 + 0.02, 2);
+    expect(shot).toBeCloseTo(2.5, 2); // sin margen: piezas contiguas no dejan rendijas
   });
 
   it('los sacos frenan a los zombis pero no las balas', () => {
@@ -150,6 +150,65 @@ describe('BuildSystem', () => {
   it('las trampas no bloquean el paso', () => {
     build.place('pinchos', k);
     expect(grid.isWalkable(40, 25)).toBe(true);
+  });
+
+  it('dos barricadas en diagonal no dejan pasar por la esquina', () => {
+    // (40,25) y (41,26): el paso en diagonal de (40,26) a (41,25) queda prohibido.
+    build.place('barricada', grid.index(40, 25));
+    build.place('barricada', grid.index(41, 26));
+    const ff = new FlowField(grid);
+    ff.compute(41, 25);
+    expect(ff.nextCell(40, 26)).not.toBe(grid.index(41, 25));
+  });
+
+  it('reparar, mejorar y vender exigen estar al alcance', () => {
+    build.place('barricada', k);
+    const s = build.structures.get(k);
+    s.hp = 10;
+    game.player.position.x = cx + 20;
+    expect(build.primaryAction(k)).toBe(null);
+    expect(s.hp).toBe(10);
+    build.sellAction(s); build.sellAction(s);
+    expect(build.structures.has(k)).toBe(true);
+  });
+
+  it('vender pide confirmación (dos clics derechos)', () => {
+    build.place('barricada', k);
+    const s = build.structures.get(k);
+    build.sellAction(s);
+    expect(build.structures.has(k)).toBe(true);
+    build.sellAction(s);
+    expect(build.structures.has(k)).toBe(false);
+  });
+
+  it('las piezas dañadas no se pueden mejorar (hay que repararlas antes)', () => {
+    build.place('barricada', k);
+    const s = build.structures.get(k);
+    s.hp = s.maxHp - 1;
+    expect(build.upgrade(s)).toBe(false);
+    expect(s.level).toBe(0);
+  });
+
+  it('de noche reparar también lleva recargo', () => {
+    build.place('barricada', k);
+    const s = build.structures.get(k);
+    s.hp = s.maxHp / 2;
+    const day = build.repairCostOf(s);
+    game.dayNight.phase = PHASE.NIGHT;
+    expect(build.repairCostOf(s)).toBeGreaterThan(day);
+  });
+
+  it('la mina no daña a través de los muros', () => {
+    game.weapons = { shotBlocked: (i, j) => grid.isShotBlocked(i, j) };
+    let hits = 0;
+    game.zombies.damage = () => { hits++; };
+    // Mina en el pasillo (40,25) y un zombi justo al otro lado del muro sur del pasillo (40,29).
+    build.place('mina', k);
+    game.zombies.active = [{ state: 0, pos: { x: cx, z: grid.centerZ(29) - 0.2 }, radius: 0.38 }];
+    game.player.damage = () => { hits += 100; };
+    game.player.position.z = grid.centerZ(21); // también tras un muro (oficinas)
+    build.explodeMine(build.structures.get(k));
+    expect(hits).toBe(0);
   });
 
   it('reset deja la rejilla limpia', () => {

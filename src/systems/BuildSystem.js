@@ -1,13 +1,14 @@
 import buildData from '../data/build.json';
 import { PHASE } from './DayNight.js';
+import { raycastGrid } from './Physics.js';
 
 export const PIECE_ORDER = ['barricada', 'sacos', 'puerta', 'pinchos', 'cepo', 'mina'];
 const NO_BUILD_CHARS = new Set(['S', 'A', 'M', 'W']);
 
 /** Coste de reparar una pieza (función pura): proporcional al daño y al coste del nivel actual. */
-export function repairCost(cfg, def, s) {
+export function repairCost(cfg, def, s, mul = 1) {
   if (s.hp >= s.maxHp) return 0;
-  return Math.max(1, Math.ceil(((s.maxHp - s.hp) / s.maxHp) * def.levels[s.level].cost * cfg.repairCostFactor));
+  return Math.max(1, Math.ceil(((s.maxHp - s.hp) / s.maxHp) * def.levels[s.level].cost * cfg.repairCostFactor * mul));
 }
 
 // Construcción del jugador: barricadas, sacos, puertas y trampas (1 celda cada una), y el
@@ -27,6 +28,8 @@ export class BuildSystem {
     this.lastDragCell = -1;
     this.version = 0;            // sube en cada cambio (para el render)
     this.nextId = 1;
+    this.sellArmed = -1;
+    this.sellArmedUntil = 0;
     this.initTransformer();
     this.reset();
   }
@@ -47,6 +50,7 @@ export class BuildSystem {
       box: [a[0], a[1], b[2], b[3]],
       cell: grid.walkableCellAt(anchor.x, anchor.z),
       flash: 0,
+      alertAt: -Infinity,
     };
   }
 
@@ -55,6 +59,11 @@ export class BuildSystem {
     if (!t || t.hp <= 0) return;
     t.hp = Math.max(0, t.hp - amount);
     t.flash = 0.12;
+    const tc = this.cfg.transformer;
+    if (t.hp > 0 && this.game.time - t.alertAt > tc.alertCooldown) {
+      t.alertAt = this.game.time;
+      this.game.hud.toast('⚡ ¡Están atacando el transformador! (patio norte)', 4);
+    }
     this.game.effects.burst(t.x, 1.0, t.z, 5, 0xffd24a, { speed: 2.5, up: 3, size: 0.05, life: 0.5 });
     if (t.hp <= 0) {
       this.game.effects.burst(t.x, 1.2, t.z, 30, 0x2b2b2b, { speed: 3, up: 4, size: 0.12, life: 1.6 });
@@ -67,7 +76,7 @@ export class BuildSystem {
   transformerRepairCost() {
     const t = this.transformer;
     if (!t || t.hp >= t.maxHp) return 0;
-    return Math.max(1, Math.ceil((t.maxHp - t.hp) * this.cfg.transformer.repairCostPerHp));
+    return Math.max(1, Math.ceil((t.maxHp - t.hp) * this.cfg.transformer.repairCostPerHp * this.surcharge));
   }
 
   repairTransformer() {
@@ -91,22 +100,40 @@ export class BuildSystem {
     this.structures.clear();
     this.active = false;
     this.dragging = false;
-    if (this.transformer) { this.transformer.hp = this.transformer.maxHp; this.transformer.flash = 0; }
-    this.changed();
+    if (this.transformer) { this.transformer.hp = this.transformer.maxHp; this.transformer.flash = 0; this.transformer.alertAt = -Infinity; }
+    this.sellArmed = -1;
+    this.changed(true);
   }
 
-  changed() {
+  /** @param {boolean} paths la rejilla de paso ha cambiado (piezas que bloquean): recalcular rutas */
+  changed(paths) {
     this.version++;
-    if (this.game.zombies) this.game.zombies.flowDirty = true;
+    if (paths && this.game.zombies) this.game.zombies.flowDirty = true;
   }
 
   get isNight() {
     return this.game.dayNight.phase === PHASE.NIGHT;
   }
 
+  get surcharge() {
+    return this.isNight ? this.cfg.nightSurcharge : 1;
+  }
+
   costOf(type, level = 0) {
-    const base = this.pieces[type].levels[level].cost;
-    return Math.ceil(base * (this.isNight ? this.cfg.nightSurcharge : 1));
+    return Math.ceil(this.pieces[type].levels[level].cost * this.surcharge);
+  }
+
+  /** ¿Está la celda k al alcance del jugador para construir, reparar o vender? */
+  inReach(k) {
+    const { grid, player } = this.game;
+    const i = k % grid.w, j = (k / grid.w) | 0;
+    return Math.hypot(grid.centerX(i) - player.position.x, grid.centerZ(j) - player.position.z) <= this.cfg.buildRange;
+  }
+
+  countOf(type) {
+    let n = 0;
+    for (const s of this.structures.values()) if (s.type === type) n++;
+    return n;
   }
 
   levelStat(def, level, key) {
@@ -126,13 +153,13 @@ export class BuildSystem {
     if (NO_BUILD_CHARS.has(ch)) return 'Zona reservada';
     if (def.onlyOn && ch !== def.onlyOn) return 'Solo en el hueco de una puerta';
     const cx = grid.centerX(i), cz = grid.centerZ(j);
-    const dp = Math.hypot(cx - player.position.x, cz - player.position.z);
-    if (dp > this.cfg.buildRange) return 'Demasiado lejos';
+    if (!this.inReach(k)) return 'Demasiado lejos';
+    if (this.countOf(type) >= this.cfg.maxPerType) return 'Límite de piezas de este tipo';
     for (const it of interactions.items) {
       if (!it.dynamic && grid.walkableCellAt(it.x, it.z) === k) return 'Bloquearía un objeto útil';
     }
     if (def.blocks) {
-      const half = grid.cellSize / 2 + 0.05;
+      const half = grid.cellSize / 2 + this.cfg.placeMargin;
       const overlaps = (x, z, r) => Math.abs(x - cx) < half + r && Math.abs(z - cz) < half + r;
       if (overlaps(player.position.x, player.position.z, player.radius)) return 'Estás encima';
       for (const z of zombies.active) {
@@ -162,7 +189,7 @@ export class BuildSystem {
       const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
       return s.axis === 'x' ? [x0, cz - half, x1, cz + half] : [cx - half, z0, cx + half, z1];
     }
-    return g.cellBox(s.i, s.j, 0.02);
+    return g.cellBox(s.i, s.j, 0);
   }
 
   applyGrid(s) {
@@ -184,14 +211,14 @@ export class BuildSystem {
     const s = {
       id: this.nextId++, type, def, k, i, j, level: 0, hp, maxHp: hp, invested: cost,
       flash: 0, open: false, axis: type === 'puerta' ? this.doorAxis(i, j) : 'x',
-      rearm: 0, fuse: -1, uses: hp, // trampas: uses = hp
+      rearm: 0, fuse: -1, repairReady: 0,
     };
     this.structures.set(k, s);
     this.applyGrid(s);
     if (type === 'puerta') this.registerDoor(s);
     this.game.floating?.spawn(`-${cost}`, grid.centerX(i), 1.6, grid.centerZ(j), 'neg');
     this.game.bus.emit('build:placed', { type, k });
-    this.changed();
+    this.changed(def.blocks);
     return true;
   }
 
@@ -201,33 +228,33 @@ export class BuildSystem {
 
   upgrade(s) {
     const cost = this.upgradeCost(s);
-    if (!cost || this.game.run.points < cost) return false;
+    // Las piezas dañadas se reparan antes de mejorar (si no, mejorar curaría gratis).
+    if (!cost || s.hp < s.maxHp || this.game.run.points < cost) return false;
     this.game.run.points -= cost;
     s.level++;
     s.maxHp = s.def.levels[s.level].hp;
     s.hp = s.maxHp;
-    s.uses = s.maxHp;
     s.invested += cost;
     this.applyGrid(s);
     this.game.floating?.spawn(`-${cost}`, this.game.grid.centerX(s.i), 1.6, this.game.grid.centerZ(s.j), 'neg');
-    this.changed();
+    this.changed(s.def.blocks);
     return true;
   }
 
   repairCostOf(s) {
-    return repairCost(this.cfg, s.def, s);
+    return repairCost(this.cfg, s.def, s, this.surcharge);
   }
 
   repair(s) {
     const cost = this.repairCostOf(s);
-    if (!cost || this.game.run.points < cost) return false;
+    if (!cost || this.game.run.points < cost || this.game.time < s.repairReady) return false;
     this.game.run.points -= cost;
     s.hp = s.maxHp;
-    s.uses = s.maxHp;
-    s.invested += cost;
+    s.repairReady = this.game.time + this.cfg.repairCooldown;
+    // La reparación no cuenta como inversión: vender devuelve sobre lo construido/mejorado.
     this.applyGrid(s);
     this.game.floating?.spawn(`-${cost}`, this.game.grid.centerX(s.i), 1.6, this.game.grid.centerZ(s.j), 'neg');
-    this.changed();
+    this.changed(false);
     return true;
   }
 
@@ -246,7 +273,8 @@ export class BuildSystem {
     this.game.grid.clearDynamic(s.k);
     this.structures.delete(s.k);
     if (s.type === 'puerta') this.game.interactions.removeItem(`puerta_${s.k}`);
-    this.changed();
+    if (this.sellArmed === s.k) this.sellArmed = -1;
+    this.changed(s.def.blocks);
   }
 
   /** Daño de un zombi a la pieza de la celda k. */
@@ -297,7 +325,7 @@ export class BuildSystem {
       s.open = false;
     }
     this.applyGrid(s);
-    this.changed();
+    this.changed(true);
     return null;
   }
 
@@ -318,7 +346,10 @@ export class BuildSystem {
       const s = this.structures.get(k);
       if (!s || s.def.kind !== 'trampa') continue;
       if (s.type === 'pinchos') {
-        zombies.damage(z, this.levelStat(s.def, s.level, 'dps') * dt);
+        // Daño continuo acumulado y aplicado por ticks (sin destello constante).
+        z.trapAcc = (z.trapAcc ?? 0) + this.levelStat(s.def, s.level, 'dps') * dt;
+        const tickDmg = this.levelStat(s.def, s.level, 'dps') * this.cfg.trapDamageTick;
+        if (z.trapAcc >= tickDmg) { zombies.damage(z, z.trapAcc, 0, 0, 0, true); z.trapAcc = 0; }
         z.slowMul = s.def.slow;
         s.hp -= s.def.wearPerZombieSecond * dt;
         if (Math.random() < dt * 6) effects.burst(z.pos.x, 0.3, z.pos.z, 1, 0x4a1d1d, { speed: 1, up: 1.5, size: 0.06, life: 0.5 });
@@ -329,7 +360,7 @@ export class BuildSystem {
         z.pos.x = grid.centerX(s.i); z.pos.z = grid.centerZ(s.j);
         zombies.damage(z, s.def.damage);
         effects.burst(z.pos.x, 0.3, z.pos.z, 8, 0x4a1d1d, { speed: 2, up: 2, size: 0.07, life: 0.8 });
-        s.rearm = s.def.holdTime + s.def.rearmTime;
+        s.rearm = this.levelStat(s.def, s.level, 'holdTime') + s.def.rearmTime;
         s.flash = 0.2;
         s.hp -= 1;
         if (s.hp <= 0) this.remove(s);
@@ -343,17 +374,22 @@ export class BuildSystem {
   explodeMine(s) {
     const { grid, zombies, effects, player } = this.game;
     const x = grid.centerX(s.i), z = grid.centerZ(s.j);
-    const R = s.def.radius;
+    const R = s.def.radius, F = s.def.falloff;
+    const blocked = this.game.weapons.shotBlocked;
+    // Solo alcanza a lo que tiene línea de tiro desde la mina (no atraviesa muros ni puertas).
+    const exposed = (px, pz, d) => d < 1e-3 || raycastGrid(grid, x, z, (px - x) / d, (pz - z) / d, d, blocked) >= d;
     for (const zb of zombies.active) {
       if (zb.state !== 0) continue;
       const d = Math.hypot(zb.pos.x - x, zb.pos.z - z);
-      if (d > R) continue;
-      const k = 1 - d / R * 0.6;
+      if (d > R || !exposed(zb.pos.x, zb.pos.z, d)) continue;
+      const k = 1 - (d / R) * F;
       const dx = (zb.pos.x - x) / (d || 1), dz = (zb.pos.z - z) / (d || 1);
-      zombies.damage(zb, s.def.damage * k, dx, dz, 0.8 * k);
+      zombies.damage(zb, s.def.damage * k, dx, dz, s.def.knockback * k);
     }
     const dp = Math.hypot(player.position.x - x, player.position.z - z);
-    if (dp < R) player.damage(s.def.damage * s.def.playerDamageMul * (1 - dp / R * 0.6));
+    if (dp < R && exposed(player.position.x, player.position.z, dp)) {
+      player.damage(s.def.damage * s.def.playerDamageMul * (1 - (dp / R) * F));
+    }
     effects.burst(x, 0.4, z, 40, 0xff9a2a, { speed: 6, up: 6, size: 0.1, life: 0.7 });
     effects.burst(x, 0.4, z, 25, 0x2a2a2a, { speed: 3, up: 5, size: 0.16, life: 1.6 });
     effects.muzzleFlash({ x, y: 1.2, z });
@@ -373,10 +409,23 @@ export class BuildSystem {
   primaryAction(k) {
     const s = this.structures.get(k);
     if (s) {
+      if (!this.inReach(k)) return null;
       if (s.hp < s.maxHp) return this.repair(s) ? 'repair' : null;
       return this.upgrade(s) ? 'upgrade' : null;
     }
     return this.place(this.selected, k) ? 'place' : null;
+  }
+
+  /** Clic derecho: el primero arma la venta, el segundo (en sellConfirmTime s) vende. */
+  sellAction(s) {
+    if (!this.inReach(s.k)) return;
+    if (this.sellArmed === s.k && this.game.time < this.sellArmedUntil) {
+      this.sellArmed = -1;
+      this.sell(s);
+    } else {
+      this.sellArmed = s.k;
+      this.sellArmedUntil = this.game.time + this.cfg.sellConfirmTime;
+    }
   }
 
   update(dt) {
@@ -387,7 +436,7 @@ export class BuildSystem {
       t.flash = Math.max(0, t.flash - dt);
       game.power.generator = t.hp > 0;
       // Chispas si está dañado.
-      if (t.hp > 0 && t.hp < t.maxHp * 0.5 && Math.random() < dt * 3) {
+      if (t.hp > 0 && t.hp < t.maxHp * this.cfg.transformer.damagedThreshold && Math.random() < dt * 3) {
         game.effects.burst(t.x, 1.3, t.z, 2, 0xffe08a, { speed: 1.5, up: 2.5, size: 0.04, life: 0.4 });
       }
     }
@@ -410,10 +459,11 @@ export class BuildSystem {
     this.hoverReason = hovered ? null : this.canPlace(this.selected, this.hoverCell);
 
     if (input.consume('alt')) {
-      if (hovered) this.sell(hovered);
+      if (hovered) this.sellAction(hovered);
       else this.setActive(false);
       return;
     }
+    if (this.sellArmed >= 0 && (this.sellArmed !== this.hoverCell || this.game.time >= this.sellArmedUntil)) this.sellArmed = -1;
     if (input.consume('fire')) {
       const action = this.primaryAction(this.hoverCell);
       // Arrastrar solo para colocar piezas que bloquean (filas de muro o sacos).

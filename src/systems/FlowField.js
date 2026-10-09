@@ -75,8 +75,9 @@ export class FlowField {
       for (const [di, dj, c] of DIRS) {
         const ni = i + di, nj = j + dj;
         if (!this.passable(ni, nj)) continue;
-        // Sin cortar esquinas: en diagonal, ambas celdas ortogonales deben ser transitables.
-        if (di && dj && (!this.passable(i + di, j) || !this.passable(i, j + dj))) continue;
+        // Sin cortar esquinas: en diagonal, ambas celdas ortogonales deben estar libres AHORA
+        // (incluidas las construcciones; si no, dos barricadas en diagonal dejarían una rendija).
+        if (di && dj && (!grid.isWalkable(i + di, j) || !grid.isWalkable(i, j + dj))) continue;
         const nk = nj * w + ni;
         const nd = d0 + c + grid.extraCost[nk];
         if (nd < dist[nk]) {

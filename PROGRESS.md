@@ -5,7 +5,7 @@
 | 0. Preparación | ✅ Hecha |
 | 1. Núcleo jugable | ✅ Hecha |
 | 2. Día/noche, oleadas, decoración e interacciones | ✅ Hecha |
-| 3. Construcción, trampas y transformador | 🔍 En revisión |
+| 3. Construcción, trampas y transformador | ✅ Hecha (pendiente del visto bueno de Carlos) |
 | 4. Tiendas | ⏳ Pendiente |
 | 5. Enemigos y defensas completos | ⏳ Pendiente |
 | 6. Arte y sonido | ⏳ Pendiente |
@@ -81,6 +81,44 @@
   - Sombra de la linterna calculada de día.
   - Parpadeos con reloj real (ahora con tiempo de juego).
   - Normales de los elipsoides, colores del terreno duplicados, números mágicos llevados a JSON y asignaciones por frame.
+
+## Fase 3: qué hay
+- **Modo construcción (B):**
+  - Barra de 6 piezas, pieza fantasma verde o roja, anillo de alcance de 10 m y radio visible de la mina.
+  - Clic para construir (arrastrar hace una fila) o para reparar y mejorar.
+  - Clic derecho dos veces para vender, que devuelve el 50 %.
+  - De noche todo cuesta un 50 % más, también reparar.
+- **Piezas:**
+  - Barricada: madera, metal y hormigón.
+  - Sacos de arena: sencillos y dobles; dejan pasar tus balas.
+  - Puerta reforzada: solo en huecos de puerta. Se abre y se cierra con E, y la bisagra va del lado del muro.
+- **Trampas:**
+  - Pinchos: daño por ticks, ralentizan y se desgastan.
+  - Cepo: inmoviliza, se rearma solo y tiene usos limitados.
+  - Mina: radio de 2,8 m, sin dañar a través de muros; también te hiere a ti.
+- **IA:**
+  - Las piezas bloquean el paso de los zombis y las balas, y encarecen sus rutas en proporción a su vida.
+  - Los zombis golpean lo que les cierra el paso y eligen el camino más barato, normalmente la pieza más débil.
+  - Las barricadas en diagonal no dejan rendijas.
+- **Transformador (sustituye al generador):**
+  - Tiene 700 de vida y da luz a la comisaría.
+  - Desde la noche 2, alrededor del 25 % de los zombis son vándalos que van a por él. Hay aviso al primer golpe y al romperse.
+  - Se repara con E, por un coste según el daño.
+- **QA (Sonnet) y revisión (Opus) hechas.** Corregidos:
+  - Paso por la esquina entre barricadas en diagonal.
+  - Mina que empujaba zombis a través de puertas y muros y dañaba a través de paredes.
+  - Reparar, mejorar y vender a cualquier distancia y venta sin confirmación.
+  - Cepo reforzado que se rearmaba antes de tiempo.
+  - Reparación sin recargo nocturno y fuga en la economía al reparar antes de vender.
+  - Pinchos que hacían parpadear al zombi.
+  - Recálculos de rutas innecesarios con las trampas.
+  - Textos del antiguo generador y hoja de la puerta doble en mitad del paso.
+- **Equilibrado:**
+  - Sacos: 200/450 de vida, 35/70 puntos.
+  - Pinchos: se desgastan 2,5 por segundo.
+  - Cepo: 45 de daño y 3,5 s de rearme.
+  - Transformador: 700 de vida, vándalos desde la noche 2.
+  - Reparar: factor de coste 1,0 y espera de 1,5 s.
 
 ## Placeholders pendientes de sustituir
 - Arte: todo procedural en el estilo de la referencia (decisión de Carlos). Los packs CC0 solo se usarán para sonido y música (fase 6).

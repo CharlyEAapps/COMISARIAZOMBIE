@@ -43,7 +43,7 @@ export class WorldLabels {
     f.el.textContent = text;
     f.el.className = `float-text ${cls}`;
     f.life = f.maxLife = 1.1;
-    f.x = x; f.y = y; f.z = z;
+    f.x = x + (Math.random() - 0.5) * 0.5; f.y = y; f.z = z;
     f.el.style.display = '';
   }
 

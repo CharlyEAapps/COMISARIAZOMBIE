@@ -23,7 +23,7 @@ De día preparas la comisaría; al anochecer suena la sirena y llega la horda. L
 | E (mantener) | Interactuar con lo que tengas delante |
 | Q | Usar botiquín |
 | N | Empezar la noche ya (de día) |
-| B | Modo construcción (1-6 eligen pieza · clic construye/repara/mejora · arrastrar = fila · clic dcho vende o sale) |
+| B | Modo construcción (1-6 eligen pieza · clic construye/repara/mejora · arrastrar = fila · clic dcho ×2 vende · clic dcho en vacío sale) |
 | Rueda | Zoom |
 | Esc | Pausa |
 | Enter | Reintentar tras morir |
@@ -40,8 +40,8 @@ De día preparas la comisaría; al anochecer suena la sirena y llega la horda. L
 | 💣 Mina | — | Explota una vez; ¡también te daña si estás cerca! |
 
 - Los zombis golpean lo que les cierra el paso. Si encierras la base, eligen el camino más barato (la pieza más débil o la más cercana).
-- Reparar cuesta en proporción al daño; vender devuelve el 50 % de lo invertido (según la vida que le quede). De noche todo cuesta un 50 % más.
-- **Transformador** (patio norte): da luz a la comisaría. Algunos zombis (vándalos) van a por él; si lo rompen, te quedas solo con la linterna. Repáralo con E.
+- Reparar cuesta en proporción al daño; vender (dos clics derechos) devuelve el 50 % de lo invertido según la vida que le quede. De noche todo cuesta un 50 % más, también reparar. Solo puedes actuar sobre piezas a menos de 10 m.
+- **Transformador** (patio norte): da luz a la comisaría. Desde la noche 2, algunos zombis (vándalos) van a por él; avisa cuando lo atacan. Si lo rompen, te quedas solo con la linterna. Repáralo con E.
 
 ## Interacciones de la comisaría
 | Objeto | Efecto |

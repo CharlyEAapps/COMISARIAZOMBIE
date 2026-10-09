@@ -275,5 +275,6 @@ html, body {
 }
 @media (max-width: 1000px) {
   .banner { top: 58%; }
+  .toasts { top: auto; bottom: 150px; }
   .banner-title { font-size: 30px; }
 }

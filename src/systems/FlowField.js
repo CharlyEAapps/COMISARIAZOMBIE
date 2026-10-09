@@ -19,9 +19,13 @@ export class FlowField {
     this.target = { i: -1, j: -1 };
   }
 
-  /** Celda transitable para el cálculo (las estructuras, en la fase 3, cuentan con coste extra). */
+  /**
+   * Celda transitable para el cálculo: el mapa estático. Las construcciones no cortan el
+   * camino, solo lo encarecen (extraCost ∝ vida): así, si la base está cerrada, la horda
+   * elige la barricada más débil.
+   */
   passable(i, j) {
-    return this.grid.isWalkable(i, j);
+    return this.grid.isStaticWalkable(i, j);
   }
 
   compute(ti, tj) {

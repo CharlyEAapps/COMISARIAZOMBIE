@@ -1,4 +1,5 @@
 import { PHASE } from '../systems/DayNight.js';
+import { PIECE_ORDER } from '../systems/BuildSystem.js';
 import interactions from '../data/interactions.json';
 
 const MEDKIT_TIME = interactions._medkit.useTime;
@@ -38,12 +39,16 @@ export class Hud {
       <div class="hurt" data-k="hurt"></div>
       <div class="toasts" data-k="toasts"></div>
       <div class="banner" data-k="banner"><div class="banner-title" data-k="bannerTitle"></div><div class="banner-sub" data-k="bannerSub"></div></div>
+      <div class="build-bar" data-k="buildBar">
+        <div class="build-info panel" data-k="buildInfo"></div>
+        <div class="build-cards" data-k="buildCards"></div>
+      </div>
       <div class="prompt-wrap">
         <div class="prompt panel" data-k="prompt">
           <span class="key">E</span><span data-k="promptText"></span>
           <div class="bar thin"><div class="fill prompt-fill" data-k="promptFill"></div></div>
         </div>
-        <div class="prompt panel subtle" data-k="ready"><span class="key">N</span> Empezar la noche ya</div>
+        <div class="prompt panel subtle" data-k="ready"><span class="key">B</span> Construir <span class="key">N</span> Empezar la noche ya</div>
       </div>
       <div class="hint panel" data-k="hint">
         <span class="key">WASD</span> mover <span class="key">Ratón</span> apuntar y disparar <span class="key">R</span> recargar <span class="key">E</span> interactuar <span class="key">Q</span> botiquín <span class="key">Esc</span> pausa
@@ -66,6 +71,16 @@ export class Hud {
     this.el = {};
     root.querySelectorAll('[data-k]').forEach((e) => { this.el[e.dataset.k] = e; });
     this.el.retry.addEventListener('click', () => game.restart());
+    // Tarjetas de piezas del modo construcción (clic para seleccionar).
+    this.cards = PIECE_ORDER.map((type, n) => {
+      const def = game.build.pieces[type];
+      const el = document.createElement('div');
+      el.className = 'build-card panel interactive';
+      el.innerHTML = `<span class="key">${n + 1}</span><span class="icon">${def.icon}</span><span class="name">${def.name}</span><span class="cost"></span>`;
+      el.addEventListener('mousedown', (e) => { e.stopPropagation(); game.build.selected = type; });
+      this.el.buildCards.appendChild(el);
+      return { type, el, cost: el.querySelector('.cost') };
+    });
     this._last = {};
     this.hintTimer = 14;
     this.bannerTimer = 0;
@@ -136,6 +151,9 @@ export class Hud {
     if (power.generator) chips.push(power.lightsOn ? '💡 Luces' : '⚡ Generador');
     if (this.game.lighting.alarmTimer > 0) chips.push('🚨 Alarma');
     if (this.game.zombies.decoy.timer > 0) chips.push('🚓 Sirena');
+    const tr = this.game.build.transformer;
+    if (tr && tr.hp <= 0) chips.push('<b class="danger-text">⚠ Sin corriente</b>');
+    else if (tr && tr.hp < tr.maxHp) chips.push(`⚡ Transformador ${Math.round((tr.hp / tr.maxHp) * 100)} %`);
     this.set('chips', chips.map((c) => `<span class="chip">${c}</span>`).join(''), 'innerHTML');
 
     // Caso de la noche.
@@ -173,7 +191,8 @@ export class Hud {
       this.el.prompt.classList.toggle('disabled', !av.ok);
       this.set('promptFill', `${(interactions.progress * 100).toFixed(0)}%`, 'width');
     }
-    this.set('ready', dayNight.phase === PHASE.DAY && !it && player.alive, 'show');
+    this.set('ready', !it && player.alive && !this.game.build.active, 'show');
+    this.updateBuild();
 
     this.hintTimer -= dt;
     this.set('hint', this.hintTimer > 0 ? '1' : '0', 'opacity');
@@ -188,6 +207,43 @@ export class Hud {
       this.set('oKills', String(run.kills));
       this.set('oPoints', String(run.points));
     }
+  }
+
+  /** Barra del modo construcción: piezas con coste y la acción sobre la celda señalada. */
+  updateBuild() {
+    const b = this.game.build;
+    this.set('buildBar', b.active, 'show');
+    if (this._last.building !== b.active) {
+      this._last.building = b.active;
+      this.root.classList.toggle('building', b.active);
+    }
+    if (!b.active) return;
+    const pts = this.game.run.points;
+    for (const c of this.cards) {
+      const cost = b.costOf(c.type);
+      c.el.classList.toggle('selected', b.selected === c.type);
+      c.el.classList.toggle('poor', pts < cost);
+      c.cost.textContent = String(cost);
+    }
+    const s = b.structures.get(b.hoverCell);
+    let info;
+    if (s) {
+      const lvl = s.def.levels[s.level];
+      const parts = [`<b>${s.def.icon} ${lvl.name}</b> ${Math.ceil(s.hp)}/${s.maxHp}`];
+      const rc = b.repairCostOf(s), uc = b.upgradeCost(s);
+      if (rc) parts.push(`<span class="key">Clic</span> Reparar (${rc})`);
+      else if (uc) parts.push(`<span class="key">Clic</span> Mejorar a ${s.def.levels[s.level + 1].name} (${uc})`);
+      else parts.push('Nivel máximo');
+      parts.push(`<span class="key">Clic dcho</span> Vender (+${b.sellValue(s)})`);
+      info = parts.join(' · ');
+    } else if (b.hoverReason) {
+      info = `<i>${b.hoverReason}</i> · <span class="key">Clic dcho</span> Salir`;
+    } else {
+      const def = b.pieces[b.selected];
+      const drag = def.blocks && b.selected !== 'puerta' ? ' (arrastra para hacer una fila)' : '';
+      info = `<span class="key">Clic</span> Construir ${def.name.toLowerCase()}${drag} · <span class="key">Clic dcho</span> Salir${b.isNight ? ' · <i>De noche +50 %</i>' : ''}`;
+    }
+    this.set('buildInfo', info, 'innerHTML');
   }
 
   reset() {

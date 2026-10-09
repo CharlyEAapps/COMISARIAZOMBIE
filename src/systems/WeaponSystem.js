@@ -58,6 +58,8 @@ export class WeaponSystem {
     if (!player.alive) return;
 
     if (input.consume('reload')) this.startReload();
+    // En modo construcción el clic es para construir.
+    if (this.game.build?.active) { w.buffer = 0; return; }
 
     const pressed = input.consume('fire');
     if (pressed) w.buffer = FIRE_BUFFER;

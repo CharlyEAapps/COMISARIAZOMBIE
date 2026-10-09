@@ -23,15 +23,30 @@ De día preparas la comisaría; al anochecer suena la sirena y llega la horda. L
 | E (mantener) | Interactuar con lo que tengas delante |
 | Q | Usar botiquín |
 | N | Empezar la noche ya (de día) |
+| B | Modo construcción (1-6 eligen pieza · clic construye/repara/mejora · arrastrar = fila · clic dcho vende o sale) |
 | Rueda | Zoom |
 | Esc | Pausa |
 | Enter | Reintentar tras morir |
 | F1 | Panel de depuración (modo dios, saltar a la noche, generar zombis, ver flow field…) |
 
+## Construcción y trampas (tecla B)
+| Pieza | Niveles | Notas |
+|---|---|---|
+| 🧱 Barricada | Madera → Metal → Hormigón | Bloquea el paso y las balas |
+| 🪨 Sacos de arena | Sacos → Sacos dobles | Bloquean a los zombis, pero tus balas pasan por encima |
+| 🚪 Puerta reforzada | Seguridad → Blindada | Solo en huecos de puerta; ábrela y ciérrala con E |
+| 📌 Pinchos | Madera → Acero | Daño continuo y ralentizan; se desgastan |
+| 🪤 Cepo | Normal → Reforzado | Inmoviliza unos segundos y se rearma solo (usos limitados) |
+| 💣 Mina | — | Explota una vez; ¡también te daña si estás cerca! |
+
+- Los zombis golpean lo que les cierra el paso. Si encierras la base, eligen el camino más barato (la pieza más débil o la más cercana).
+- Reparar cuesta en proporción al daño; vender devuelve el 50 % de lo invertido (según la vida que le quede). De noche todo cuesta un 50 % más.
+- **Transformador** (patio norte): da luz a la comisaría. Algunos zombis (vándalos) van a por él; si lo rompen, te quedas solo con la linterna. Repáralo con E.
+
 ## Interacciones de la comisaría
 | Objeto | Efecto |
 |---|---|
-| ☕ Cafetera | Resistencia a tope y recuperación ×2 durante 60 s (una vez por día) |
+| ☕ Cafetera | +10 % de velocidad durante 30 s (2 min de espera) |
 | 🍫 Máquina de vending | +15 de vida por 25 puntos |
 | 💧 Fuente de agua | +8 de vida |
 | 🗄️ Taquillas | Botiquín, dinero… o calcetines sucios (una vez por día) |
@@ -41,8 +56,8 @@ De día preparas la comisaría; al anochecer suena la sirena y llega la horda. L
 | 📞 Teléfono | Llamadas variopintas; a veces, ayuda |
 | 📻 Radio | Previsión de la horda: cuántos y por dónde |
 | 📹 Cámaras | Cuántos zombis hay y por dónde vienen |
-| ⚡ Generador (patio) | Da corriente hasta el amanecer |
-| 💡 Cuadro eléctrico | Enciende o apaga las luces de la comisaría (necesita el generador) |
+| ⚡ Transformador (patio) | Repararlo si está dañado (coste según el daño) |
+| 💡 Cuadro eléctrico | Enciende o apaga las luces de la comisaría (necesita el transformador) |
 | 📋 Pizarra de casos | Objetivo para la noche con recompensa |
 | 🚓 Coches patrulla | La sirena atrae a los zombis cercanos durante 10 s |
 | 🚨 Alarma | Luces de emergencia y zombis más lentos durante 20 s (una vez por noche) |

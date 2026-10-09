@@ -1,0 +1,67 @@
+{
+  "_comment": "Piezas de construcción y trampas. Cada pieza ocupa 1 celda. cost/hp por nivel. blocks: bloquea el paso (los zombis la atacan); blocksShot: para las balas.",
+  "nightSurcharge": 1.5,
+  "sellRefund": 0.5,
+  "repairCostFactor": 0.6,
+  "buildRange": 10,
+  "flowCostPerHp": 0.025,
+  "pieces": {
+    "barricada": {
+      "name": "Barricada", "icon": "🧱", "kind": "estructura",
+      "blocks": true, "blocksShot": true, "height": 1.35,
+      "levels": [
+        { "name": "Madera", "cost": 40, "hp": 260 },
+        { "name": "Metal", "cost": 90, "hp": 620 },
+        { "name": "Hormigón", "cost": 180, "hp": 1400 }
+      ]
+    },
+    "sacos": {
+      "name": "Sacos de arena", "icon": "🪨", "kind": "estructura",
+      "blocks": true, "blocksShot": false, "height": 0.8,
+      "levels": [
+        { "name": "Sacos", "cost": 30, "hp": 320 },
+        { "name": "Sacos dobles", "cost": 60, "hp": 700 }
+      ]
+    },
+    "puerta": {
+      "name": "Puerta reforzada", "icon": "🚪", "kind": "estructura", "onlyOn": "D",
+      "blocks": true, "blocksShot": true, "height": 2.3, "thickness": 0.3,
+      "levels": [
+        { "name": "Puerta de seguridad", "cost": 120, "hp": 550 },
+        { "name": "Puerta blindada", "cost": 220, "hp": 1300 }
+      ]
+    },
+    "pinchos": {
+      "name": "Pinchos", "icon": "📌", "kind": "trampa",
+      "blocks": false, "blocksShot": false, "height": 0.25,
+      "dps": 16, "slow": 0.55, "wearPerZombieSecond": 1,
+      "levels": [
+        { "name": "Pinchos", "cost": 70, "hp": 45 },
+        { "name": "Pinchos de acero", "cost": 110, "hp": 90, "dps": 26 }
+      ]
+    },
+    "cepo": {
+      "name": "Cepo", "icon": "🪤", "kind": "trampa",
+      "blocks": false, "blocksShot": false, "height": 0.2,
+      "damage": 25, "holdTime": 3.5, "rearmTime": 5,
+      "levels": [
+        { "name": "Cepo", "cost": 55, "hp": 5 },
+        { "name": "Cepo reforzado", "cost": 90, "hp": 10, "holdTime": 5 }
+      ]
+    },
+    "mina": {
+      "name": "Mina", "icon": "💣", "kind": "trampa",
+      "blocks": false, "blocksShot": false, "height": 0.12,
+      "damage": 160, "radius": 2.8, "fuse": 0.35, "playerDamageMul": 0.4,
+      "levels": [
+        { "name": "Mina", "cost": 65, "hp": 1 }
+      ]
+    }
+  },
+  "transformer": {
+    "hp": 450,
+    "repairCostPerHp": 0.35,
+    "vandalChance": 0.25,
+    "attackRange": 1.6
+  }
+}

@@ -21,6 +21,8 @@ function makeZombie(id) {
     state: Z_STATE.CHASE, windup: 0, cooldown: 0, attackAnim: 0,
     losTimer: 0, hasLos: false, walkPhase: 0, flash: 0,
     deathTimer: 0, fall: 0, sink: 0,
+    stunTimer: 0, slowMul: 1, vandal: false, attackTarget: 0, // 0 jugador, 1 estructura, 2 transformador
+    targetCell: -1,
     colors: PART_NAMES.map(() => new THREE.Color()),
   };
 }
@@ -39,6 +41,9 @@ export class ZombieSystem {
     this.active = [];
     this.flow = new FlowField(game.grid);
     this.decoyFlow = new FlowField(game.grid); // rutas hacia el señuelo (sirena)
+    this.vandalFlow = new FlowField(game.grid); // rutas hacia el transformador
+    this.flowDirty = false; // una construcción ha cambiado: recalcular los flow fields
+    this.vandalTarget = -1;
     this.flowTimer = 0;
     this.flowCell = -1;
     const g = game.grid;
@@ -95,9 +100,18 @@ export class ZombieSystem {
     this.active.length = 0;
     this.flowCell = -1;
     this.flowTimer = 0;
+    this.flowDirty = false;
+    this.vandalTarget = -1;
     this.decoy.timer = 0;
     this.speedMul = 1;
     this.speedMulTimer = 0;
+  }
+
+  /** ¿Está el círculo del zombi a menos de `reach` de la caja [minX,minZ,maxX,maxZ] en arr[o..o+3]? */
+  nearBox(zb, arr, o, reach) {
+    const cx = Math.max(arr[o], Math.min(zb.pos.x, arr[o + 2]));
+    const cz = Math.max(arr[o + 1], Math.min(zb.pos.z, arr[o + 3]));
+    return (zb.pos.x - cx) ** 2 + (zb.pos.z - cz) ** 2 < reach * reach;
   }
 
   /** Atrae hacia (x,z) a los zombis en `radius` que no ven al jugador, durante `seconds`. */
@@ -140,6 +154,9 @@ export class ZombieSystem {
     zb.hasLos = false;
     zb.walkPhase = Math.random() * 10;
     zb.flash = 0; zb.deathTimer = 0; zb.fall = 0; zb.sink = 0;
+    zb.stunTimer = 0; zb.slowMul = 1; zb.attackTarget = 0; zb.targetCell = -1;
+    const tr = this.game.build?.transformer;
+    zb.vandal = !!tr && tr.hp > 0 && Math.random() < this.game.build.cfg.transformer.vandalChance;
     const skin = this._c.set(d.color).multiplyScalar(rnd(d.colorVariance));
     const shirt = SHIRTS[(Math.random() * SHIRTS.length) | 0];
     const pants = PANTS[(Math.random() * PANTS.length) | 0];
@@ -193,14 +210,24 @@ export class ZombieSystem {
     const { grid, player } = game;
     const px = player.position.x, pz = player.position.z;
 
-    // Flow field hacia la celda transitable del jugador (solo si ha cambiado).
+    // Flow field hacia la celda transitable del jugador (si cambia de celda o cambian las construcciones).
     this.flowTimer -= dt;
     const pcell = grid.walkableCellAt(px, pz);
-    if (this.flowTimer <= 0 && pcell !== this.flowCell && pcell >= 0) {
+    if (this.flowTimer <= 0 && (pcell !== this.flowCell || this.flowDirty) && pcell >= 0) {
       flow.compute(pcell % grid.w, (pcell / grid.w) | 0);
       this.flowCell = pcell;
       this.flowTimer = ai.flowFieldInterval;
+      // Rutas al transformador (destino fijo): solo al cambiar las construcciones.
+      const tr = game.build?.transformer;
+      if (tr && (this.flowDirty || this.vandalTarget !== tr.cell)) {
+        this.vandalFlow.compute(tr.cell % grid.w, (tr.cell / grid.w) | 0);
+        this.vandalTarget = tr.cell;
+      }
+      if (this.flowDirty && this.decoy.timer > 0) this.setDecoy(this.decoy.x, this.decoy.z, this.decoy.timer, this.decoy.radius);
+      this.flowDirty = false;
     }
+    const transformer = game.build?.transformer;
+    const vandalsActive = !!transformer && transformer.hp > 0;
 
     hash.clear();
     for (const zb of this.active) if (zb.state !== Z_STATE.DYING) hash.insert(zb, zb.pos.x, zb.pos.z);
@@ -230,6 +257,15 @@ export class ZombieSystem {
       const dist = Math.hypot(dx, dz) || 1e-6;
       const ux = dx / dist, uz = dz / dist;
 
+      // Atrapado en un cepo: no se mueve ni ataca.
+      if (zb.stunTimer > 0) {
+        zb.stunTimer -= dt;
+        zb.vx *= 0.5; zb.vz *= 0.5;
+        zb.windup = 0; zb.attackAnim = 0;
+        zb.slowMul = 1;
+        continue;
+      }
+
       // Línea de visión escalonada en el tiempo (no todos los zombis en el mismo paso).
       zb.losTimer -= dt;
       if (zb.losTimer <= 0) {
@@ -247,9 +283,12 @@ export class ZombieSystem {
         toDecoy = dd < decoy.radius;
         if (toDecoy && dd < 1.5) { mx = 0; mz = 0; }
       }
-      if (!zb.hasLos && !(toDecoy && mx === 0 && mz === 0)) {
-        // Sin línea de visión: flow field hacia el jugador o, si oye la sirena, hacia el señuelo.
-        const field = toDecoy ? this.decoyFlow : flow;
+      // Los vándalos van a por el transformador salvo que tengan al jugador encima.
+      const goVandal = zb.vandal && vandalsActive && !(zb.hasLos && dist < 6);
+      zb.targetCell = -1;
+      if ((!zb.hasLos || goVandal) && !(toDecoy && mx === 0 && mz === 0)) {
+        // Flow field hacia el jugador, el señuelo o el transformador.
+        const field = goVandal ? this.vandalFlow : toDecoy ? this.decoyFlow : flow;
         const cell = grid.walkableCellAt(zb.pos.x, zb.pos.z);
         const nk = cell >= 0 ? field.next[cell] : -1;
         if (nk >= 0) {
@@ -257,6 +296,12 @@ export class ZombieSystem {
           const tz = grid.centerZ((nk / grid.w) | 0) - zb.pos.z;
           const tl = Math.hypot(tx, tz) || 1;
           mx = tx / tl; mz = tz / tl;
+          // La siguiente celda tiene una construcción que bloquea: hay que romperla.
+          if (grid.blocked[nk] && this.nearBox(zb, grid.dynBox, nk * 4, zb.radius + ai.structureReach)) zb.targetCell = nk;
+        }
+        if (goVandal && this.nearBox(zb, transformer.box, 0, zb.radius + game.build.cfg.transformer.attackRange * 0.5)) {
+          zb.targetCell = -2;
+          mx = 0; mz = 0;
         }
       }
 
@@ -279,21 +324,28 @@ export class ZombieSystem {
       const gap = dist - zb.radius - player.radius;
       const near = player.alive && gap < zb.data.attackRange + ai.attackHitTolerance;
       const clear = near && raycastGrid(grid, zb.pos.x, zb.pos.z, ux, uz, dist, this.blockedWalk) >= dist;
-      const inRange = clear && gap < zb.data.attackRange;
+      const playerInRange = clear && gap < zb.data.attackRange;
+      // Prioridad: jugador al alcance > construcción que bloquea > transformador.
+      const inRange = playerInRange || zb.targetCell !== -1;
       zb.cooldown = Math.max(0, zb.cooldown - dt);
       if (zb.windup > 0) {
         zb.windup -= dt;
         zb.attackAnim = 1 - zb.windup / zb.data.attackWindup;
         if (zb.windup <= 0) {
-          if (clear) player.damage(zb.data.damage);
+          const sdmg = zb.data.damage * (zb.data.structureDamageMul ?? 1);
+          if (zb.attackTarget === 0 && clear) player.damage(zb.data.damage);
+          else if (zb.attackTarget === 1 && zb.targetCell >= 0) game.build.damageCell(zb.targetCell, sdmg);
+          else if (zb.attackTarget === 2 && zb.targetCell === -2) game.build.damageTransformer(sdmg);
           zb.cooldown = zb.data.attackCooldown;
           zb.attackAnim = 0;
         }
       } else if (inRange && zb.cooldown <= 0) {
         zb.windup = zb.data.attackWindup;
+        zb.attackTarget = playerInRange ? 0 : zb.targetCell >= 0 ? 1 : 2;
       }
 
-      const baseSpeed = zb.speed * this.speedMul;
+      const baseSpeed = zb.speed * this.speedMul * zb.slowMul;
+      zb.slowMul = 1; // las trampas lo vuelven a fijar en cada paso
       const speed = zb.windup > 0 || inRange ? baseSpeed * ai.attackSlowFactor : baseSpeed;
       let tvx = mx * speed + sx * ai.separationStrength;
       let tvz = mz * speed + sz * ai.separationStrength;
@@ -323,8 +375,13 @@ export class ZombieSystem {
       }
       resolveCircleVsGrid(zb.pos, zb.radius, grid);
 
-      // Mira al jugador si está cerca; si no, hacia donde camina.
-      const targetFacing = dist < 3 || zb.hasLos ? Math.atan2(dx, dz) : Math.atan2(zb.vx, zb.vz);
+      // Mira al jugador si está cerca; si golpea algo, hacia ello; si no, hacia donde camina.
+      let targetFacing = dist < 3 || zb.hasLos ? Math.atan2(dx, dz) : Math.atan2(zb.vx, zb.vz);
+      if (zb.targetCell >= 0 && !playerInRange) {
+        targetFacing = Math.atan2(grid.centerX(zb.targetCell % grid.w) - zb.pos.x, grid.centerZ((zb.targetCell / grid.w) | 0) - zb.pos.z);
+      } else if (zb.targetCell === -2 && !playerInRange) {
+        targetFacing = Math.atan2(transformer.x - zb.pos.x, transformer.z - zb.pos.z);
+      }
       let df = targetFacing - zb.facing;
       df = Math.atan2(Math.sin(df), Math.cos(df));
       zb.facing += df * turn;

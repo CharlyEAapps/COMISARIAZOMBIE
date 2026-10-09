@@ -227,6 +227,32 @@ html, body {
 .prompt i { font-style: normal; color: #e0a05a; }
 .prompt.subtle { font-size: 12.5px; opacity: 0.85; }
 
+/* Modo construcción */
+.build-bar {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+  width: max-content; max-width: calc(100vw - 24px);
+  display: none; flex-direction: column; align-items: center; gap: 8px; z-index: 5;
+}
+.build-bar.show { display: flex; }
+.build-info { padding: 7px 14px; font-size: 13px; text-align: center; max-width: 100%; }
+.build-info i { font-style: normal; color: #e0a05a; }
+.build-info .key { margin: 0 4px 0 6px; }
+.build-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.build-card {
+  display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 6px;
+  padding: 5px 9px; min-width: 0; cursor: pointer; border: 1px solid transparent;
+}
+.build-card .key { grid-row: 1 / 3; align-self: center; margin: 0; }
+.build-card .icon { font-size: 18px; line-height: 1; }
+.build-card .name { grid-column: 2; font-size: 11px; color: var(--hud-dim); }
+.build-card .cost { grid-column: 2; grid-row: 1; justify-self: end; font: 700 13px ui-monospace, Consolas, monospace; color: var(--accent); }
+.build-card.selected { border-color: var(--accent); background: rgba(58, 48, 24, 0.92); }
+.build-card.selected .name { color: var(--hud-fg); }
+.build-card.poor .cost { color: var(--danger); }
+.build-bar.show ~ .prompt-wrap,
+.hud.building .panel-weapon,
+.hud.building .hint { display: none; }
+
 /* Etiquetas en el mundo */
 .world-labels { position: absolute; inset: 0; overflow: hidden; }
 .float-text {

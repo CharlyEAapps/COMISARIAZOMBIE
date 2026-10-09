@@ -24,6 +24,8 @@ import { WaveDirector } from '../systems/WaveDirector.js';
 import { DayNight, PHASE } from '../systems/DayNight.js';
 import { Score } from '../systems/Score.js';
 import { InteractionSystem } from '../systems/InteractionSystem.js';
+import { BuildSystem } from '../systems/BuildSystem.js';
+import { StructureRenderer } from '../render/StructureRenderer.js';
 import { Player } from '../entities/Player.js';
 
 export const STATE = { MENU: 'menu', PLAYING: 'playing', PAUSED: 'paused', GAMEOVER: 'gameover' };
@@ -55,7 +57,7 @@ export class Game {
     this.weapons = new WeaponSystem(this);
     this.dayNight = new DayNight(daynightData, this.bus);
     this.waves = new WaveDirector(this);
-    this.power = { generator: false, lightsOn: true };
+    this.power = { generator: true, lightsOn: true }; // generator = el transformador funciona
     this.run = { time: 0, points: 0, kills: 0, nights: 0 };
     this.floating = new WorldLabels(this);
     this.score = new Score(this);
@@ -64,12 +66,16 @@ export class Game {
     this.lighting.setAnchors(this.props.lightAnchors);
     this.lighting.applyQuality(config.quality.presets[this.qualityName]);
     this.interactions.setAnchors(this.props.interactAnchors);
+    this.build = new BuildSystem(this);
+    this.structureRenderer = new StructureRenderer(this);
     this.flowViz = new FlowFieldViz(this.scene, this.grid);
     this.hud = new Hud(this);
 
     this.aimPoint = new THREE.Vector3();
     this._raycaster = new THREE.Raycaster();
     this._aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -AIM_HEIGHT);
+    this._groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    this.groundPoint = new THREE.Vector3(); // punto del suelo bajo el cursor (modo construcción)
     this._ndc = new THREE.Vector2();
     this._cutTarget = new THREE.Vector3();
 
@@ -78,7 +84,6 @@ export class Game {
     });
     this.bus.on('player:died', () => { this.deathTimer = this.player.data.gameOverDelay; });
     this.bus.on('phase:noche', ({ night, duration }) => this.waves.startNight(night, duration));
-    this.bus.on('phase:amanecer', () => { this.power.generator = false; });
     this.deathTimer = 0;
     this.wavesEnabled = true;
     this._nightCleared = () => this.waves.cleared();
@@ -109,6 +114,7 @@ export class Game {
     d.addToggle('Trucos', 'Modo dios', d.flags, 'godMode');
     d.addAction('Trucos', '+1000 puntos', () => { this.run.points += 1000; });
     d.addAction('Trucos', '+1 botiquín', () => { this.player.medkits++; });
+    d.addAction('Trucos', 'Romper transformador', () => this.build.damageTransformer(1e9));
     d.addAction('Ciclo', 'Saltar a la noche', () => {
       if (this.dayNight.phase === PHASE.DAY) this.dayNight.skipDay();
       if (this.dayNight.phase === PHASE.DUSK) this.dayNight.t = this.dayNight.duration;
@@ -135,6 +141,7 @@ export class Game {
     window.removeEventListener('resize', this._onResize);
     this.input.dispose();
     this.props.dispose();
+    this.structureRenderer.dispose();
     this.lighting.dispose();
     this.debug.gui.destroy();
     this.renderer.renderer.dispose();
@@ -163,11 +170,12 @@ export class Game {
     this.waves.reset();
     this.score.reset();
     this.interactions.reset();
+    this.build.reset();
     this.effects.reset();
     this.floating.reset();
     this.hud.reset();
     this.lighting.alarmTimer = 0;
-    Object.assign(this.power, { generator: false, lightsOn: true });
+    Object.assign(this.power, { generator: true, lightsOn: true });
     Object.assign(this.run, { time: 0, points: 0, kills: 0, nights: 0 });
     this.deathTimer = 0;
     this.state = STATE.PLAYING;
@@ -181,6 +189,7 @@ export class Game {
     this._ndc.set(p.ndcX, p.ndcY);
     this._raycaster.setFromCamera(this._ndc, this.cameraRig.camera);
     this._raycaster.ray.intersectPlane(this._aimPlane, this.aimPoint);
+    this._raycaster.ray.intersectPlane(this._groundPlane, this.groundPoint);
   }
 
   frame(now) {
@@ -226,6 +235,7 @@ export class Game {
     const visualDt = this.state === STATE.PAUSED ? 0 : dt;
     this.player.render();
     this.zombies.render();
+    this.structureRenderer.update();
     this.effects.update(visualDt);
     this.lighting.update(visualDt);
     if (this.debug.flags.showFlowField) this.flowViz.update(this.zombies.flow, visualDt);
@@ -258,6 +268,7 @@ export class Game {
     this.player.update(dt);
     this.interactions.update(dt);
     this.weapons.update(dt);
+    this.build.update(dt);
     if (this.wavesEnabled && this.player.alive) this.waves.update(dt, this.dayNight);
     this.zombies.update(dt);
     this.score.update(dt);

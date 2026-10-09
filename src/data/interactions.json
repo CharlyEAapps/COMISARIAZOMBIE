@@ -147,15 +147,13 @@
     }
   },
   "generador": {
-    "label": "Arrancar el generador",
-    "hold": 3.0,
-    "cooldown": "cycle",
+    "label": "Reparar el transformador",
+    "hold": 2.5,
+    "cooldown": 1,
     "marker": true,
     "effect": {
-      "startGenerator": true
-    },
-    "msg": "⚡ Generador en marcha hasta el amanecer",
-    "noDawn": true
+      "repairTransformer": true
+    }
   },
   "pizarra_casos": {
     "label": "Aceptar caso de la noche",
@@ -216,5 +214,14 @@
     {
       "text": "📞 Solo se oye respirar… y un gruñido. Cuelgas."
     }
-  ]
+  ],
+  "puerta_reforzada": {
+    "label": "Abrir puerta",
+    "hold": 0.25,
+    "cooldown": 0.3,
+    "radius": 1.4,
+    "effect": {
+      "toggleDoor": true
+    }
+  }
 }

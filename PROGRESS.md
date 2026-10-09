@@ -4,8 +4,8 @@
 |---|---|
 | 0. Preparación | ✅ Hecha |
 | 1. Núcleo jugable | ✅ Hecha |
-| 2. Día/noche, oleadas, decoración e interacciones | ✅ Hecha (pendiente del visto bueno de Carlos) |
-| 3. Construcción | ⏳ Pendiente |
+| 2. Día/noche, oleadas, decoración e interacciones | ✅ Hecha |
+| 3. Construcción, trampas y transformador | 🔍 En revisión |
 | 4. Tiendas | ⏳ Pendiente |
 | 5. Enemigos y defensas completos | ⏳ Pendiente |
 | 6. Arte y sonido | ⏳ Pendiente |
@@ -88,7 +88,7 @@
 
 ## Ideas de Carlos (backlog)
 - ✅ (fase 2, hecha) **Cafetera:** +10 % de velocidad de movimiento durante 30 s; 2 min de espera hasta el siguiente café.
-- ⏳ (fase 3) **Transformador con vida**, que sustituye al generador:
+- ✅ (fase 3) **Transformador con vida**, que sustituye al generador:
   - Funciona desde el inicio y, de noche, da más luz a la comisaría.
   - Los zombis pueden estropearlo; sin él, solo queda la linterna.
   - Se puede reparar en cualquier momento (coste proporcional al daño).

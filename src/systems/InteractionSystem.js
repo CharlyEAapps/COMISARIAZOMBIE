@@ -35,7 +35,23 @@ export class InteractionSystem {
       .map((a) => ({ ...a, def: { ...DEFAULTS, ...data[a.type] }, readyAt: 0, usedCycle: 0 }));
   }
 
+  /** Interacción añadida en partida (p. ej. una puerta construida). */
+  addItem(a) {
+    if (!data[a.type]) return;
+    this.removeItem(a.id);
+    this.items.push({ ...a, def: { ...DEFAULTS, ...data[a.type] }, readyAt: 0, usedCycle: 0 });
+  }
+
+  removeItem(id) {
+    const n = this.items.findIndex((it) => it.id === id);
+    if (n >= 0) {
+      if (this.current === this.items[n]) this.current = null;
+      this.items.splice(n, 1);
+    }
+  }
+
   reset() {
+    this.items = this.items.filter((it) => !it.dynamic);
     for (const it of this.items) { it.readyAt = 0; it.usedCycle = 0; }
     this.current = null;
     this.holdT = 0;
@@ -59,6 +75,11 @@ export class InteractionSystem {
     if (d.requiresPower && !game.power.generator) return { ok: false, reason: 'Sin corriente: arranca el generador' };
     const e = d.effect;
     const p = game.player;
+    if (e.repairTransformer) {
+      const cost = game.build.transformerRepairCost();
+      if (!cost) return { ok: false, reason: 'Funciona correctamente' };
+      if (game.run.points < cost) return { ok: false, reason: `Necesitas ${cost} puntos` };
+    }
     if (e.medkit && !e.loot && p.medkits >= data._medkit.max) return { ok: false, reason: 'Llevas el máximo de botiquines' };
     if (e.heal && !e.skipDay && p.hp >= p.maxHp) return { ok: false, reason: 'Vida al máximo' };
     return { ok: true };
@@ -67,6 +88,12 @@ export class InteractionSystem {
   label(it) {
     const d = it.def;
     if (d.effect.toggleLights) return this.game.power.lightsOn ? 'Apagar las luces' : 'Encender las luces';
+    if (d.effect.toggleDoor) return this.game.build.structures.get(it.cell)?.open ? 'Cerrar puerta' : 'Abrir puerta';
+    if (d.effect.repairTransformer) {
+      const t = this.game.build.transformer;
+      const cost = this.game.build.transformerRepairCost();
+      return cost ? `Reparar el transformador (${Math.round((t.hp / t.maxHp) * 100)} %, ${cost} pts)` : 'Transformador';
+    }
     return d.cost ? `${d.label} (${d.cost} pts)` : d.label;
   }
 
@@ -155,6 +182,8 @@ export class InteractionSystem {
       game.zombies.setDecoy(it.x, it.z, e.decoy, e.decoyRadius);
       game.bus.emit('siren', { id: it.id, seconds: e.decoy });
     }
+    if (e.toggleDoor) msg = game.build.toggleDoor(it.cell);
+    if (e.repairTransformer) msg = game.build.repairTransformer();
     if (e.alarm) {
       game.lighting.triggerAlarm(e.alarm);
       game.zombies.slowAll(e.alarmSlow, e.alarm);

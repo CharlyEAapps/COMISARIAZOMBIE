@@ -12,7 +12,8 @@
     "attackCooldown": 1.1,
     "points": 10,
     "color": "#6f8a5a",
-    "colorVariance": 0.12
+    "colorVariance": 0.12,
+    "structureDamageMul": 1
   },
   "_ai": {
     "maxZombies": 200,
@@ -29,6 +30,7 @@
     "maxSpeedFactor": 1.3,
     "playerPushShare": 0.15,
     "fallTime": 0.4,
-    "sinkTime": 1
+    "sinkTime": 1,
+    "structureReach": 0.35
   }
 }

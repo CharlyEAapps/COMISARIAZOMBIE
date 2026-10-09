@@ -23,6 +23,10 @@ export class NavGrid {
     this.extraCost = new Float32Array(n);
     // Margen de colisión de los tiles finos (muros): se recorta en los lados que dan a celdas libres.
     this.collisionInset = new Float32Array(n);
+    // Capa dinámica (construcciones del jugador): bloqueo de paso/balas y caja de colisión por celda.
+    this.blocked = new Uint8Array(n);
+    this.blockedShot = new Uint8Array(n);
+    this.dynBox = new Float32Array(n * 4);
     this.playerStart = null;
     this.spawns = [];
     this.shops = {};
@@ -112,13 +116,45 @@ export class NavGrid {
   index(i, j) { return j * this.w + i; }
   inBounds(i, j) { return i >= 0 && j >= 0 && i < this.w && j < this.h; }
 
+  /** Transitable ahora mismo (mapa + construcciones). */
   isWalkable(i, j) {
+    if (!this.inBounds(i, j)) return false;
+    const k = j * this.w + i;
+    return this.walkable[k] === 1 && this.blocked[k] === 0;
+  }
+
+  /** Transitable según el mapa, ignorando construcciones (para el flow field con costes). */
+  isStaticWalkable(i, j) {
     return this.inBounds(i, j) && this.walkable[j * this.w + i] === 1;
   }
 
   /** Bloquea balas (fuera del mapa también bloquea). */
   isShotBlocked(i, j) {
-    return !this.inBounds(i, j) || this.blocksShot[j * this.w + i] === 1;
+    if (!this.inBounds(i, j)) return true;
+    const k = j * this.w + i;
+    return this.blocksShot[k] === 1 || this.blockedShot[k] === 1;
+  }
+
+  /**
+   * Marca una celda transitable como ocupada por una construcción.
+   * @param {[number,number,number,number]} box caja de colisión en mundo [minX,minZ,maxX,maxZ]
+   */
+  setDynamic(k, blocks, blocksShot, box) {
+    this.blocked[k] = blocks ? 1 : 0;
+    this.blockedShot[k] = blocksShot ? 1 : 0;
+    this.dynBox.set(box, k * 4);
+  }
+
+  clearDynamic(k) {
+    this.blocked[k] = 0;
+    this.blockedShot[k] = 0;
+    this.extraCost[k] = 0;
+  }
+
+  /** Caja [minX,minZ,maxX,maxZ] de una celda completa (con un margen opcional). */
+  cellBox(i, j, margin = 0) {
+    const x0 = this.originX + i * this.cellSize, z0 = this.originZ + j * this.cellSize;
+    return [x0 + margin, z0 + margin, x0 + this.cellSize - margin, z0 + this.cellSize - margin];
   }
 
   cellX(x) { return Math.floor((x - this.originX) / this.cellSize); }

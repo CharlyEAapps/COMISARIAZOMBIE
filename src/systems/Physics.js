@@ -22,6 +22,12 @@ export function resolveCircleVsGrid(pos, r, grid) {
           continue;
         }
         const k = grid.index(i, j);
+        if (grid.blocked[k]) {
+          // Construcción del jugador: una caja dinámica por celda.
+          const d = grid.dynBox, o = k * 4;
+          if (pushOutOfBox(pos, r, d[o], d[o + 1], d[o + 2], d[o + 3])) hit = true;
+          continue;
+        }
         for (let b = grid.boxStart[k], end = b + grid.boxCount[k]; b < end; b++) {
           const o = b * 4;
           if (pushOutOfBox(pos, r, boxes[o], boxes[o + 1], boxes[o + 2], boxes[o + 3])) hit = true;
@@ -78,6 +84,12 @@ export function rayBox(ox, oz, dx, dz, minX, minZ, maxX, maxZ) {
 /** Primer impacto del rayo con las cajas de la celda k a partir de tFrom, o Infinity. */
 function hitCellBoxes(grid, k, ox, oz, dx, dz, tFrom) {
   let best = Infinity;
+  if (grid.blocked[k] || grid.blockedShot[k]) {
+    const d = grid.dynBox, o = k * 4;
+    const t = rayBox(ox, oz, dx, dz, d[o], d[o + 1], d[o + 2], d[o + 3]);
+    if (t >= 0 && t >= tFrom - 1e-6) best = t;
+    if (grid.walkable[k]) return best; // celda del mapa transitable: solo cuenta la construcción
+  }
   const { boxes } = grid;
   for (let b = grid.boxStart[k], end = b + grid.boxCount[k]; b < end; b++) {
     const o = b * 4;

@@ -95,7 +95,7 @@ export class ShopSystem {
       // Las armas siguen en la lista aunque ya las tengas: así los números 1-9 no se mueven.
       if (d.price > 0) {
         items.push({
-          id: `weapon:${id}`, section: 'Armas', name: `${d.icon} ${d.name}`, desc: this.weaponDesc(d),
+          id: `weapon:${id}`, section: 'Armas', name: `${d.icon} ${d.name}`, desc: this.weaponDesc(d), flavor: d.flavor,
           price: this.price(d.price), state: W.has(id) ? 'owned' : null,
         });
       }
@@ -126,7 +126,7 @@ export class ShopSystem {
     }
     items.push({
       id: 'grenade', section: 'Munición', name: `💣 Granada (${W.grenades}/${GRENADE.max})`,
-      desc: 'Se lanza con G hacia el cursor. ¡También te daña!', price: this.price(GRENADE.price),
+      desc: 'Se lanza con G hacia el cursor. ¡También te daña!', flavor: GRENADE.flavor, price: this.price(GRENADE.price),
       state: W.grenades >= GRENADE.max ? 'max' : null,
     });
     // Agrupado por secciones en un orden fijo: primero lo que se puede comprar de nuevo.
@@ -160,7 +160,7 @@ export class ShopSystem {
         else price = this.price(Math.ceil(it.price * missing / it.armor));
       }
       if (it.max && times >= it.max) { state = 'max'; price = 0; }
-      items.push({ id: it.id, section: 'Enfermería', name: it.name, desc: it.desc, price, state });
+      items.push({ id: it.id, section: 'Enfermería', name: it.name, desc: it.desc, flavor: it.flavor, price, state });
     }
     return this.finish(items);
   }
@@ -170,7 +170,7 @@ export class ShopSystem {
     for (const it of shopData.almacen) {
       if (it.id === 'kit_reparacion') {
         const cost = this.repairKitCost();
-        items.push({ id: it.id, section: 'Mantenimiento', name: `🔧 ${it.name}`, desc: it.desc, price: cost, state: cost ? null : 'none' });
+        items.push({ id: it.id, section: 'Mantenimiento', name: `🔧 ${it.name}`, desc: it.desc, flavor: it.flavor, price: cost, state: cost ? null : 'none' });
         continue;
       }
       const key = it.id.slice('unlock:'.length);
@@ -180,7 +180,7 @@ export class ShopSystem {
         state = 'locked';
         note = `Requiere: ${shopData.almacen.find((o) => o.id === it.requires)?.name ?? 'la mejora anterior'}`;
       }
-      items.push({ id: it.id, section: 'Desbloqueos', name: it.name, desc: note || it.desc, price: this.price(it.price), state });
+      items.push({ id: it.id, section: 'Desbloqueos', name: it.name, desc: note || it.desc, flavor: it.flavor, price: this.price(it.price), state });
     }
     return this.finish(items);
   }

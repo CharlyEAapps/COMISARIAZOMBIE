@@ -1,0 +1,97 @@
+{
+  "_comment": "Humor negro e irónico (ácido, sin gore). Las listas se recorren sin repetir hasta agotarse.",
+  "radio": {
+    "nightInterval": [35, 55],
+    "firstNightDelay": 20,
+    "dayDelay": 6,
+    "night": [
+      "📻 Central: recordamos que los mordiscos no cuentan como accidente laboral. Rellene el 27-B igualmente.",
+      "📻 Central: el ayuntamiento recuerda que el toque de queda sigue vigente. Los vecinos no han confirmado asistencia.",
+      "📻 Central: ¿alguien ha visto al agente Morales? Si le ve, no le ofrezca café. Ya no lo toma.",
+      "📻 Central: disparar a un ciudadano sigue estando mal. Disparar a un exciudadano está en revisión.",
+      "📻 Central: las horas extra de esta noche se pagarán en cuanto se recupere la economía. Y la civilización.",
+      "📻 Central: aviso del sindicato: los turnos de 24 horas solo son ilegales si sobrevive para denunciarlos.",
+      "📻 Central: atención al ciudadano sigue abierta. Rogamos a los ciudadanos que dejen de intentar comérsela.",
+      "📻 Central: cero robos, cero atracos esta semana. Las estadísticas del distrito nunca habían sido tan buenas.",
+      "📻 Central: el Ministerio agradece su esfuerzo y le informa de que su plaza sale a oposición el lunes.",
+      "📻 Central: si oye gemidos al otro lado de la puerta, no abra. Si es el comisario, tampoco.",
+      "📻 Central: recuerde que la munición se justifica con ticket. Guarde los casquillos.",
+      "📻 Central: según el último censo, el distrito ha ganado 300 vecinos. Ninguno empadronado.",
+      "📻 Central: el seguro médico cubre caídas y esguinces. 'Ser devorado' viene en la letra pequeña, como excepción.",
+      "📻 Central: buenas noticias: ya no hay colas en el centro de salud. Malas noticias: el motivo.",
+      "📻 Central: la evaluación de este trimestre se hará por número de supervivientes. Usted cuenta como uno. De momento.",
+      "📻 Central: hemos recibido 47 quejas por ruidos. Todas contra usted. Todas de gente que ya no está.",
+      "📻 Central: recuerde que un zombi no es un detenido. No le lea sus derechos, tiene prisa.",
+      "📻 Central: si se queda sin balas, aplique el protocolo 12. El protocolo 12 dice 'corra'.",
+      "📻 Central: confirmamos que el café de la máquina es apto para el consumo humano. Del resto no respondemos.",
+      "📻 Central: la grúa municipal no pasará esta noche. Ni ninguna otra.",
+      "📻 Central: Recursos Humanos pregunta si puede adelantar las vacaciones. Por si acaso."
+    ],
+    "day": [
+      "📻 Central: buenos días, agente. Hoy toca papeleo: todos los informes de anoche. Escriba bonito.",
+      "📻 Central: la limpieza de la fachada se aplaza hasta que deje de ensuciarse sola.",
+      "📻 Central: el comisario sigue de vacaciones. Lleva tres semanas. Nadie se atreve a ir a buscarle.",
+      "📻 Central: la tienda de la comisaría no acepta devoluciones. Ni de armas, ni de compañeros.",
+      "📻 Central: hoy es el día de puertas abiertas de la comisaría. Por favor, ciérrelas.",
+      "📻 Central: el plan de evacuación ya está en el BOE. Lo han leído usted y otra persona. La otra persona ya no está.",
+      "📻 Central: repare las barricadas de día. De noche el presupuesto es el mismo y los vecinos no.",
+      "📻 Central: la formación obligatoria 'Trato amable al ciudadano' sigue vigente. Con excepciones.",
+      "📻 Central: el ayuntamiento anuncia un plan de choque contra los zombis. El choque, de momento, lo pone usted."
+    ]
+  },
+  "dayBanner": [
+    "Repara, compra y prepárate. Y firma los informes.",
+    "Sale el sol. Los zombis duermen. Recursos Humanos, no.",
+    "Otro día en la oficina. Literalmente: no puedes salir.",
+    "Repara las barricadas: el presupuesto municipal no lo va a hacer.",
+    "Desayuno de campeones: café de máquina y munición."
+  ],
+  "dawn": [
+    "Parte de servicio: {kills} ciudadanos atendidos, 0 reclamaciones.",
+    "Parte de servicio: {kills} detenidos, 0 interrogados, {kills} que ya no van a declarar.",
+    "Según la estadística oficial, la criminalidad ha bajado un {kills} %. El Ministerio se lo atribuye.",
+    "{kills} expedientes cerrados en una noche. Récord de eficiencia del distrito.",
+    "Sin bajas en la plantilla. Bueno, sin bajas nuevas.",
+    "{kills} vecinos menos en el censo. El ayuntamiento lo llama 'reordenación urbana'."
+  ],
+  "death": [
+    "Informe forense: causa de la muerte, «exceso de compañía».",
+    "Tu plaza ya ha salido a concurso. Hay 400 candidatos. Bueno, había.",
+    "Recursos Humanos lamenta tu pérdida y te recuerda que hoy no cuenta como día trabajado.",
+    "Has pasado a formar parte del vecindario.",
+    "Baja por enfermedad común. Muy común, últimamente.",
+    "El comisario te propondrá para una medalla. A título póstumo y con retención del 20 %.",
+    "Por fin te han concedido el traslado. No al destino que pedías.",
+    "Jubilación anticipada concedida. No exactamente como la imaginabas.",
+    "Tranquilo: mañana te reincorporas. En el otro bando."
+  ],
+  "quips": {
+    "chance": 0.12,
+    "cooldown": 2.5,
+    "caminante": ["¿Esto es la cola del DNI?", "Venía a poner una denuncia…", "¿Tenía cita previa?", "Solo quería un café…", "Vuelva usted mañana", "¡Exijo un abogado!", "¿Aquí se renueva el carné?", "Qué rapidez de atención"],
+    "corredor": ["¡Mi marca personal!", "Llegaba tarde al gimnasio", "Ni he calentado…", "Al final correr era malo", "¡Pero si iba primero!"],
+    "tanque": ["Ni el gimnasio… me salvó", "¿Quién… ha apagado… la luz?", "Mañana… pierna…", "Necesito… proteínas…"],
+    "explosivo": ["Uy, perdón", "No debí cenar fabada", "¡Sorpresa!", "Era gas, era gas", "Me siento… liberado"],
+    "escupidor": ["Te lo dije…", "Glup", "Solo era un catarro", "Tápate al toser…"],
+    "antidisturbios": ["Yo solo… cumplía órdenes…", "Pido… el traslado…", "¡Exijo… las horas extra!", "Esto va… al sindicato…"]
+  },
+  "bossNames": [
+    "Sgto. Ruiz · 23 años de servicio, 1 de no-muerto",
+    "Cabo Méndez · medalla al mérito, y al mordisco",
+    "Agente Pérez · se le acabó el permiso",
+    "Inspector Gil · todavía reclama las horas extra",
+    "Subinspector Lago · nunca faltó a un turno, ni ahora"
+  ],
+  "events": {
+    "transformerHit": ["Si se va la luz, la factura la pagas tú.", "La compañía eléctrica ya ha abierto incidencia. Plazo: 3-5 días hábiles.", "El transformador no tiene seguro. Tú tampoco."],
+    "transformerDown": ["La compañía eléctrica atenderá su aviso en 3-5 días hábiles.", "Mira el lado bueno: a oscuras no se ve el papeleo."],
+    "generatorDown": ["El seguro no cubre 'actos vandálicos de no-muertos'.", "Huele a diésel y a fracaso."],
+    "turretEmpty": ["Las torretas no hacen horas extra gratis.", "Ha agotado su cupo de balas del trimestre."],
+    "bossWarning": [
+      "📻 Central: viene un antidisturbios. Sí, de los nuestros. No, el convenio no aplica.",
+      "📻 Central: llega la unidad de antidisturbios que pedimos en 2019. Tarde, y del otro bando.",
+      "📻 Central: un compañero viene a 'echar una mano'. Literalmente. Que no te la coja."
+    ],
+    "bossKilled": ["Le daremos una medalla. A los dos.", "Su plaza vuelve a quedar vacante.", "Por fin ha cogido la baja.", "Firma aquí el parte. Él ya no puede."]
+  }
+}

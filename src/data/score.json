@@ -8,14 +8,14 @@
   "objectives": [
     {
       "id": "kills",
-      "text": "Abate a {n} zombis esta noche",
+      "text": "Reduce la lista de espera: abate a {n} zombis esta noche",
       "base": 10,
       "perNight": 6,
       "reward": 150
     },
     {
       "id": "maxDamage",
-      "text": "Recibe menos de {n} de daño esta noche",
+      "text": "Vuelve de una pieza: recibe menos de {n} de daño esta noche",
       "base": 60,
       "perNight": -4,
       "reward": 200,
@@ -23,7 +23,7 @@
     },
     {
       "id": "combo",
-      "text": "Consigue un combo de {n}",
+      "text": "Productividad: consigue un combo de {n} (RR. HH. está mirando)",
       "base": 8,
       "perNight": 2,
       "reward": 175

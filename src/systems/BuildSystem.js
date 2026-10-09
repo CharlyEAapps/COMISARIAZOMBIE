@@ -94,13 +94,13 @@ export class BuildSystem {
     const tc = this.cfg.transformer;
     if (t.hp > 0 && this.game.time - t.alertAt > tc.alertCooldown) {
       t.alertAt = this.game.time;
-      this.game.hud.toast('⚡ ¡Están atacando el transformador! (patio norte)', 4);
+      this.game.hud.toast(`⚡ ¡Están atacando el transformador! (patio norte)${this.game.humor?.tag('transformerHit') ?? ''}`, 5);
     }
     this.game.effects.burst(t.x, 1.0, t.z, 5, 0xffd24a, { speed: 2.5, up: 3, size: 0.05, life: 0.5 });
     if (t.hp <= 0) {
       this.game.effects.burst(t.x, 1.2, t.z, 30, 0x2b2b2b, { speed: 3, up: 4, size: 0.12, life: 1.6 });
       this.game.effects.shake(0.2);
-      this.game.hud.toast('⚠ ¡Han destruido el transformador! Sin corriente: repáralo en el patio.', 6);
+      this.game.hud.toast(`⚠ ¡Han destruido el transformador! Sin corriente: repáralo en el patio.${this.game.humor?.tag('transformerDown') ?? ''}`, 7);
       this.game.bus.emit('transformer:destroyed');
     }
   }
@@ -436,7 +436,7 @@ export class BuildSystem {
     const debris = s.level === 0 && s.type === 'barricada' ? 0x8a5a32 : s.type === 'sacos' ? 0xc9b48a : 0x9a9a9a;
     if (!quiet) this.game.effects.burst(x, 0.9, z, 4, debris, { speed: 2, up: 2.5, size: 0.07, life: 0.7 });
     if (s.hp <= 0) {
-      if (s.type === 'generador') this.game.hud?.toast('🔋 ¡Han destruido un generador!', 4);
+      if (s.type === 'generador') this.game.hud?.toast(`🔋 ¡Han destruido un generador!${this.game.humor?.tag('generatorDown') ?? ''}`, 5);
       if (s.type === 'torreta') this.game.hud?.toast('🎯 ¡Han destruido una torreta!', 4);
       for (const c of s.cells) {
         this.game.effects.burst(g.centerX(c % g.w), 0.7, g.centerZ((c / g.w) | 0), 22, debris, { speed: 3.5, up: 4, size: 0.12, life: 1.5 });
@@ -557,7 +557,7 @@ export class BuildSystem {
       if (s.ammo <= 0) {
         if (!s.emptyWarned) {
           s.emptyWarned = true;
-          this.game.hud?.toast('🎯 Una torreta se ha quedado sin munición: recárgala con E', 4);
+          this.game.hud?.toast(`🎯 Una torreta se ha quedado sin munición: recárgala con E.${this.game.humor?.tag('turretEmpty') ?? ''}`, 5);
         }
         continue;
       }

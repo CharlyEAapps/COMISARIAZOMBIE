@@ -171,6 +171,14 @@
 - **Petición de Carlos:** la horda sale entera al empezar la noche (con el tope de vivos) y la noche termina en cuanto la abates, sin esperar al reloj.
 - **Equilibrado:** el peso de los corredores cuenta zombis, no manadas (antes eran la mitad de la horda); horda ×1,06 por noche; tanque 110 puntos; jefe 800 puntos, +35 % por aparición; vallas 20/31 de descarga; torreta 500, 200 balas, 0,5 por bala; barril 80.
 
+## Humor negro (petición de Carlos, tras la fase 5)
+Tono ácido sin gore. Todo el texto en `src/data/humor.json` (más frases en tienda, pizarra y llamadas):
+- **Radio de la central:** comentarios irónicos cada 35-55 s de noche y uno al empezar cada día; avisos del jefe, transformador, generador y torreta con coletilla.
+- **Zombis:** de vez en cuando sueltan una frase al caer (por tipo); el jefe lleva nombre y "hoja de servicios" en su barra y su banner; presentaciones de cada tipo con humor.
+- **Tienda:** cada arma, artículo de enfermería y desbloqueo del almacén lleva una coletilla.
+- **Amanecer y muerte:** parte de servicio irónico con las bajas de la noche, y esquela/informe al caer.
+- **Comisaría:** carteles "Se ruega no morder al personal" y "Llevamos 0 días sin incidentes", mostradores "(solo vivos)" y "solo con cita previa", carteles de "Se busca" con delitos de poca monta, casos de la pizarra y 5 llamadas nuevas al teléfono.
+
 ## Placeholders pendientes de sustituir
 - Arte: todo procedural en el estilo de la referencia (decisión de Carlos). Los packs CC0 solo se usarán para sonido y música (fase 6).
 - Trampas, barricadas y armas: se modelarán por código en sus fases.

@@ -94,8 +94,8 @@ plate('comisaria', 768, 256, '#1f3260', '#ffffff', ['COMISARÍA', 'DISTRITO 13']
     star(c, x, y - r * 0.1, r * 0.6, '#1f3260');
   },
 });
-plate('atencion', 640, 128, '#2f5fa8', '#ffffff', 'ATENCIÓN AL CIUDADANO');
-plate('denuncias', 640, 128, '#3b7a55', '#ffffff', 'DENUNCIAS');
+plate('atencion', 640, 128, '#2f5fa8', '#ffffff', ['ATENCIÓN AL CIUDADANO', '(SOLO VIVOS)'], { fg2: '#f2c14e' });
+plate('denuncias', 640, 128, '#3b7a55', '#ffffff', ['DENUNCIAS', 'SOLO CON CITA PREVIA'], { fg2: '#f2c14e' });
 plate('armeria', 512, 160, '#46201f', '#f2c14e', 'ARMERÍA', {
   icon: (c, x, y, r) => { c.fillStyle = '#f2c14e'; c.fillRect(x - r, y - r * 0.2, r * 2, r * 0.45); c.fillRect(x - r * 0.1, y, r * 0.5, r * 0.9); c.fillRect(x + r * 0.6, y - r * 0.5, r * 0.4, r * 0.5); },
 });
@@ -110,6 +110,16 @@ plate('policia_lado', 512, 100, '#1f3260', '#ffffff', 'POLICÍA', { radius: 18, 
 plate('policia_capo', 256, 90, '#1f3260', '#ffffff', 'POLICÍA', { radius: 12, border: 3 });
 plate('municion', 256, 90, '#2b2b30', '#f2c14e', 'MUNICIÓN', { border: 4 });
 plate('extintor', 96, 96, '#d24a3e', '#ffffff', 'EXT.', { border: 4 });
+// Carteles con humor (negro, de oficina).
+plate('no_morder', 640, 180, '#fbf9f1', '#b0271d', ['SE RUEGA NO MORDER', 'AL PERSONAL'], { fg2: '#3b4252' });
+def('dias_sin_incidentes', 512, 300, (ctx, w, h) => {
+  ctx.fillStyle = '#2f7d55'; rr(ctx, 0, 0, w, h, 14); ctx.fill();
+  ctx.fillStyle = '#f7f9fa'; rr(ctx, 12, 12, w - 24, h - 24, 8); ctx.fill();
+  fitText(ctx, 'LLEVAMOS', w / 2, 48, w - 60, 34, '#2f7d55');
+  ctx.fillStyle = '#20242b'; ctx.fillRect(w / 2 - 70, 78, 140, 120);
+  fitText(ctx, '0', w / 2, 140, 120, 104, '#e84a3e');
+  fitText(ctx, 'DÍAS SIN INCIDENTES', w / 2, 240, w - 60, 38, '#2f7d55');
+});
 
 def('salida', 320, 140, (ctx, w, h) => {
   rr(ctx, 0, 0, w, h, 14); ctx.fillStyle = '#1f8a4c'; ctx.fill();
@@ -144,7 +154,10 @@ def('se_busca', 512, 256, (ctx, w, h) => {
     ctx.fillStyle = '#f6f0dc'; ctx.fillRect(0, 0, 132, 200);
     fitText(ctx, 'SE BUSCA', 66, 22, 118, 24, '#b0271d');
     face(ctx, 18, 38, 96, 96, SKINS[(k * 2) % 5], HAIRS[(k * 3) % 5]);
-    ctx.fillStyle = '#333'; ctx.fillRect(18, 146, 96, 8); ctx.fillRect(28, 162, 76, 6); ctx.fillRect(34, 176, 64, 6);
+    // Delitos de poca monta, de cuando aún había delitos.
+    const [l1, l2] = [['EL DEL', 'TÁPER'], ['APARCA EN', 'DOBLE FILA'], ['NO RECICLA', '']][k];
+    fitText(ctx, l1, 66, 154, 112, 17, '#333');
+    if (l2) fitText(ctx, l2, 66, 175, 112, 17, '#333');
     ctx.fillStyle = '#d24a3e'; ctx.beginPath(); ctx.arc(66, 2, 6, 0, 7); ctx.fill();
     ctx.restore();
   }

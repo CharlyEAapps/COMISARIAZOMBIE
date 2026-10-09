@@ -30,6 +30,7 @@ import { GrenadeRenderer } from '../render/GrenadeRenderer.js';
 import { ShopSystem } from '../systems/ShopSystem.js';
 import { BlastQueue } from '../systems/Explosions.js';
 import { AcidSystem } from '../systems/AcidSystem.js';
+import { Humor } from '../systems/Humor.js';
 import zombieData from '../data/zombies.json';
 import { ShopPanel } from '../ui/ShopPanel.js';
 import { WEAPON_IDS } from '../systems/WeaponSystem.js';
@@ -70,6 +71,7 @@ export class Game {
     this.acid = new AcidSystem(this);
     this.floating = new WorldLabels(this);
     this.score = new Score(this);
+    this.humor = new Humor(this);
     this.interactions = new InteractionSystem(this);
     this.lighting = new Lighting(this);
     this.lighting.setAnchors(this.props.lightAnchors);
@@ -208,6 +210,7 @@ export class Game {
     this.dayNight.reset();
     this.waves.reset();
     this.score.reset();
+    this.humor.reset();
     this.interactions.reset();
     this.build.reset();
     this.shop.reset();
@@ -335,6 +338,7 @@ export class Game {
     this.blasts.update(dt);
     this.acid.update(dt);
     this.score.update(dt);
+    this.humor.update(dt);
     if (this.deathTimer > 0) {
       this.deathTimer -= dt;
       if (this.deathTimer <= 0) {

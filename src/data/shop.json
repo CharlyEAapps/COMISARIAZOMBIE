@@ -24,13 +24,15 @@
       "id": "botiquin",
       "name": "Botiquín",
       "desc": "+40 de vida al usarlo (Q). Máximo 3.",
-      "price": 110
+      "price": 110,
+      "flavor": "Tiritas, alcohol y una nota de RR. HH. deseándote pronta recuperación."
     },
     {
       "id": "curacion",
       "name": "Atención médica",
       "desc": "Vida al máximo al instante.",
-      "price": 160
+      "price": 160,
+      "flavor": "Te atiende una enfermera de verdad. Sin cita previa: ventajas del apocalipsis."
     },
     {
       "id": "chaleco",
@@ -38,7 +40,8 @@
       "desc": "100 de armadura: absorbe el 60 % del daño hasta agotarse.",
       "price": 320,
       "armor": 100,
-      "absorb": 0.6
+      "absorb": 0.6,
+      "flavor": "Talla única. Para su anterior dueño también lo fue."
     },
     {
       "id": "vida_max",
@@ -47,7 +50,8 @@
       "price": 250,
       "priceStep": 100,
       "amount": 40,
-      "max": 3
+      "max": 3,
+      "flavor": "Flexiones, sentadillas y huir. Sobre todo huir."
     }
   ],
   "almacen": [
@@ -55,129 +59,149 @@
       "id": "unlock:puerta:0",
       "name": "Puertas reforzadas",
       "desc": "Permite construir puertas en los huecos.",
-      "price": 180
+      "price": 180,
+      "flavor": "La llave está en recepción, en el cajón de siempre. Bajo los tápers."
     },
     {
       "id": "unlock:barricada:1",
       "name": "Chapas de metal",
       "desc": "Permite mejorar barricadas a metal.",
-      "price": 220
+      "price": 220,
+      "flavor": "Chapas del antiguo quiosco. Tenía licencia; ya no hace falta."
     },
     {
       "id": "unlock:sacos:1",
       "name": "Sacos dobles",
       "desc": "Permite mejorar los sacos de arena.",
-      "price": 150
+      "price": 150,
+      "flavor": "Doble de arena, doble de lumbalgia."
     },
     {
       "id": "unlock:pinchos:0",
       "name": "Pinchos",
       "desc": "Trampa de daño continuo que frena.",
-      "price": 160
+      "price": 160,
+      "flavor": "El mismo diseño que los bancos de la parada del bus."
     },
     {
       "id": "unlock:cepo:0",
       "name": "Cepos",
       "desc": "Inmovilizan a los zombis unos segundos.",
-      "price": 160
+      "price": 160,
+      "flavor": "Comprados para 'el problema de las ratas'. Era otro problema."
     },
     {
       "id": "unlock:mina:0",
       "name": "Minas",
       "desc": "Explotan una vez. ¡Cuidado, también te dañan!",
-      "price": 240
+      "price": 240,
+      "flavor": "Material incautado. El juez no lo va a reclamar."
     },
     {
       "id": "unlock:barricada:2",
       "name": "Bloques de hormigón",
       "desc": "Mejora las barricadas de metal a hormigón.",
       "price": 450,
-      "requires": "unlock:barricada:1"
+      "requires": "unlock:barricada:1",
+      "flavor": "De unas obras paradas desde hace seis años. Por fin sirven para algo."
     },
     {
       "id": "unlock:puerta:1",
       "name": "Puertas blindadas",
       "desc": "Mejora las puertas reforzadas.",
       "price": 380,
-      "requires": "unlock:puerta:0"
+      "requires": "unlock:puerta:0",
+      "flavor": "Como la del despacho del comisario: nadie ha conseguido abrirla jamás."
     },
     {
       "id": "unlock:pinchos:1",
       "name": "Pinchos de acero",
       "desc": "Mejora los pinchos.",
       "price": 260,
-      "requires": "unlock:pinchos:0"
+      "requires": "unlock:pinchos:0",
+      "flavor": "Ahora con garantía de dos años. Más que tú, probablemente."
     },
     {
       "id": "unlock:cepo:1",
       "name": "Cepos reforzados",
       "desc": "Mejora los cepos.",
       "price": 240,
-      "requires": "unlock:cepo:0"
+      "requires": "unlock:cepo:0",
+      "flavor": "Muelle reforzado. No metas el dedo para comprobarlo."
     },
     {
       "id": "unlock:alambre:0",
       "name": "Alambre de espino",
       "desc": "Frena mucho y hace algo de daño.",
-      "price": 140
+      "price": 140,
+      "flavor": "Sobrante de la valla de la depuradora. Nadie lo echará de menos."
     },
     {
       "id": "unlock:barril:0",
       "name": "Barriles explosivos",
       "desc": "Dispárales o deja que los golpeen: ¡bum!",
-      "price": 200
+      "price": 200,
+      "flavor": "Etiqueta: 'No exponer a balas'. Ya."
     },
     {
       "id": "unlock:foco:0",
       "name": "Focos",
       "desc": "Iluminan una zona de noche.",
-      "price": 150
+      "price": 150,
+      "flavor": "Del rodaje de una serie de policías. Cancelada en la primera temporada."
     },
     {
       "id": "unlock:generador:0",
       "name": "Generadores",
       "desc": "Dan corriente a las vallas electrificadas. Atraen a los vándalos.",
-      "price": 300
+      "price": 300,
+      "flavor": "Diésel. Huele fatal, pero menos que los vecinos."
     },
     {
       "id": "unlock:valla:0",
       "name": "Vallas electrificadas",
       "desc": "Con un generador en marcha, electrocutan a quien las toque.",
       "price": 260,
-      "requires": "unlock:generador:0"
+      "requires": "unlock:generador:0",
+      "flavor": "Normativa de baja tensión: cumplida de aquella manera."
     },
     {
       "id": "unlock:torreta:0",
       "name": "Torretas automáticas",
       "desc": "Disparan solas. Munición limitada: recárgalas con E.",
-      "price": 600
+      "price": 600,
+      "flavor": "No pide vacaciones ni aumentos. Solo balas."
     },
     {
       "id": "unlock:alambre:1",
       "name": "Concertina",
       "desc": "Mejora el alambre de espino.",
       "price": 220,
-      "requires": "unlock:alambre:0"
+      "requires": "unlock:alambre:0",
+      "flavor": "Más pinchos por metro. El ayuntamiento lo llama 'mobiliario disuasorio'."
     },
     {
       "id": "unlock:valla:1",
       "name": "Vallas reforzadas",
       "desc": "Mejora las vallas electrificadas.",
       "price": 320,
-      "requires": "unlock:valla:0"
+      "requires": "unlock:valla:0",
+      "flavor": "Más voltios. La factura, a nombre del comisario."
     },
     {
       "id": "unlock:torreta:1",
       "name": "Torretas pesadas",
       "desc": "Mejora las torretas: más daño, cadencia y munición.",
       "price": 700,
-      "requires": "unlock:torreta:0"
+      "requires": "unlock:torreta:0",
+      "flavor": "La versión pesada. Tampoco pide vacaciones, pero se queja más."
     },
     {
       "id": "kit_reparacion",
       "name": "Kit de reparación",
       "desc": "Repara todas tus construcciones con un 30 % de descuento.",
-      "repairDiscount": 0.3
+      "repairDiscount": 0.3,
+      "flavor": "Cinta americana, clavos y fe."
     }
   ],
   "startUnlocked": [

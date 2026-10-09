@@ -68,6 +68,7 @@ export class Hud {
             <div><span class="label">Bajas</span><span class="val big" data-k="oKills">0</span></div>
             <div><span class="label">Puntos</span><span class="val big" data-k="oPoints">0</span></div>
           </div>
+          <p class="obit" data-k="obit"></p>
           <button class="btn interactive" data-k="retry">Reintentar <span class="key">Enter</span></button>
         </div>
       </div>`;
@@ -105,20 +106,22 @@ export class Hud {
     const bus = game.bus;
     bus.on('phase:atardecer', ({ night }) => this.banner(`Noche ${night}`, 'Suena la sirena… se acercan', 3.5));
     bus.on('phase:noche', ({ night }) => this.banner(`Noche ${night}`, 'Sobrevive hasta el amanecer', 2.5));
-    bus.on('phase:dia', ({ night }) => { if (night > 1) this.banner(`Día ${night}`, 'Repara, compra y prepárate', 2.5); });
+    bus.on('phase:dia', ({ night }) => { if (night > 1) this.banner(`Día ${night}`, game.humor.pick('dayBanner'), 3); });
+    bus.on('run:over', () => this.set('obit', game.humor.pick('death')));
     // Si el jefe era el último zombi, su banner y el de la noche se juntan en uno.
     this.bossKilledAt = -Infinity;
     bus.on('score:nightSummary', ({ night, lines, total }) => {
       const boss = game.time - this.bossKilledAt < 3 ? '¡Jefe abatido! ' : '';
-      this.banner(`${boss}¡Noche ${night} superada!`, `${lines.join(' · ')}<br><b>+${total}</b>`, 5);
+      const parte = game.humor.dawnLine(game.score.nightStats.kills);
+      this.banner(`${boss}¡Noche ${night} superada!`, `<i>${parte}</i><br>${lines.join(' · ')}<br><b>+${total}</b>`, 6);
     });
     bus.on('run:start', () => this.banner('Turno de noche', 'Comisaría del Distrito 13 · Día 1', 3));
     bus.on('boss:killed', () => {
       this.bossKilledAt = game.time;
-      this.banner('¡Jefe abatido!', 'El antidisturbios ha caído', 3.5);
+      this.banner('¡Jefe abatido!', game.humor.pick('events.bossKilled'), 3.5);
     });
     bus.on('phase:noche', ({ night }) => {
-      if (isBossNight(game.waves.cfg.boss, night)) this.toast('📻 Central: algo grande viene hacia la comisaría esta noche…', 7);
+      if (isBossNight(game.waves.cfg.boss, night)) this.toast(game.humor.pick('events.bossWarning'), 8);
     });
   }
 
@@ -167,7 +170,7 @@ export class Hud {
       this.root.classList.toggle('boss-on', !!boss);
     }
     if (boss) {
-      this.set('bossName', `☠ ${boss.data.name}`);
+      this.set('bossName', boss.nick ? `☠ ${boss.data.name} · ${boss.nick}` : `☠ ${boss.data.name}`);
       this.set('bossHp', `${Math.max(0, (boss.hp / boss.maxHp) * 100).toFixed(1)}%`, 'width');
     }
     if (this._last.phaseAttr !== dayNight.phase) {

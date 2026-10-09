@@ -165,7 +165,7 @@ export class WaveDirector {
     if (!zb) { this.bossTimer = this.cfg.night.retryDelay; return; }
     this.bossPending = false;
     this.bossCount++;
-    this.game.hud?.banner(b.title, b.sub, 4);
+    this.game.hud?.banner(b.title, zb.nick ? `<i>${zb.nick}</i><br>${b.sub}` : b.sub, 4.5);
     this.game.bus.emit('boss:spawned', { type: b.type, appearance: this.bossCount });
   }
 

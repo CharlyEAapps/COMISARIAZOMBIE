@@ -368,3 +368,9 @@ html, body {
   .boss-bar { left: 228px; right: 12px; padding: 6px 10px 8px; }
   .boss-name { font-size: 11px; letter-spacing: 0.06em; }
 }
+
+/* Humor: frases de los zombis, coletillas de la tienda y esquela */
+.float-text.quip { color: #f4efe2; font-style: italic; font-weight: 600; font-size: 13px; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); white-space: nowrap; }
+.shop-row .flavor { font-size: 11px; font-style: italic; color: var(--hud-dim); margin-top: 2px; }
+.obit { font-style: italic; color: var(--hud-dim); margin: 10px auto 14px; max-width: 420px; text-align: center; }
+.banner-sub i { color: var(--hud-dim); font-size: 14px; }

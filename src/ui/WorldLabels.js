@@ -36,13 +36,13 @@ export class WorldLabels {
     }
   }
 
-  /** Muestra un texto flotante que sube y se desvanece. cls: 'pts' | 'heal' | 'neg' | 'dmg' */
-  spawn(text, x, y, z, cls = 'pts') {
+  /** Muestra un texto flotante que sube y se desvanece. cls: 'pts' | 'heal' | 'neg' | 'dmg' | 'quip' */
+  spawn(text, x, y, z, cls = 'pts', life = 1.1) {
     const f = this.floats[this._fIdx];
     this._fIdx = (this._fIdx + 1) % MAX_FLOATING;
     f.el.textContent = text;
     f.el.className = `float-text ${cls}`;
-    f.life = f.maxLife = 1.1;
+    f.life = f.maxLife = life;
     f.x = x + (Math.random() - 0.5) * 0.5; f.y = y; f.z = z;
     f.el.style.display = '';
   }

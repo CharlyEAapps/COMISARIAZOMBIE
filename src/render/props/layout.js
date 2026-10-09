@@ -44,6 +44,8 @@ export function defaultDecor() {
   add('cartel', 25.0, NORTH_PAS, { sprite: 'calabozos', w: 1.6, y: 2.1 });
   add('tablon_se_busca', 25.0, NORTH_PAS, { w: 1.5, y: 1.15 });
   add('reloj', 32.0, NORTH_PAS, { y: 2.25, w: 0.38 });
+  add('cartel', 30.3, NORTH_PAS, { sprite: 'dias_sin_incidentes', w: 0.85, y: 2.2 }); // encima de las taquillas
+  add('cartel', 34.0, NORTH_PAS, { sprite: 'no_morder', w: 1.6, y: 1.75 });
   add('escudo_pared', 36.0, NORTH_PAS, { y: 1.5 });
   add('cartel', 41.0, NORTH_PAS, { sprite: 'oficinas', w: 1.4, y: 2.1 });
   add('cuadro_electrico', 43.2, NORTH_PAS, { y: 1.3 });

@@ -54,7 +54,7 @@
       ],
       "lean": 0.35
     },
-    "intro": "🏃 Corredores: rápidos, frágiles y en grupo. No dejes que te rodeen."
+    "intro": "🏃 Corredores: hacían running antes de morir y no lo han dejado. Rápidos, frágiles y en grupo: que no te rodeen."
   },
   "tanque": {
     "name": "Tanque",
@@ -105,7 +105,7 @@
       ],
       "armSpread": 0.14
     },
-    "intro": "🦍 Tanques: mucha vida, triple de daño a las barricadas y te empujan. Fuego concentrado o trampas."
+    "intro": "🦍 Tanques: el portero de la discoteca de la esquina, ahora sin lista. Mucha vida, triple de daño a las barricadas y te empujan: fuego concentrado o trampas."
   },
   "explosivo": {
     "name": "Explosivo",
@@ -153,7 +153,7 @@
       "chainDelay": 0.15,
       "color": "#b8d84a"
     },
-    "intro": "💥 Explosivos: revientan al morir o al alcanzarte y rompen barricadas. Abátelos de lejos… o junto a sus amigos."
+    "intro": "💥 Explosivos: hinchados como la factura de la luz. Revientan al morir o al alcanzarte y rompen barricadas: abátelos de lejos… o junto a sus amigos."
   },
   "escupidor": {
     "name": "Escupidor",
@@ -209,7 +209,7 @@
       "shrinkFrom": 0.3,
       "footprint": 0.5
     },
-    "intro": "🤢 Escupidores: lanzan ácido por encima de los sacos y dejan charcos. Muévete y cázalos primero."
+    "intro": "🤢 Escupidores: el vecino que hablaba demasiado cerca. Lanzan ácido por encima de los sacos y dejan charcos: muévete y cázalos primero."
   },
   "antidisturbios": {
     "name": "Antidisturbios",

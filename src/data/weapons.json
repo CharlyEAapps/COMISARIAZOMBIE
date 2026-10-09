@@ -17,7 +17,8 @@
     "pierce": 0,
     "knockback": 0.25,
     "shake": 0.06,
-    "tracerColor": "#ffe6a0"
+    "tracerColor": "#ffe6a0",
+    "flavor": "Reglamentaria. Viene con 12 balas y 40 páginas de protocolo."
   },
   "escopeta": {
     "name": "Escopeta",
@@ -42,7 +43,8 @@
     "ammoPack": {
       "amount": 12,
       "price": 60
-    }
+    },
+    "flavor": "Para cuando el diálogo ha fracasado. Ha fracasado."
   },
   "subfusil": {
     "name": "Subfusil",
@@ -67,7 +69,8 @@
     "ammoPack": {
       "amount": 60,
       "price": 70
-    }
+    },
+    "flavor": "Dispara más rápido de lo que se tramita su licencia."
   },
   "fusil": {
     "name": "Fusil de asalto",
@@ -92,7 +95,8 @@
     "ammoPack": {
       "amount": 60,
       "price": 110
-    }
+    },
+    "flavor": "Requisado a un 'cazador de conejos' muy entusiasta."
   },
   "francotirador": {
     "name": "Rifle de precisión",
@@ -117,7 +121,8 @@
     "ammoPack": {
       "amount": 10,
       "price": 90
-    }
+    },
+    "flavor": "Atraviesa a tres. En la estadística cuenta como uno."
   },
   "taser": {
     "name": "Táser",
@@ -150,7 +155,8 @@
       "chain",
       "reload"
     ],
-    "chainDamageMul": 0.5
+    "chainDamageMul": 0.5,
+    "flavor": "Homologado como 'no letal'. Ellos ya vienen no-vivos."
   },
   "porra": {
     "name": "Porra",
@@ -177,7 +183,8 @@
       "speed": 2.2,
       "twistFrom": -0.35,
       "twist": 0.5
-    }
+    },
+    "flavor": "Herramienta de diálogo. Diálogo breve."
   },
   "_granada": {
     "name": "Granada",
@@ -202,7 +209,8 @@
     "wallMargin": 0.4,
     "spin": 12,
     "renderScale": 2.8,
-    "blinkBelow": 0.8
+    "blinkBelow": 0.8,
+    "flavor": "Tire de la anilla y no pida que se la devuelvan."
   },
   "_upgrades": {
     "levels": 3,

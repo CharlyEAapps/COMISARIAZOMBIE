@@ -47,7 +47,7 @@ function makeZombie(id) {
     losTimer: 0, hasLos: false, walkPhase: 0, flash: 0,
     deathTimer: 0, fall: 0, sink: 0,
     stunTimer: 0, slowMul: 1, vandal: false, attackTarget: 0, // 0 jugador, 1 estructura, 2 transformador
-    targetCell: -1, body: null, turn: 0, big: false, shieldMsgAt: -9,
+    targetCell: -1, body: null, turn: 0, big: false, nick: '', shieldMsgAt: -9,
     spitCd: 0, spitWindup: 0, spitLos: false, selfDestruct: false, exploded: false,
     colors: PART_NAMES.map(() => new THREE.Color()),
   };
@@ -252,7 +252,10 @@ export class ZombieSystem {
       else if (n === 'armL' || n === 'armR') c.setHex(d.armsShirt || Math.random() < 0.5 ? shirt : skin.getHex());
       else c.copy(skin);
     }
-    if (d.boss) this.boss = zb;
+    if (d.boss) {
+      this.boss = zb;
+      zb.nick = this.game.humor?.pick('bossNames') ?? '';
+    }
     this.active.push(zb);
     return zb;
   }

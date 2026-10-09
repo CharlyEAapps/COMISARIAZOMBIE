@@ -78,7 +78,7 @@ export class ShopPanel {
         none: '<span class="tag">Nada que reparar</span>',
       }[it.state];
       const key = n < 9 ? `<span class="key">${n + 1}</span>` : '<span class="key blank"></span>';
-      html += `<div class="shop-row ${it.state}" data-id="${it.id}">${key}<div class="shop-text"><div class="name">${it.name}</div><div class="desc">${it.desc}</div></div>${tag}</div>`;
+      html += `<div class="shop-row ${it.state}" data-id="${it.id}">${key}<div class="shop-text"><div class="name">${it.name}</div><div class="desc">${it.desc}</div>${it.flavor ? `<div class="flavor">«${it.flavor}»</div>` : ''}</div>${tag}</div>`;
     });
     this.k.list.innerHTML = html;
   }

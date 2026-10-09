@@ -4,14 +4,39 @@ import zombieData from '../data/zombies.json';
 import { FlowField } from './FlowField.js';
 import { resolveCircleVsGrid, raycastGrid, rayCircle, SpatialHash } from './Physics.js';
 import { PARTS, PART_NAMES, partGeometry, computePose, makePose } from '../render/BlockyCharacter.js';
+import { ACCESSORIES, ACCESSORY_SETS } from '../render/ZombieAccessories.js';
 
 const SHIRTS = [0x7a5c3e, 0x4b5d73, 0x8c3b3b, 0x5f6b4e, 0x6b6b6b, 0x6a4f7a];
 const PANTS = [0x2e3542, 0x3e3328, 0x24282e, 0x40464f];
 const WHITE = new THREE.Color(0xffffff);
 const PART_COUNT = PART_NAMES.length;
 const HEAD_INDEX = PART_NAMES.indexOf('head');
+const ATTACH_INDEX = { head: HEAD_INDEX, torso: PART_NAMES.indexOf('torso'), armR: PART_NAMES.indexOf('armR'), base: -1 };
 
 export const Z_STATE = { CHASE: 0, DYING: 1 };
+
+/**
+ * Cuerpo de un tipo de zombi: escala de cada parte y pivotes desplazados (un torso más alto
+ * sube la cabeza y los hombros; `armSpread` separa los brazos de un torso ancho).
+ */
+export function bodyOf(d) {
+  const b = d.body ?? {};
+  const key = (n) => (n.startsWith('leg') ? 'legs' : n.startsWith('arm') ? 'arms' : n);
+  const dy = PARTS.torso.size[1] * ((b.torso?.[1] ?? 1) - 1);
+  const pivots = PART_NAMES.map((n) => {
+    const v = new THREE.Vector3().fromArray(PARTS[n].pivot);
+    if (n === 'head' || n.startsWith('arm')) v.y += dy;
+    if (n.startsWith('arm')) v.x += Math.sign(v.x) * (b.armSpread ?? 0);
+    return v;
+  });
+  const scales = PART_NAMES.map((n) => new THREE.Vector3().fromArray(b[key(n)] ?? [1, 1, 1]));
+  const hex = (list, fallback) => (list ? list.map((c) => new THREE.Color(c).getHex()) : fallback);
+  return {
+    pivots, scales, lean: b.lean ?? 0,
+    shirts: hex(d.shirts, SHIRTS), pants: hex(d.pants, PANTS),
+    accessories: ACCESSORY_SETS[d.accessory] ?? [],
+  };
+}
 
 function makeZombie(id) {
   return {
@@ -22,7 +47,8 @@ function makeZombie(id) {
     losTimer: 0, hasLos: false, walkPhase: 0, flash: 0,
     deathTimer: 0, fall: 0, sink: 0,
     stunTimer: 0, slowMul: 1, vandal: false, attackTarget: 0, // 0 jugador, 1 estructura, 2 transformador
-    targetCell: -1,
+    targetCell: -1, body: null, turn: 0, shieldMsgAt: -9,
+    spitCd: 0, spitWindup: 0, spitLos: false, selfDestruct: false, exploded: false,
     colors: PART_NAMES.map(() => new THREE.Color()),
   };
 }
@@ -34,6 +60,9 @@ export class ZombieSystem {
     this.game = game;
     this.types = zombieData;
     this.ai = zombieData._ai;
+    this.bodies = {};
+    for (const [type, d] of Object.entries(zombieData)) if (!type.startsWith('_')) this.bodies[type] = bodyOf(d);
+    this.boss = null; // jefe vivo (barra de vida en el HUD)
     const max = this.ai.maxZombies;
     this.pool = Array.from({ length: max }, (_, id) => makeZombie(id));
     // Pila de huecos libres del pool: spawn O(1).
@@ -51,6 +80,8 @@ export class ZombieSystem {
     this.neighbors = new Array(max + 8); // resultado reutilizable de las consultas al hash
     this.pose = makePose();
     this.blockedWalk = (i, j) => !g.isWalkable(i, j);
+    this.blockedShot = (i, j) => g.isShotBlocked(i, j);
+    this._vandalTargets = [];
 
     // Un InstancedMesh por parte del cuerpo → 6 draw calls para toda la horda.
     this.meshList = PART_NAMES.map((name) => {
@@ -63,7 +94,18 @@ export class ZombieSystem {
       game.scene.add(mesh);
       return mesh;
     });
-    this.partPivots = PART_NAMES.map((n) => new THREE.Vector3().fromArray(PARTS[n].pivot));
+    // Accesorios de los tipos especiales: un InstancedMesh por accesorio.
+    this.accessoryMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 });
+    this.accessoryMeshes = {};
+    for (const [name, a] of Object.entries(ACCESSORIES)) {
+      const mesh = new THREE.InstancedMesh(a.geometry(), this.accessoryMaterial, max);
+      mesh.castShadow = true;
+      mesh.count = 0;
+      mesh.frustumCulled = false;
+      game.scene.add(mesh);
+      this.accessoryMeshes[name] = { mesh, attach: ATTACH_INDEX[a.part] };
+    }
+    this._partM = PART_NAMES.map(() => new THREE.Matrix4());
 
     // Ojos brillantes (visibles de noche): dos cubitos en la cara, siguen a la cabeza.
     const eyeL = new THREE.BoxGeometry(0.08, 0.05, 0.02); eyeL.translate(-0.085, 0.2, 0.2);
@@ -102,6 +144,7 @@ export class ZombieSystem {
     this.flowTimer = 0;
     this.flowDirty = false;
     this.vandalTarget = -1;
+    this.boss = null;
     this.decoy.timer = 0;
     this.speedMul = 1;
     this.speedMulTimer = 0;
@@ -133,6 +176,34 @@ export class ZombieSystem {
     this.free.push(zb);
   }
 
+  /** Aturde (cepo, táser, valla) respetando la resistencia del tipo. */
+  stun(zb, seconds) {
+    zb.stunTimer = Math.max(zb.stunTimer, seconds * (1 - (zb.data.stunResist ?? 0)));
+  }
+
+  /**
+   * ¿Para el escudo el impacto que viaja en la dirección (dx, dz)? Solo los que llegan de
+   * frente, dentro del arco del escudo.
+   */
+  shieldBlocks(zb, dx, dz) {
+    const sh = zb.data.shield;
+    if (!sh || zb.state === Z_STATE.DYING) return false;
+    const dot = dx * Math.sin(zb.facing) + dz * Math.cos(zb.facing);
+    return dot < -Math.cos(THREE.MathUtils.degToRad(sh.arcDeg / 2));
+  }
+
+  /** Chispas y aviso de un impacto parado por el escudo. */
+  shieldHit(zb, dx, dz) {
+    const fx = Math.sin(zb.facing), fz = Math.cos(zb.facing);
+    const r = zb.radius + 0.25;
+    this.game.effects.burst(zb.pos.x + fx * r, 1.2 * zb.scale, zb.pos.z + fz * r, 5, 0xffe2a0, { speed: 2.5, up: 2, size: 0.05, life: 0.35, dirX: -dx, dirZ: -dz });
+    if (this.game.time - zb.shieldMsgAt > 1.2) {
+      zb.shieldMsgAt = this.game.time;
+      this.game.floating?.spawn('¡Escudo!', zb.pos.x, 2.6 * zb.scale, zb.pos.z, 'neg');
+    }
+    this.game.bus.emit('zombie:blocked', { zombie: zb });
+  }
+
   /** @param {{hpMul?:number, speedMul?:number}} [mods] escalado por noche */
   spawn(type, x, z, mods) {
     const zb = this.free.pop();
@@ -141,6 +212,7 @@ export class ZombieSystem {
     zb.active = true;
     zb.type = type;
     zb.data = d;
+    zb.body = this.bodies[type];
     zb.pos.x = x; zb.pos.z = z;
     zb.vx = zb.vz = 0;
     zb.facing = Math.random() * Math.PI * 2;
@@ -155,20 +227,28 @@ export class ZombieSystem {
     zb.walkPhase = Math.random() * 10;
     zb.flash = 0; zb.deathTimer = 0; zb.fall = 0; zb.sink = 0;
     zb.stunTimer = 0; zb.slowMul = 1; zb.attackTarget = 0; zb.targetCell = -1;
-    const tr = this.game.build?.transformer;
-    const tcfg = this.game.build?.cfg.transformer;
-    zb.vandal = !!tr && tr.hp > 0 && this.game.dayNight.night >= tcfg.vandalFromNight && Math.random() < tcfg.vandalChance;
+    zb.turn = d.turnSharpness ?? this.ai.turnSharpness;
+    zb.spitCd = d.spit ? d.spit.cooldown * Math.random() : 0;
+    zb.spitWindup = 0; zb.spitLos = false; zb.selfDestruct = false; zb.exploded = false;
+    zb.shieldMsgAt = -9;
+    const build = this.game.build;
+    const tcfg = build?.cfg.transformer;
+    // Los jefes no se distraen con las instalaciones eléctricas.
+    zb.vandal = !d.boss && !!build && build.vandalTargetsAlive() &&
+      this.game.dayNight.night >= tcfg.vandalFromNight && Math.random() < tcfg.vandalChance;
     zb.trapAcc = 0;
+    const body = zb.body;
     const skin = this._c.set(d.color).multiplyScalar(rnd(d.colorVariance));
-    const shirt = SHIRTS[(Math.random() * SHIRTS.length) | 0];
-    const pants = PANTS[(Math.random() * PANTS.length) | 0];
+    const shirt = body.shirts[(Math.random() * body.shirts.length) | 0];
+    const pants = body.pants[(Math.random() * body.pants.length) | 0];
     for (let k = 0; k < PART_COUNT; k++) {
       const n = PART_NAMES[k], c = zb.colors[k];
       if (n === 'torso') c.setHex(shirt);
       else if (n === 'legL' || n === 'legR') c.setHex(pants);
-      else if (n === 'armL' || n === 'armR') c.setHex(Math.random() < 0.5 ? shirt : skin.getHex());
+      else if (n === 'armL' || n === 'armR') c.setHex(d.armsShirt || Math.random() < 0.5 ? shirt : skin.getHex());
       else c.copy(skin);
     }
+    if (d.boss) this.boss = zb;
     this.active.push(zb);
     return zb;
   }
@@ -180,6 +260,7 @@ export class ZombieSystem {
   damage(zb, amount, dirX = 0, dirZ = 0, knockback = 0, quiet = false) {
     if (zb.state === Z_STATE.DYING) return false;
     zb.hp -= amount;
+    knockback *= 1 - (zb.data.knockbackResist ?? 0);
     if (!quiet) {
       zb.flash = 0.1;
       if (knockback) {
@@ -190,14 +271,33 @@ export class ZombieSystem {
       this.game.bus.emit('zombie:hit', { zombie: zb, amount });
     }
     if (zb.hp <= 0) {
-      zb.state = Z_STATE.DYING;
-      zb.deathTimer = 0;
-      zb.windup = 0;
-      zb.attackAnim = 0;
-      this.game.bus.emit('zombie:killed', { type: zb.type, points: zb.data.points, x: zb.pos.x, z: zb.pos.z });
+      this.kill(zb);
       return true;
     }
     return false;
+  }
+
+  kill(zb) {
+    const d = zb.data;
+    zb.state = Z_STATE.DYING;
+    zb.hp = 0;
+    zb.deathTimer = 0;
+    zb.windup = 0;
+    zb.attackAnim = 0;
+    zb.spitWindup = 0;
+    if (this.boss === zb) {
+      this.boss = null;
+      this.game.bus.emit('boss:killed', { type: zb.type, x: zb.pos.x, z: zb.pos.z });
+    }
+    // Los explosivos revientan al morir (en cadena si hay más cerca).
+    if (d.explosion && !zb.exploded) {
+      zb.exploded = true;
+      this.game.blasts.schedule(zb.pos.x, zb.pos.z, d.explosion, zb.selfDestruct ? 0 : d.explosion.chainDelay);
+    }
+    // Si revienta él solo al alcanzarte, no da puntos.
+    this.game.bus.emit('zombie:killed', {
+      type: zb.type, points: zb.selfDestruct ? 0 : d.points, x: zb.pos.x, z: zb.pos.z, selfDestruct: zb.selfDestruct,
+    });
   }
 
   /**
@@ -226,22 +326,28 @@ export class ZombieSystem {
       flow.compute(pcell % grid.w, (pcell / grid.w) | 0);
       this.flowCell = pcell;
       this.flowTimer = ai.flowFieldInterval;
-      // Rutas al transformador (destino fijo): solo al cambiar las construcciones.
-      const tr = game.build?.transformer;
-      if (tr && (this.flowDirty || this.vandalTarget !== tr.cell)) {
-        this.vandalFlow.compute(tr.cell % grid.w, (tr.cell / grid.w) | 0);
-        this.vandalTarget = tr.cell;
+      // Rutas de los vándalos al transformador y a los generadores (destinos fijos): solo al
+      // cambiar las construcciones o el estado del transformador.
+      const build = game.build;
+      if (build) {
+        const key = build.transformer?.hp > 0 ? 1 : 0;
+        if (this.flowDirty || this.vandalTarget !== key) {
+          build.vandalTargetCells(this._vandalTargets);
+          this.vandalFlow.computeMulti(this._vandalTargets);
+          this.vandalTarget = key;
+        }
       }
       if (this.flowDirty && this.decoy.timer > 0) this.setDecoy(this.decoy.x, this.decoy.z, this.decoy.timer, this.decoy.radius);
       this.flowDirty = false;
     }
     const transformer = game.build?.transformer;
-    const vandalsActive = !!transformer && transformer.hp > 0;
+    const trAlive = !!transformer && transformer.hp > 0;
+    const vandalsActive = !!game.build && game.build.vandalTargetsAlive();
+    const generators = game.build?.generators;
 
     hash.clear();
     for (const zb of this.active) if (zb.state !== Z_STATE.DYING) hash.insert(zb, zb.pos.x, zb.pos.z);
 
-    const turn = 1 - Math.exp(-ai.turnSharpness * dt);
     const sepR = ai.separationRadius;
     const decoy = this.decoy;
     if (decoy.timer > 0) decoy.timer -= dt;
@@ -249,6 +355,7 @@ export class ZombieSystem {
 
     for (let n = this.active.length - 1; n >= 0; n--) {
       const zb = this.active[n];
+      const d = zb.data;
       zb.flash = Math.max(0, zb.flash - dt);
 
       if (zb.state === Z_STATE.DYING) {
@@ -266,11 +373,13 @@ export class ZombieSystem {
       const dist = Math.hypot(dx, dz) || 1e-6;
       const ux = dx / dist, uz = dz / dist;
 
-      // Atrapado en un cepo: no se mueve ni ataca.
-      if (zb.stunTimer > 0) {
+      // Atrapado en un cepo o aturdido: no se mueve ni ataca (un explosivo a punto de
+      // reventar revienta igual).
+      if (zb.stunTimer > 0 && !(d.explosion && zb.windup > 0)) {
         zb.stunTimer -= dt;
         zb.vx *= 0.5; zb.vz *= 0.5;
         zb.windup = 0; zb.attackAnim = 0;
+        zb.spitWindup = 0;
         zb.slowMul = 1;
         continue;
       }
@@ -281,6 +390,11 @@ export class ZombieSystem {
         zb.losTimer = ai.losCheckInterval;
         zb.hasLos = dist < ai.directChaseRange &&
           raycastGrid(grid, zb.pos.x, zb.pos.z, ux, uz, dist, this.blockedWalk) >= dist;
+        // Escupidor: el ácido va en arco y pasa por encima de lo bajo (sacos, vallas).
+        if (d.spit) {
+          zb.spitLos = player.alive && dist < d.spit.range &&
+            raycastGrid(grid, zb.pos.x, zb.pos.z, ux, uz, dist, this.blockedShot) >= dist;
+        }
       }
 
       // Dirección deseada: directa si ve al jugador; hacia el señuelo si lo oye;
@@ -292,7 +406,7 @@ export class ZombieSystem {
         toDecoy = dd < decoy.radius;
         if (toDecoy && dd < 1.5) { mx = 0; mz = 0; }
       }
-      // Los vándalos van a por el transformador salvo que tengan al jugador encima.
+      // Los vándalos van a por el transformador o los generadores salvo que tengan al jugador encima.
       const goVandal = zb.vandal && vandalsActive && !(zb.hasLos && dist < game.build.cfg.transformer.vandalIgnoreRange);
       zb.targetCell = -1;
       if ((!zb.hasLos || goVandal) && !(toDecoy && mx === 0 && mz === 0)) {
@@ -308,9 +422,35 @@ export class ZombieSystem {
           // La siguiente celda tiene una construcción que bloquea: hay que romperla.
           if (grid.blocked[nk] && this.nearBox(zb, grid.dynBox, nk * 4, zb.radius + ai.structureReach)) zb.targetCell = nk;
         }
-        if (goVandal && this.nearBox(zb, transformer.box, 0, zb.radius + game.build.cfg.transformer.attackRange)) {
-          zb.targetCell = -2;
+        if (goVandal) {
+          const reach = zb.radius + game.build.cfg.transformer.attackRange;
+          if (trAlive && this.nearBox(zb, transformer.box, 0, reach)) {
+            zb.targetCell = -2;
+            mx = 0; mz = 0;
+          } else {
+            for (const s of generators) {
+              if (this.nearBox(zb, grid.dynBox, s.k * 4, reach)) { zb.targetCell = s.k; mx = 0; mz = 0; break; }
+            }
+          }
+        }
+      }
+
+      // Escupidor: con el jugador a tiro se para a distancia (o retrocede si está muy cerca)
+      // y le lanza ácido en arco.
+      if (d.spit && !goVandal) {
+        const sp = d.spit;
+        zb.spitCd -= dt;
+        if (zb.spitWindup > 0) {
+          zb.spitWindup -= dt;
           mx = 0; mz = 0;
+          if (zb.spitWindup <= 0) this.spit(zb, sp);
+        } else if (zb.spitLos) {
+          if (dist < sp.minRange) { mx = -ux; mz = -uz; }
+          else if (dist <= sp.preferredRange) { mx = 0; mz = 0; }
+          if (zb.spitCd <= 0 && dist >= sp.minRange * 0.5) {
+            zb.spitWindup = sp.windup;
+            zb.spitCd = sp.cooldown * rnd(0.2);
+          }
         }
       }
 
@@ -341,9 +481,17 @@ export class ZombieSystem {
         zb.windup -= dt;
         zb.attackAnim = 1 - zb.windup / zb.data.attackWindup;
         if (zb.windup <= 0) {
+          // El explosivo no golpea: revienta.
+          if (d.explosion) {
+            zb.selfDestruct = true;
+            this.kill(zb);
+            continue;
+          }
           const sdmg = zb.data.damage * (zb.data.structureDamageMul ?? 1);
-          if (zb.attackTarget === 0 && clear) player.damage(zb.data.damage);
-          else if (zb.attackTarget === 1 && zb.targetCell >= 0) game.build.damageCell(zb.targetCell, sdmg);
+          if (zb.attackTarget === 0 && clear) {
+            player.damage(zb.data.damage);
+            if (d.playerKnockback) player.knockback(ux, uz, d.playerKnockback);
+          } else if (zb.attackTarget === 1 && zb.targetCell >= 0) game.build.damageCell(zb.targetCell, sdmg);
           else if (zb.attackTarget === 2 && zb.targetCell === -2) game.build.damageTransformer(sdmg);
           zb.cooldown = zb.data.attackCooldown;
           zb.attackAnim = 0;
@@ -353,6 +501,7 @@ export class ZombieSystem {
         zb.attackTarget = playerInRange ? 0 : zb.targetCell >= 0 ? 1 : 2;
       }
 
+      const turn = 1 - Math.exp(-zb.turn * dt);
       const baseSpeed = zb.speed * this.speedMul * zb.slowMul;
       zb.slowMul = 1; // las trampas lo vuelven a fijar en cada paso
       const speed = zb.windup > 0 || inRange ? baseSpeed * ai.attackSlowFactor : baseSpeed;
@@ -385,7 +534,7 @@ export class ZombieSystem {
       resolveCircleVsGrid(zb.pos, zb.radius, grid);
 
       // Mira al jugador si está cerca; si golpea algo, hacia ello; si no, hacia donde camina.
-      let targetFacing = dist < 3 || zb.hasLos ? Math.atan2(dx, dz) : Math.atan2(zb.vx, zb.vz);
+      let targetFacing = dist < 3 || zb.hasLos || zb.spitLos ? Math.atan2(dx, dz) : Math.atan2(zb.vx, zb.vz);
       if (zb.targetCell >= 0 && !playerInRange) {
         targetFacing = Math.atan2(grid.centerX(zb.targetCell % grid.w) - zb.pos.x, grid.centerZ((zb.targetCell / grid.w) | 0) - zb.pos.z);
       } else if (zb.targetCell === -2 && !playerInRange) {
@@ -394,7 +543,7 @@ export class ZombieSystem {
       let df = targetFacing - zb.facing;
       df = Math.atan2(Math.sin(df), Math.cos(df));
       zb.facing += df * turn;
-      zb.walkPhase += Math.hypot(zb.vx, zb.vz) * dt * 2.4;
+      zb.walkPhase += Math.hypot(zb.vx, zb.vz) * dt * 2.4 * (d.walkCycle ?? 1);
     }
 
     // Empuje jugador–zombis: el jugador cede poco para que la horda no lo arrastre.
@@ -420,34 +569,66 @@ export class ZombieSystem {
     }
   }
 
+  /** Lanza ácido hacia el jugador (con algo de anticipación y error). */
+  spit(zb, sp) {
+    const { player, acid } = this.game;
+    if (!player.alive || !acid) return;
+    const px = player.position.x, pz = player.position.z;
+    const dist = Math.hypot(px - zb.pos.x, pz - zb.pos.z);
+    const flight = Math.max(sp.minFlight, dist / sp.speed);
+    const err = () => (Math.random() - 0.5) * 2 * sp.error;
+    const tx = px + player.velocity.x * flight * sp.lead + err();
+    const tz = pz + player.velocity.z * flight * sp.lead + err();
+    acid.launch(zb.pos.x, zb.pos.z, tx, tz, sp, 1.5 * zb.scale);
+  }
+
   render() {
-    const { meshList, pose, partPivots, _base, _part, _m, _q, _e, _v, _s, _one, _c } = this;
+    const { meshList, pose, _base, _part, _m, _q, _e, _v, _s, _c, _partM } = this;
+    const acc = this.accessoryMeshes;
+    for (const name in acc) acc[name].mesh.count = 0;
     let count = 0;
     for (const zb of this.active) {
+      const d = zb.data, body = zb.body;
+      const dying = zb.state === Z_STATE.DYING;
       const moving = Math.min(1, Math.hypot(zb.vx, zb.vz) / Math.max(zb.speed, 0.01));
-      computePose(pose, zb.walkPhase, zb.state === Z_STATE.DYING ? 0 : moving, 'zombie', zb.attackAnim);
-      // Base: posición, giro, caída hacia atrás al morir y hundimiento final.
-      _e.set(-zb.fall * Math.PI / 2, zb.facing, 0, 'YXZ');
+      computePose(pose, zb.walkPhase, dying ? 0 : moving, 'zombie', zb.attackAnim);
+      if (d.pose === 'boss') {
+        // Escudo al frente con la izquierda; la porra se levanta durante la preparación.
+        pose.armL.x = -1.2; pose.armL.z = 0.3;
+        pose.armR.x = -0.35 - zb.attackAnim * 2.5; pose.armR.z = 0.05;
+      }
+      if (zb.spitWindup > 0) pose.head.x = -0.35; // echa la cabeza atrás antes de escupir
+      // Base: posición, giro, inclinación al correr, caída hacia atrás al morir y hundimiento final.
+      _e.set(-zb.fall * Math.PI / 2 + body.lean * moving, zb.facing, 0, 'YXZ');
       _q.setFromEuler(_e);
       _v.set(zb.pos.x, -zb.sink * 0.6 + zb.fall * 0.12, zb.pos.z);
-      _s.setScalar(zb.scale);
+      // El explosivo se hincha y parpadea mientras está a punto de reventar.
+      const fusing = d.explosion && zb.windup > 0 && !dying;
+      const swell = fusing ? 1 + zb.attackAnim * 0.18 * (0.6 + 0.4 * Math.sin(zb.attackAnim * 40)) : 1;
+      _s.setScalar(zb.scale * swell);
       _base.compose(_v, _q, _s);
+      const blink = fusing && Math.sin(zb.attackAnim * 40) > 0;
       for (let k = 0; k < PART_COUNT; k++) {
         const p = pose[PART_NAMES[k]];
         _e.set(p.x, 0, p.z, 'XYZ');
         _q.setFromEuler(_e);
-        _part.compose(partPivots[k], _q, _one);
+        _part.compose(body.pivots[k], _q, body.scales[k]);
         _m.multiplyMatrices(_base, _part);
+        _partM[k].copy(_m);
         meshList[k].setMatrixAt(count, _m);
         _c.copy(zb.colors[k]);
-        if (zb.flash > 0) _c.lerp(WHITE, 0.7);
-        if (zb.state === Z_STATE.DYING) _c.multiplyScalar(0.6);
+        if (zb.flash > 0 || blink) _c.lerp(WHITE, 0.7);
+        if (dying) _c.multiplyScalar(0.6);
         meshList[k].setColorAt(count, _c);
         if (k === HEAD_INDEX) {
           // Los muertos no tienen ojos brillantes: se esconden escalando a 0.
-          if (zb.state === Z_STATE.DYING) _m.makeScale(0, 0, 0);
+          if (dying) _m.makeScale(0, 0, 0);
           this.eyes.setMatrixAt(count, _m);
         }
+      }
+      for (const name of body.accessories) {
+        const a = acc[name];
+        a.mesh.setMatrixAt(a.mesh.count++, a.attach < 0 ? _base : _partM[a.attach]);
       }
       count++;
     }
@@ -456,6 +637,7 @@ export class ZombieSystem {
       m.instanceMatrix.needsUpdate = true;
       m.instanceColor.needsUpdate = true;
     }
+    for (const name in acc) if (acc[name].mesh.count) acc[name].mesh.instanceMatrix.needsUpdate = true;
     this.eyes.count = count;
     this.eyes.instanceMatrix.needsUpdate = true;
     this.eyes.visible = this.eyeMaterial.opacity > 0.01;

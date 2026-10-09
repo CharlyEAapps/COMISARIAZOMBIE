@@ -7,7 +7,7 @@ import { buildPolice } from './BlockyCharacter.js';
 import { createAtlasTexture } from './props/Atlas.js';
 import {
   structureGeometry, doorLeafGeometry, doorFrameGeometry, doorSignGeometry, mineLightGeometry,
-  structureGhostGeometry, transformerDamageGeometry, STRUCTURE_MATERIAL_OPTIONS,
+  structureGhostGeometry, transformerDamageGeometry, turretHeadGeometry, floodLensGeometry, STRUCTURE_MATERIAL_OPTIONS,
 } from './StructureModels.js';
 
 // Página de desarrollo: todas las piezas de construcción y trampas en fila sobre un suelo de baldosa,
@@ -24,7 +24,7 @@ const lightMat = new THREE.MeshBasicMaterial({ vertexColors: true });
 const signMat = new THREE.MeshStandardMaterial({ map: createAtlasTexture(), roughness: 0.7, alphaTest: 0.4, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
 
 // ---------------------------------------------------------------- suelo (damero de baldosas, como el MapRenderer)
-const X0 = -2, X1 = 36, Z0 = -3, Z1 = 5;
+const X0 = -2, X1 = 70, Z0 = -3, Z1 = 5;
 {
   const RES = 2, tw = (X1 - X0) * RES, th = (Z1 - Z0) * RES;
   const data = new Uint8Array(tw * th * 4);
@@ -49,6 +49,7 @@ const items = []; // { group, solid, ghost, labelPos, name, tris }
 const labels = [];
 const cellZ = 0.5;
 let ghostMode = false;
+let turretYaw = 0.5; // la cabeza de la torreta apunta algo girada para verla de perfil
 
 function addMesh(parent, geo, mat, shadows = true) {
   const m = new THREE.Mesh(geo, mat);
@@ -62,7 +63,7 @@ let cell = 0;
 const triOf = (g) => g.attributes.position.count / 3;
 const stats = [];
 
-function place(type, level, cx = cell + 0.5) {
+function place(type, level, cx = cell + 0.5, label = true) {
   const def = build.pieces[type];
   const group = new THREE.Group();
   group.position.set(cx, 0, cellZ);
@@ -73,9 +74,20 @@ function place(type, level, cx = cell + 0.5) {
   const extra = [];
   if (type === 'mina') extra.push(addMesh(group, mineLightGeometry(), lightMat, false));
   if (type === 'puerta' && level === 1) extra.push(addMesh(group, doorSignGeometry(1), signMat, false));
+  if (type === 'torreta') {
+    // la cabeza gira sobre su eje: en el juego va en un Group aparte colocado en y = headHeight
+    const head = new THREE.Group();
+    head.position.y = def.headHeight;
+    head.rotation.y = turretYaw;
+    group.add(head);
+    const hm = addMesh(head, turretHeadGeometry(level), solidMat);
+    extra.push(head);
+    stats.push(`${('cabeza ' + level).padEnd(12)} ${String(triOf(hm.geometry)).padStart(4)} tris`);
+  }
+  if (type === 'foco') extra.push(addMesh(group, floodLensGeometry(), lightMat, false));
   items.push({ group, solid, geo, ghostGeo, extra });
-  addLabel(`${def.name} · ${def.levels[level].name}`, cx, def.height + 0.25, cellZ);
-  stats.push(`${(type + ' ' + level).padEnd(12)} ${String(triOf(geo)).padStart(4)} tris  h=${def.height}`);
+  if (label) addLabel(`${def.name} · ${def.levels[level].name}`, cx, (type === 'torreta' ? 1.3 : def.height) + 0.25, cellZ);
+  if (label) stats.push(`${(type + ' ' + level).padEnd(12)} ${String(triOf(geo)).padStart(4)} tris  h=${def.height}`);
   return group;
 }
 
@@ -111,6 +123,28 @@ for (let l = 0; l < 2; l++) { place('pinchos', l); cell += 2; }
 for (let l = 0; l < 2; l++) { place('cepo', l); cell += 2; }
 place('mina', 0); cell += 2;
 
+// Piezas de la fase 5: alambre, barril, valla, generador, torreta, foco
+const afterTraps = cell;
+cell = 32;
+for (let l = 0; l < 2; l++) { place('alambre', l); cell += 2; }
+place('barril', 0); cell += 2;
+for (let l = 0; l < 2; l++) { place('valla', l); cell += 2; }
+place('generador', 0); cell += 2;
+for (let l = 0; l < 2; l++) { place('torreta', l); cell += 2; }
+place('foco', 0); cell += 2;
+// Filas continuas para comprobar que se unen sin huecos (valla, alambre) y una valla rotada 90° (columna en Z)
+{
+  const rowStart = cell;
+  for (let k = 0; k < 3; k++) place('valla', 0, rowStart + k + 0.5, k === 1);
+  for (let k = 0; k < 3; k++) place('valla', 1, rowStart + 3.5 + k, k === 1);
+  for (let k = 0; k < 3; k++) place('alambre', 1, rowStart + 7 + k + 0.5, k === 1);
+  for (let k = 0; k < 3; k++) {            // columna en Z: la pieza se gira 90° en Y
+    const col = place('valla', 1, rowStart + 11.5, k === 1);
+    col.position.z = cellZ + k;
+    col.rotation.y = Math.PI / 2;
+  }
+}
+cell = afterTraps;
 // Transformador (maqueta de 2×1) con la superposición de daño
 {
   const cx = cell + 1;
@@ -129,7 +163,7 @@ place('mina', 0); cell += 2;
 
 // Policías de referencia
 const refs = [];
-for (const x of [5.0, 11.0, 21.0, 32.0]) {
+for (const x of [5.0, 11.0, 21.0, 32.0, 41.0, 49.0, 58.0]) {
   const p = buildPolice();
   p.root.position.set(x - 1.0, 0, 1.9);
   scene.add(p.root);
@@ -148,6 +182,11 @@ const VIEWS = {
   'Puertas': { target: [14, 1.1, 0.5], dist: 14, pitch: 42 },
   'Trampas': { target: [22.5, 0.1, 0.5], dist: 10, pitch: 55 },
   'Transformador': { target: [29, 0.8, 0.5], dist: 8, pitch: 38 },
+  'Alambre y barril': { target: [35.5, 0.4, 0.5], dist: 8, pitch: 45 },
+  'Vallas': { target: [39.5, 0.8, 0.5], dist: 8, pitch: 40 },
+  'Generador y torretas': { target: [45, 0.7, 0.5], dist: 9, pitch: 42 },
+  'Foco': { target: [48.5, 1.2, 0.5], dist: 7, pitch: 30 },
+  'Filas continuas': { target: [56, 0.8, 0.5], dist: 18, pitch: 42 },
   'Cámara del juego (60°)': { target: [5, 0.6, 0.5], dist: 16, pitch: 60 },
 };
 function setView(name, azimuthDeg = 0) {

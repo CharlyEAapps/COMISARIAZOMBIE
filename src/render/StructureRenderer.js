@@ -10,6 +10,11 @@ const EMPTY = [];
 const IDENTITY_Q = new THREE.Quaternion();
 const DAMAGED = new THREE.Color(0.5, 0.47, 0.45);
 const FLASH = new THREE.Color(1.8, 1.6, 1.5);
+const POWERED = new THREE.Color(0.85, 0.95, 1.25);
+const LENS_OFF = new THREE.Color(0.35, 0.33, 0.3);
+const LENS_ON = new THREE.Color(2.2, 2.1, 1.9);
+/** Piezas lineales (corren a lo largo de X) que se giran 90° en una columna. */
+const LINEAR = new Set(['valla', 'alambre']);
 
 // Dibuja las construcciones del jugador con un InstancedMesh por (tipo, nivel), la vista
 // previa de colocación (fantasma verde/rojo), el anillo de alcance y el daño del transformador.
@@ -57,6 +62,23 @@ export class StructureRenderer {
       this.group.add(mesh);
       this.leafMeshes.push(mesh);
     });
+
+    // Cabezas giratorias de las torretas (una malla por nivel) y lentes de los focos.
+    this.turretHeads = build.pieces.torreta.levels.map((_, level) => {
+      const mesh = new THREE.InstancedMesh(Models.turretHeadGeometry(level), this.material, MAX_PER_KIND);
+      mesh.count = 0;
+      mesh.castShadow = true;
+      mesh.frustumCulled = false;
+      mesh.setColorAt(0, WHITE);
+      this.group.add(mesh);
+      return mesh;
+    });
+    this.lensMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, color: LENS_OFF.clone() });
+    this.lenses = new THREE.InstancedMesh(Models.floodLensGeometry(), this.lensMaterial, MAX_PER_KIND);
+    this.lenses.count = 0;
+    this.lenses.frustumCulled = false;
+    this.group.add(this.lenses);
+    this._orientVersion = -1;
 
     // Piloto de las minas (parpadea; rápido cuando la mecha está encendida).
     this.mineLights = new THREE.InstancedMesh(
@@ -121,7 +143,7 @@ export class StructureRenderer {
       this.group.add(this.trDamage);
     }
 
-    this.allMeshes = [...Object.values(this.meshes).flat(), ...this.leafMeshes, ...this.frameMeshes];
+    this.allMeshes = [...Object.values(this.meshes).flat(), ...this.leafMeshes, ...this.frameMeshes, ...this.turretHeads];
     this._m = new THREE.Matrix4();
     this._q = new THREE.Quaternion();
     this._p = new THREE.Vector3();
@@ -143,13 +165,21 @@ export class StructureRenderer {
     const { _m, _q, _p, _s, _c, _up } = this;
     for (const m of this.allMeshes) m.count = 0;
     this.mineLights.count = 0;
+    this.lenses.count = 0;
     const t = game.time;
+    if (build.version !== this._orientVersion) {
+      this._orientVersion = build.version;
+      for (const s of build.all) if (LINEAR.has(s.type)) s.rot = this.linearRotation(s.type, s.i, s.j);
+    }
+    const powered = build.powered;
+    this.lensMaterial.color.copy(LENS_OFF).lerp(LENS_ON, game.lighting?.focoGlow ?? 0);
 
     for (const s of build.all) {
       // Color: se oscurece con el daño; destello al recibir un golpe.
       _c.copy(WHITE).lerp(DAMAGED, s.def.kind === 'trampa' ? 0 : 1 - s.hp / s.maxHp);
+      if (s.type === 'valla' && powered) _c.multiply(POWERED);
       if (s.flash > 0) _c.lerp(FLASH, 0.6);
-      const baseRot = s.type === 'puerta' && s.axis === 'z' ? Math.PI / 2 : 0;
+      const baseRot = s.type === 'puerta' && s.axis === 'z' ? Math.PI / 2 : (s.rot ?? 0);
       if (s.type === 'puerta' && s.cells.length > 1) {
         this.drawWideDoor(s, baseRot);
         continue;
@@ -187,6 +217,16 @@ export class StructureRenderer {
         mesh.setMatrixAt(mesh.count, _m);
         mesh.setColorAt(mesh.count++, _c);
 
+        if (s.type === 'torreta') {
+          const head = this.turretHeads[s.level];
+          _q.setFromAxisAngle(_up, s.yaw);
+          _p.y = s.def.headHeight;
+          _m.compose(_p, _q, _s);
+          head.setMatrixAt(head.count, _m);
+          head.setColorAt(head.count++, _c);
+        } else if (s.type === 'foco') {
+          this.lenses.setMatrixAt(this.lenses.count++, _m);
+        }
         if (s.type === 'mina') {
           const blink = s.fuse > 0 ? Math.sin(t * 40) > 0 : Math.sin(t * 4 + s.id) > 0.6;
           _s.setScalar(blink ? 1 : 0.001);
@@ -202,6 +242,7 @@ export class StructureRenderer {
       m.instanceColor.needsUpdate = true;
     }
     this.mineLights.instanceMatrix.needsUpdate = true;
+    this.lenses.instanceMatrix.needsUpdate = true;
 
     // Modo construcción: fantasma, recuadro y anillo de alcance.
     const active = build.active;
@@ -217,7 +258,8 @@ export class StructureRenderer {
     if (n) {
       const i = k % grid.w, j = (k / grid.w) | 0;
       const axis = build.selected === 'puerta' ? build.doorAxis(i, j) : 'x';
-      _q.setFromAxisAngle(_up, axis === 'z' ? Math.PI / 2 : 0);
+      const rot = LINEAR.has(build.selected) ? this.linearRotation(build.selected, i, j) : axis === 'z' ? Math.PI / 2 : 0;
+      _q.setFromAxisAngle(_up, rot);
       if (!existing) {
         this.ghost.geometry = this.ghostGeos.get(build.selected);
         this.ghostMat.color.set(build.hoverReason ? 0xff4a3a : 0x5cff7a);
@@ -275,6 +317,22 @@ export class StructureRenderer {
   }
 
   /**
+   * Giro de una valla o alambre en (i, j): en columna (vecinos del mismo tipo o muros arriba
+   * y abajo, y nada a los lados) corre a lo largo de Z.
+   */
+  linearRotation(type, i, j) {
+    const { grid, build } = this.game;
+    const solid = (a, b) => {
+      if (!grid.inBounds(a, b)) return false;
+      const o = build.structures.get(grid.index(a, b));
+      return o ? o.type === type : !grid.isStaticWalkable(a, b);
+    };
+    const sx = solid(i - 1, j) + solid(i + 1, j);
+    const sz = solid(i, j - 1) + solid(i, j + 1);
+    return sz > sx ? Math.PI / 2 : 0;
+  }
+
+  /**
    * ¿La bisagra de la hoja c va en el lado +X (o +Z) de su celda? En una puerta doble, la
    * mitad final abre hacia su extremo; en una sencilla, la bisagra va del lado del muro.
    */
@@ -294,5 +352,6 @@ export class StructureRenderer {
       if (o.material) o.material.dispose();
     });
     for (const g of this.ghostGeos.values()) g.dispose();
+    this.lensMaterial.dispose();
   }
 }

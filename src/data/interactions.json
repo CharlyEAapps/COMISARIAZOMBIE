@@ -250,5 +250,15 @@
     "effect": {
       "openShop": "almacen"
     }
+  },
+  "recargar_torreta": {
+    "label": "Recargar torreta",
+    "hold": 0.6,
+    "cooldown": 0.3,
+    "radius": 1.5,
+    "marker": false,
+    "effect": {
+      "reloadTurret": true
+    }
   }
 }

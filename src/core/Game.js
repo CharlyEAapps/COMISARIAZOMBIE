@@ -28,6 +28,9 @@ import { BuildSystem } from '../systems/BuildSystem.js';
 import { StructureRenderer } from '../render/StructureRenderer.js';
 import { GrenadeRenderer } from '../render/GrenadeRenderer.js';
 import { ShopSystem } from '../systems/ShopSystem.js';
+import { BlastQueue } from '../systems/Explosions.js';
+import { AcidSystem } from '../systems/AcidSystem.js';
+import zombieData from '../data/zombies.json';
 import { ShopPanel } from '../ui/ShopPanel.js';
 import { WEAPON_IDS } from '../systems/WeaponSystem.js';
 import { Player } from '../entities/Player.js';
@@ -62,7 +65,9 @@ export class Game {
     this.dayNight = new DayNight(daynightData, this.bus);
     this.waves = new WaveDirector(this);
     this.power = { generator: true, lightsOn: true }; // generator = el transformador funciona
-    this.run = { time: 0, points: 0, kills: 0, nights: 0 };
+    this.run = { time: 0, points: 0, kills: 0, nights: 0, killsByType: {} };
+    this.blasts = new BlastQueue(this);
+    this.acid = new AcidSystem(this);
     this.floating = new WorldLabels(this);
     this.score = new Score(this);
     this.interactions = new InteractionSystem(this);
@@ -152,6 +157,13 @@ export class Game {
     d.addAction('Zombis', 'Generar 10 caminantes', () => {
       for (let i = 0; i < 10; i++) this.waves.spawnAtRandomPoint('caminante');
     });
+    const spawnSel = { tipo: 'corredor' };
+    const types = Object.keys(zombieData).filter((t) => !t.startsWith('_'));
+    d.folder('Zombis').add(spawnSel, 'tipo', types).name('Tipo');
+    d.addAction('Zombis', 'Generar 5 del tipo', () => {
+      const n = zombieData[spawnSel.tipo].boss ? 1 : 5;
+      for (let i = 0; i < n; i++) this.waves.spawnAtRandomPoint(spawnSel.tipo);
+    });
     d.addAction('Zombis', 'Matar a todos', () => {
       for (const z of [...this.zombies.active]) this.zombies.damage(z, 1e9);
     });
@@ -167,6 +179,7 @@ export class Game {
     this.props.dispose();
     this.structureRenderer.dispose();
     this.grenadeRenderer.dispose();
+    this.acid.dispose();
     this.lighting.dispose();
     this.debug.gui.destroy();
     this.renderer.renderer.dispose();
@@ -198,11 +211,13 @@ export class Game {
     this.build.reset();
     this.shop.reset();
     this.effects.reset();
+    this.blasts.reset();
+    this.acid.reset();
     this.floating.reset();
     this.hud.reset();
     this.lighting.alarmTimer = 0;
     Object.assign(this.power, { generator: true, lightsOn: true });
-    Object.assign(this.run, { time: 0, points: 0, kills: 0, nights: 0 });
+    Object.assign(this.run, { time: 0, points: 0, kills: 0, nights: 0, killsByType: {} });
     this.deathTimer = 0;
     this.state = STATE.PLAYING;
     this.cameraRig.snap(this.player.position);
@@ -265,6 +280,7 @@ export class Game {
     this.zombies.render();
     this.structureRenderer.update();
     this.grenadeRenderer.update();
+    this.acid.render(this.time);
     this.effects.update(visualDt);
     this.lighting.update(visualDt);
     if (this.debug.flags.showFlowField) this.flowViz.update(this.zombies.flow, visualDt);
@@ -315,6 +331,8 @@ export class Game {
     this.build.update(dt);
     if (this.wavesEnabled && this.player.alive) this.waves.update(dt, this.dayNight);
     this.zombies.update(dt);
+    this.blasts.update(dt);
+    this.acid.update(dt);
     this.score.update(dt);
     if (this.deathTimer > 0) {
       this.deathTimer -= dt;

@@ -80,6 +80,11 @@ export class InteractionSystem {
       if (!cost) return { ok: false, reason: 'Funciona correctamente' };
       if (game.run.points < cost) return { ok: false, reason: `Necesitas ${cost} puntos` };
     }
+    if (e.reloadTurret) {
+      const cost = game.build.turretReloadCost(it.cell);
+      if (!cost) return { ok: false, reason: 'Munición completa' };
+      if (game.run.points < cost) return { ok: false, reason: `Necesitas ${cost} puntos` };
+    }
     if (e.medkit && !e.loot && p.medkits >= data._medkit.max) return { ok: false, reason: 'Llevas el máximo de botiquines' };
     if (e.heal && !e.skipDay && p.hp >= p.maxHp) return { ok: false, reason: 'Vida al máximo' };
     return { ok: true };
@@ -93,6 +98,11 @@ export class InteractionSystem {
       const t = this.game.build.transformer;
       const cost = this.game.build.transformerRepairCost();
       return cost ? `Reparar el transformador (${Math.round((t.hp / t.maxHp) * 100)} %, ${cost} pts)` : 'Transformador';
+    }
+    if (d.effect.reloadTurret) {
+      const s = this.game.build.structures.get(it.cell);
+      const cost = this.game.build.turretReloadCost(it.cell);
+      return s ? `Recargar torreta (${s.ammo}/${s.ammoMax}${cost ? `, ${cost} pts` : ''})` : d.label;
     }
     return d.cost ? `${d.label} (${d.cost} pts)` : d.label;
   }
@@ -184,6 +194,7 @@ export class InteractionSystem {
     if (e.toggleDoor) msg = game.build.toggleDoor(it.cell);
     if (e.openShop) game.shop.openShop(e.openShop, it.x, it.z);
     if (e.repairTransformer) msg = game.build.repairTransformer();
+    if (e.reloadTurret) msg = game.build.reloadTurret(it.cell);
     if (e.alarm) {
       game.lighting.triggerAlarm(e.alarm);
       game.zombies.slowAll(e.alarmSlow, e.alarm);

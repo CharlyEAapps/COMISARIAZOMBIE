@@ -37,8 +37,11 @@ export class Score {
     if (floating && x !== undefined) floating.spawn(label ?? `+${amount}`, x, 1.9, z, amount >= 0 ? 'pts' : 'neg');
   }
 
-  onKill({ points, x, z }) {
+  onKill({ type, points, x, z, selfDestruct }) {
     const { run } = this.game;
+    // Un explosivo que revienta él solo no cuenta como baja (ni para el combo).
+    if (selfDestruct) return;
+    run.killsByType[type] = (run.killsByType[type] ?? 0) + 1;
     this.combo = this.comboTimer > 0 ? this.combo + 1 : 1;
     this.comboTimer = this.cfg.comboWindow;
     this.maxCombo = Math.max(this.maxCombo, this.combo);

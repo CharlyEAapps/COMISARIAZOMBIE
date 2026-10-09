@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import dn from '../data/daynight.json';
+import buildData from '../data/build.json';
 
 // Iluminación día/noche. Número de luces FIJO (cambiarlo recompila todos los shaders):
 // hemisférica + sol/luna (Renderer) + linterna + N luces de farola reasignadas a las más
@@ -58,6 +59,17 @@ export class Lighting {
     this.assignTimer = 0;
     this._sorted = []; // reutilizado al ordenar farolas por distancia
 
+    // Focos construidos: unas pocas luces reales (las de los más cercanos al jugador) y un
+    // charco de luz por foco.
+    this.focoLights = [];
+    for (let i = 0; i < L.focoPointLights; i++) {
+      const pl = new THREE.PointLight(0xfff4e0, 0, L.focoPointDistance, 1.4);
+      scene.add(pl);
+      this.focoLights.push(pl);
+    }
+    this._focoVersion = -1;
+    this._focoSorted = [];
+
     // Luz roja de alarma.
     this.alarmLight = new THREE.PointLight(0xff2a2a, 0, 40, 1.2);
     scene.add(this.alarmLight);
@@ -83,6 +95,29 @@ export class Lighting {
     this.interior = anchors.filter((a) => a.type === 'lampara');
     this.lampPools = this.makePools(this.lamps, this.cfg.lampPoolRadius, 0xffcf8a);
     this.interiorPools = this.makePools(this.interior, this.cfg.interiorPoolRadius, 0xfff3d6);
+    if (!this.focoPools) {
+      this.focoPools = this.makePools(new Array(buildData.pieces.foco.maxCount).fill(null), this.cfg.focoPoolRadius, 0xfff6e2);
+      this.focoPools.count = 0;
+    }
+  }
+
+  /** Coloca los charcos de los focos construidos (solo cuando cambian las construcciones). */
+  syncFocos() {
+    const build = this.game.build;
+    if (!build || build.version === this._focoVersion) return;
+    this._focoVersion = build.version;
+    const m = new THREE.Matrix4();
+    const R = this.cfg.focoPoolRadius;
+    const list = build.lights;
+    const n = Math.min(list.length, this.focoPools.instanceMatrix.count);
+    for (let k = 0; k < n; k++) {
+      m.makeScale(R * 2, 1, R * 2);
+      m.setPosition(list[k].cx, 0.045, list[k].cz);
+      this.focoPools.setMatrixAt(k, m);
+    }
+    this.focoPools.count = n;
+    this.focoPools.instanceMatrix.needsUpdate = true;
+    this.assignTimer = 0; // reasignar las luces reales ya
   }
 
   makePools(list, radius, color) {
@@ -96,6 +131,7 @@ export class Lighting {
     mesh.count = list.length;
     const m = new THREE.Matrix4();
     list.forEach((a, k) => {
+      if (!a) return;
       m.makeScale(radius * 2, 1, radius * 2);
       m.setPosition(a.x, 0.04, a.z);
       mesh.setMatrixAt(k, m);
@@ -122,12 +158,12 @@ export class Lighting {
 
   dispose() {
     const { scene } = this.game;
-    for (const m of [this.lampPools, this.interiorPools]) {
+    for (const m of [this.lampPools, this.interiorPools, this.focoPools]) {
       if (m) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
     }
     this.poolTexture.dispose();
     this.flashlight.dispose();
-    for (const l of [...this.lampLights, this.alarmLight]) { scene.remove(l); l.dispose(); }
+    for (const l of [...this.lampLights, ...this.focoLights, this.alarmLight]) { scene.remove(l); l.dispose(); }
   }
 
   update(dt) {
@@ -202,8 +238,24 @@ export class Lighting {
         if (l) pl.position.set(l.x, l.y - 0.3, l.z);
         pl.userData.active = !!l && l._d < maxD2;
       }
+      const focos = this._focoSorted;
+      focos.length = 0;
+      for (const f of game.build?.lights ?? []) { f._d = (f.cx - px) ** 2 + (f.cz - pz) ** 2; focos.push(f); }
+      focos.sort((x, y) => x._d - y._d);
+      for (let k = 0; k < this.focoLights.length; k++) {
+        const pl = this.focoLights[k], f = focos[k];
+        if (f) pl.position.set(f.cx, cfg.focoHeight, f.cz);
+        pl.userData.active = !!f && f._d < maxD2;
+      }
     }
     for (const pl of this.lampLights) pl.intensity = pl.userData.active ? cfg.lampPointIntensity * night : 0;
+    // Focos: se encienden al caer la noche (y algo al atardecer).
+    this.syncFocos();
+    const focoOn = Math.max(0, (night - cfg.focoMinNight) / (1 - cfg.focoMinNight));
+    for (const pl of this.focoLights) pl.intensity = pl.userData.active ? cfg.focoPointIntensity * focoOn : 0;
+    this.focoPools.material.opacity = cfg.focoPoolOpacity * focoOn;
+    this.focoPools.visible = focoOn > 0.01 && this.focoPools.count > 0;
+    this.focoGlow = focoOn;
 
     // Props: sirenas de los coches (atardecer, señuelo o alarma) y brillo de pantallas y lámparas.
     const props = game.props;

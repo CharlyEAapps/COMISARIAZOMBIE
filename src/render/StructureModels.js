@@ -450,15 +450,365 @@ function mina(b) {
   }
 }
 
+// ---------------------------------------------------------------- utilidades de las piezas de la fase 5
+
+const cross = (a, c) => [a[1] * c[2] - a[2] * c[1], a[2] * c[0] - a[0] * c[2], a[0] * c[1] - a[1] * c[0]];
+const norm3 = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+
+/** Polígono regular (aproximación de un círculo) en el plano (u, v). */
+function circlePts(r, seg, cu = 0, cv = 0, rot = 0) {
+  const pts = [];
+  for (let i = 0; i < seg; i++) {
+    const t = rot + (i / seg) * Math.PI * 2;
+    pts.push([cu + Math.cos(t) * r, cv + Math.sin(t) * r]);
+  }
+  return pts;
+}
+/** Prisma circular a lo largo de Z: centro (x, y), z0..z1. */
+const prismZ = (b, x, y, r, z0, z1, seg, color, o) => extrude(b, circlePts(r, seg, x, y), 'xy', z0, z1, color, o);
+/** Prisma circular a lo largo de X: centro (y, z), x0..x1. */
+const prismX = (b, y, z, r, x0, x1, seg, color, o) => extrude(b, circlePts(r, seg, z, y), 'zy', x0, x1, color, o);
+
+/** Pincho/cono con dirección arbitraria `d` (unitaria) desde `p`. */
+function spike(b, p, d, r, h, seg, cBase, cTip) {
+  const L = b.layers.solid;
+  const cb = lin(cBase), ct = lin(cTip ?? cBase);
+  const u = norm3(cross(d, Math.abs(d[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]));
+  const v = cross(d, u);
+  const apex = [p[0] + d[0] * h, p[1] + d[1] * h, p[2] + d[2] * h];
+  const ring = [];
+  for (let i = 0; i < seg; i++) {
+    const t = (i / seg) * Math.PI * 2, c = Math.cos(t) * r, s = Math.sin(t) * r;
+    ring.push([p[0] + u[0] * c + v[0] * s, p[1] + u[1] * c + v[1] * s, p[2] + u[2] * c + v[2] * s]);
+  }
+  for (let i = 0; i < seg; i++) {
+    const a = ring[i], c = ring[(i + 1) % seg];
+    tri(L, a, c, apex, cb, cb, ct, [(a[0] + c[0]) / 2 - p[0] + d[0] * 0.2 * r, (a[1] + c[1]) / 2 - p[1] + d[1] * 0.2 * r, (a[2] + c[2]) / 2 - p[2] + d[2] * 0.2 * r]);
+  }
+}
+
+/** Pata de trípode: del suelo en (R·cos a, 0, R·sin a) hasta el eje en (0, H, 0). */
+function tripodLeg(b, a, R, H, w, color) {
+  const len = Math.hypot(R, H), phi = Math.atan2(R, H);
+  b.box(R * Math.cos(a), (w / 2) * Math.sin(phi), R * Math.sin(a), w, len, w, color, { ry: -a, rz: phi, ao: 0.1 });
+}
+
+/** Franja diagonal sobre un cilindro vertical de radio r (tira de cuadriláteros). Ángulos en radianes. */
+function cylStripe(b, r, y0, y1, a0, a1, shift, color, sub = 2) {
+  const L = b.layers.solid, col = lin(color);
+  const P = (a, y) => [Math.cos(a) * r, y, Math.sin(a) * r];
+  for (let j = 0; j < sub; j++) {
+    const s0 = a0 + ((a1 - a0) * j) / sub, s1 = a0 + ((a1 - a0) * (j + 1)) / sub;
+    const p0 = P(s0, y0), p1 = P(s1, y0), q1 = P(s1 + shift, y1), q0 = P(s0 + shift, y1);
+    const am = (s0 + s1) / 2 + shift / 2, hint = [Math.cos(am), 0, Math.sin(am)];
+    tri(L, p0, p1, q1, col, col, col, hint);
+    tri(L, p0, q1, q0, col, col, col, hint);
+  }
+}
+
+/** Rollo helicoidal de alambre a lo largo de X (de -0,49 a 0,49): tubo triangular de radio `wr` + púas. */
+function coilTube(b, cy, cz, r, turns, segPer, wr, color, barbColor, phase = 0, barbEvery = 3) {
+  const L = b.layers.solid, col = lin(color);
+  const n = Math.round(turns * segPer);
+  const frame = (i) => {
+    const t = i / n, x = -0.49 + 0.98 * t, th = phase + t * turns * Math.PI * 2;
+    const e1 = [0, Math.sin(th), Math.cos(th)];
+    const c = [x, cy + r * e1[1], cz + r * e1[2]];
+    const ring = [];
+    for (let k = 0; k < 3; k++) {
+      const f = (k / 3) * Math.PI * 2 + 0.5, a = Math.cos(f) * wr, s = Math.sin(f) * wr;
+      ring.push([c[0] + s, c[1] + e1[1] * a, c[2] + e1[2] * a]);
+    }
+    return { c, ring, e1 };
+  };
+  const cs = (p) => shade(col, p[1], 0, 0.55, 0.22);
+  let prev = frame(0);
+  for (let i = 1; i <= n; i++) {
+    const cur = frame(i);
+    for (let k = 0; k < 3; k++) {
+      const k2 = (k + 1) % 3;
+      const p0 = prev.ring[k], p1 = prev.ring[k2], q1 = cur.ring[k2], q0 = cur.ring[k];
+      const mid = [0, 1, 2].map((j) => (p0[j] + p1[j] + q0[j] + q1[j]) / 4 - (prev.c[j] + cur.c[j]) / 2);
+      tri(L, p0, p1, q1, cs(p0), cs(p1), cs(q1), mid);
+      tri(L, p0, q1, q0, cs(p0), cs(q1), cs(q0), mid);
+    }
+    if (barbEvery && i % barbEvery === 0) {
+      spike(b, cur.c, norm3([i % 2 ? 0.5 : -0.5, cur.e1[1], cur.e1[2]]), wr * 1.1, 0.05, 3, barbColor, 0xdfe5ea);
+    }
+    prev = cur;
+  }
+}
+
+// ---------------------------------------------------------------- alambre de espino
+
+/** Alambre de espino (nivel 0: piquetas de madera cruzadas) y concertina (nivel 1: tres rollos sobre piquetas de acero). */
+function alambre(b, level) {
+  if (level === 0) {
+    for (const sx of [-1, 1]) {
+      for (const t of [-1, 1]) b.box(sx * 0.4, 0, 0, 0.065, 0.5, 0.065, WOOD[(t + 3) % WOOD.length], { rx: t * 0.22, ao: 0.18 });
+      b.box(sx * 0.4, 0.27, 0, 0.075, 0.035, 0.1, 0x5b646e, { ao: 0 });                // abrazadera
+    }
+    coilTube(b, 0.265, 0, 0.215, 6, 6, 0.011, 0x6c747d, 0x2b2f35, 0.4, 3);
+  } else {
+    for (const sx of [-1, 1]) {
+      b.box(sx * 0.4, 0, 0, 0.05, 0.54, 0.014, 0x3a424b, { ao: 0.15 });              // piqueta en estrella (dos chapas)
+      b.box(sx * 0.4, 0, 0, 0.014, 0.54, 0.05, 0x3a424b, { ao: 0.15 });
+      b.box(sx * 0.4, 0, 0, 0.09, 0.025, 0.09, 0x2f353c, { ao: 0.1 });               // pletina de apoyo
+      b.box(sx * 0.4, 0.5, 0, 0.056, 0.045, 0.056, YEL, { ao: 0 });                  // capuchón amarillo
+    }
+    coilTube(b, 0.165, -0.165, 0.15, 4, 6, 0.011, 0xb9c2ca, 0x4f5862, 0.2, 3);
+    coilTube(b, 0.165, 0.165, 0.15, 4, 6, 0.011, 0xc7cfd6, 0x4f5862, 2.6, 3);
+    coilTube(b, 0.355, 0, 0.14, 3.5, 6, 0.011, 0xdde3e8, 0x4f5862, 1.4, 3);
+  }
+}
+
+// ---------------------------------------------------------------- barril explosivo
+
+const DRUM_RED = 0xc9372c, DRUM_RED_D = 0xa22a21, DRUM_BAND = 0xf2c230;
+
+/** Bidón rojo con aros, banda de peligro diagonal y etiqueta de llama a ambos lados (+Z y -Z). Diámetro 0,6. */
+function barril(b) {
+  const R = 0.29, SEG = 12;
+  b.cyl(0, 0.02, 0, R, R, 0.9, DRUM_RED, SEG, { ao: 0.22 });                    // cuerpo
+  b.cyl(0, 0, 0, 0.31, 0.31, 0.05, DRUM_RED_D, SEG, { ao: 0.1 });               // aro inferior
+  b.cyl(0, 0.875, 0, 0.31, 0.31, 0.05, DRUM_RED_D, SEG, { ao: 0.1 });           // aro superior
+  b.cyl(0, 0.3, 0, 0.312, 0.312, 0.04, DRUM_RED_D, SEG, { ao: 0.1 });           // nervios
+  b.cyl(0, 0.62, 0, 0.312, 0.312, 0.04, DRUM_RED_D, SEG, { ao: 0.1 });
+  b.cyl(0, 0.34, 0, 0.3, 0.3, 0.28, DRUM_BAND, SEG, { ao: 0.06 });              // banda amarilla
+  for (let k = 0; k < 8; k++) {                                                   // franjas negras diagonales
+    const a0 = (k / 8) * Math.PI * 2;
+    cylStripe(b, 0.308, 0.345, 0.615, a0, a0 + 0.3, 0.45, BLK, 2);
+  }
+  b.cyl(0, 0.92, 0, 0.27, 0.285, 0.02, 0x8f2a22, SEG, { ao: 0 });               // tapa
+  b.cyl(0.1, 0.94, 0.08, 0.045, 0.045, 0.018, 0x2f353c, 8, { ao: 0.05 });        // tapón
+  b.cyl(0.1, 0.958, 0.08, 0.02, 0.02, 0.004, 0xb7bdc4, 6, { ao: 0 });
+  // etiqueta de llama (rombo claro con borde negro + llama roja/amarilla) delante y detrás
+  const flame = [[0, -0.085], [0.05, -0.04], [0.055, 0.015], [0.025, 0.05], [0.03, 0.095], [-0.005, 0.07], [-0.03, 0.02], [-0.05, 0.0], [-0.045, -0.04]];
+  const inner = [[0, -0.055], [0.028, -0.025], [0.02, 0.01], [0, 0.03], [-0.025, -0.005], [-0.022, -0.03]];
+  for (const s of [1, -1]) {
+    const y = 0.755;
+    const dia = (hw, hh) => [[0, y - hh], [hw, y], [0, y + hh], [-hw, y]];
+    const w = (a, c) => (s > 0 ? [a, c] : [-c, -a]);
+    extrude(b, dia(0.14, 0.14), 'xy', ...w(0.25, 0.3), 0x1f2328, { ao: 0 });
+    extrude(b, dia(0.12, 0.12), 'xy', ...w(0.25, 0.304), 0xf4efe0, { ao: 0 });
+    extrude(b, flame.map(([u, v]) => [u * s, y + v * 0.95]), 'xy', ...w(0.3, 0.31), 0xd9381e, { ao: 0 });
+    extrude(b, inner.map(([u, v]) => [u * s, y + v * 0.95]), 'xy', ...w(0.31, 0.316), 0xffc02e, { ao: 0 });
+  }
+}
+
+// ---------------------------------------------------------------- valla electrificada
+
+const FENCE_POST = 0x8d97a1, FENCE_POST_D = 0x5b646e, FENCE_WIRE = 0xc5ccd3, INSUL = 0xf2c230, INSUL_TIP = 0xffe27a;
+const BOLT = [[0.015, 0.205], [-0.04, 0.115], [-0.005, 0.115], [-0.025, 0.04], [0.045, 0.14], [0.01, 0.14], [0.05, 0.205]];
+
+/** Cartel de peligro eléctrico (triángulo amarillo con borde negro y rayo) en la cara `s` (±1), desde z = zs hacia fuera, centrado en x = dx. */
+function boltSign(b, s, zs, y0, dx = 0) {
+  const w = (a, c) => (s > 0 ? [zs + a, zs + c] : [-zs - c, -zs - a]);
+  const tr = (hw, h, dy = 0) => [[dx - hw, y0 + dy], [dx + hw, y0 + dy], [dx, y0 + dy + h]];
+  extrude(b, tr(0.17, 0.3, -0.02), 'xy', ...w(0, 0.005), 0x1f2328, { ao: 0 });
+  extrude(b, tr(0.145, 0.25, 0), 'xy', ...w(0.005, 0.01), 0xf2c230, { ao: 0 });
+  extrude(b, BOLT.map(([u, v]) => [u * s + dx, y0 + v]), 'xy', ...w(0.01, 0.014), 0x1f2328, { ao: 0 });
+}
+
+/** Valla electrificada: panel de 1 m (postes en x = ±0,5), hilos horizontales sobre aisladores amarillos y cartel de rayo. */
+function valla(b, level) {
+  const r1 = level === 1;
+  const pw = r1 ? 0.1 : 0.08, pd = r1 ? 0.11 : 0.09;
+  const H = r1 ? 1.46 : 1.56, px = 0.5 - pw / 2;
+  const zf = pd / 2 + 0.03;
+  for (const sx of [-1, 1]) {
+    b.box(sx * px, 0, 0, pw, H, pd, r1 ? FENCE_POST_D : FENCE_POST, { ao: 0.16 });             // poste
+    b.box(sx * px, 0, 0, pw, 0.05, pd + 0.08, 0x3f464e, { ao: 0.1 });                          // placa de anclaje
+    b.box(sx * px, H, 0, pw + 0.012, 0.04, pd + 0.012, r1 ? BLK : 0x4f5862, { ao: 0 });        // remate
+  }
+  const rows = r1 ? [0.3, 0.55, 0.8, 1.05, 1.3] : [0.35, 0.65, 0.95, 1.25, 1.5];
+  for (const y of rows) {
+    for (const s of [-1, 1]) {
+      for (const sx of [-1, 1]) cone(b, sx * px, y, s * pd / 2, 0.028, 0.03, 4, INSUL, INSUL_TIP, { axis: s > 0 ? '+z' : '-z', rot: Math.PI / 4 });
+      b.box(0, y - 0.006, s * zf, 2 * px, 0.012, 0.012, FENCE_WIRE, { ao: 0.05 });
+    }
+  }
+  if (!r1) {
+    for (const s of [-1, 1]) b.box(0, 0.3, s * (zf - 0.004), 0.016, 1.25, 0.016, 0x59626d, { ao: 0.05 });   // separador central
+  } else {
+    // doble malla: montantes finos en las dos caras
+    for (const s of [-1, 1]) for (const x of [-0.27, 0, 0.27]) b.box(x, 0.28, s * (zf + 0.012), 0.014, 1.04, 0.012, 0x59626d, { ao: 0.05 });
+    // remate de alambre: brazos inclinados y dos hilos con púas
+    const ang = 0.7, len = 0.14;
+    for (const sx of [-1, 1]) for (const s of [-1, 1]) b.box(sx * px, H + 0.02, 0, 0.04, len, 0.03, FENCE_POST_D, { rx: s * ang, ao: 0.05 });
+    const ty = H + 0.02 + len * Math.cos(ang), tz = len * Math.sin(ang);
+    for (const s of [-1, 1]) {
+      b.box(0, ty - 0.006, s * tz, 2 * px, 0.012, 0.012, FENCE_WIRE, { ao: 0.05 });
+      for (let k = 0; k < 6; k++) spike(b, [-0.35 + k * 0.14, ty, s * tz], norm3([0, 1, s * 0.7]), 0.012, 0.045, 3, 0x4f5862, 0xdfe5ea);
+    }
+  }
+  const sy = r1 ? 0.66 : 0.74, zs = zf + 0.004;
+  boltSign(b, 1, zs, sy, -0.17);   // los dos carteles desfasados en X para que no se solapen al verlos a través de la malla
+  boltSign(b, -1, zs, sy, 0.17);
+}
+
+// ---------------------------------------------------------------- generador
+
+/** Generador diésel en bastidor de tubos: cuerpo amarillo, alternador, depósito, escape, panel (cara +Z) y cable enrollado. */
+function generador(b) {
+  const FR = 0x30353b, GY = 0xf0b928, GK = 0x24272b;
+  const hx = 0.46, hz = 0.4, tw = 0.055, top = 1.0;
+  // bastidor
+  for (const sz of [-1, 1]) {
+    b.box(0, 0, sz * hz, 2 * hx + tw, tw, tw, FR, { ao: 0.1 });
+    b.box(0, top - tw, sz * hz, 2 * hx + tw, tw, tw, FR, { ao: 0 });
+  }
+  for (const sx of [-1, 1]) {
+    b.box(sx * hx, 0, 0, tw, tw, 2 * hz, FR, { ao: 0.1 });
+    b.box(sx * hx, top - tw, 0, tw, tw, 2 * hz, FR, { ao: 0 });
+    for (const sz of [-1, 1]) b.box(sx * hx, 0, sz * hz, tw, top, tw, FR, { ao: 0.12 });
+  }
+  // franjas de peligro en el larguero superior delantero
+  for (let k = 0; k < 6; k++) b.box(-0.35 + k * 0.14, top - tw - 0.001, hz, 0.07, tw + 0.004, tw + 0.004, k % 2 ? GK : GY, { ao: 0 });
+  // cuerpo
+  b.box(0, 0.06, 0, 0.62, 0.1, 0.6, GK, { ao: 0.2 });
+  b.box(0, 0.16, 0, 0.6, 0.48, 0.58, GY, { ao: 0.2 });
+  b.box(0, 0.64, 0, 0.62, 0.03, 0.6, GK, { ao: 0 });
+  for (const k of [0, 1]) b.box(0.18 - k * 0.14, 0.26, -0.292, 0.1, 0.26, 0.014, GK, { ao: 0 });   // rejilla trasera
+  prismX(b, 0.4, 0, 0.19, -0.44, -0.3, 8, 0x3a3f46, { ao: 0.15 });                    // alternador
+  prismX(b, 0.4, 0, 0.15, -0.44, -0.42, 8, GY, { ao: 0 });
+  // depósito
+  prismX(b, 0.79, 0, 0.15, -0.3, 0.3, 8, 0xb53a2c, { ao: 0.18, y0: 0.64, y1: 0.94 });
+  b.cyl(-0.12, 0.93, 0, 0.04, 0.04, 0.03, GK, 6, { ao: 0 });
+  // escape
+  b.cyl(0.37, 0.67, -0.2, 0.05, 0.05, 0.28, 0x555d66, 6, { ao: 0.15 });
+  b.cyl(0.37, 0.95, -0.2, 0.025, 0.025, 0.25, 0x3a3f46, 5, { ao: 0.1 });
+  b.cyl(0.37, 1.2, -0.2, 0.04, 0.04, 0.012, 0x23272c, 6, { ao: 0 });
+  // panel de control (cara +Z)
+  const zp = 0.29;
+  b.box(0.04, 0.2, zp, 0.44, 0.3, 0.04, 0x2b3036, { ao: 0.05 });
+  const zf = zp + 0.02;
+  extrude(b, circlePts(0.045, 8, -0.1, 0.4), 'xy', zf, zf + 0.008, 0xe8e4d6, { ao: 0 });
+  b.box(-0.1, 0.38, zf + 0.008, 0.006, 0.04, 0.006, 0xd9381e, { ao: 0, rz: -0.6 });
+  [0x3fe06a, 0xffb02e, 0xff3b2b].forEach((c, k) => b.box(-0.02 + k * 0.07, 0.39, zf, 0.035, 0.035, 0.014, c, { ao: 0 }));
+  for (const k of [0, 1]) extrude(b, circlePts(0.03, 6, -0.05 + k * 0.1, 0.3), 'xy', zf, zf + 0.025, 0x9aa3ad, { ao: 0 });
+  for (const k of [0, 1]) b.box(0.0 + k * 0.17, 0.2, zf, 0.075, 0.07, 0.02, k ? GY : 0xd9381e, { ao: 0 });
+  // cable enrollado sobre el larguero delantero
+  b.cyl(-0.2, 0.055, 0.4, 0.09, 0.09, 0.07, 0xd8641e, 8, { ao: 0.15 });
+  b.cyl(-0.2, 0.055, 0.4, 0.04, 0.04, 0.072, 0x23272c, 6, { ao: 0 });
+  b.box(-0.08, 0.06, 0.46, 0.08, 0.03, 0.03, GK, { ao: 0 });
+}
+
+// ---------------------------------------------------------------- torreta automática
+
+const TUR = { steel: 0x5b646e, dark: 0x30353b, olive: 0x6b7440, oliveD: 0x575f33, light: 0x8a929b };
+
+/** BASE de la torreta: trípode (nivel 0) o pedestal blindado (nivel 1) con caja(s) de munición. Llega hasta y = 0,9. */
+function torretaBase(b, level) {
+  const r1 = level === 1;
+  const R = r1 ? 0.4 : 0.38, legW = r1 ? 0.075 : 0.06, Hc = 0.82;
+  for (const a of [Math.PI / 2, Math.PI / 2 + (Math.PI * 2) / 3, Math.PI / 2 + (Math.PI * 4) / 3]) {
+    tripodLeg(b, a, R, Hc, legW, r1 ? TUR.dark : TUR.steel);
+    b.cyl(R * Math.cos(a), 0, R * Math.sin(a), r1 ? 0.07 : 0.06, r1 ? 0.07 : 0.06, 0.03, TUR.dark, 6, { ao: 0.1 });
+  }
+  // columna central y plato giratorio
+  b.cyl(0, 0.05, 0, 0.07, 0.07, 0.8, TUR.steel, 8, { ao: 0.15 });
+  b.cyl(0, 0.78, 0, 0.1, 0.1, 0.06, TUR.dark, 8, { ao: 0.1 });
+  b.cyl(0, 0.84, 0, 0.17, 0.17, 0.06, TUR.dark, 10, { ao: 0.05 });
+  b.cyl(0, 0.89, 0, 0.12, 0.12, 0.012, TUR.light, 10, { ao: 0 });
+  if (r1) {
+    b.cyl(0, 0.08, 0, 0.17, 0.2, 0.62, TUR.steel, 6, { ao: 0.2 });                 // faja blindada
+    b.cyl(0, 0.7, 0, 0.19, 0.17, 0.05, YEL, 6, { ao: 0 });
+  }
+  // caja(s) de munición detrás (-Z) y tolva de alimentación
+  for (const y of r1 ? [0, 0.2] : [0]) {
+    b.box(0, 0.03 + y, -0.3, r1 ? 0.36 : 0.32, 0.18, 0.2, TUR.olive, { ao: 0.2 });
+    b.box(0, 0.21 + y, -0.3, r1 ? 0.37 : 0.33, 0.025, 0.21, TUR.oliveD, { ao: 0 });
+    b.box(0, 0.12 + y, -0.403, 0.1, 0.05, 0.012, YEL, { ao: 0 });
+    b.box(0, 0.235 + y, -0.3, 0.1, 0.03, 0.04, TUR.dark, { ao: 0 });
+  }
+  const y0 = r1 ? 0.45 : 0.25, len = r1 ? 0.42 : 0.6;
+  b.box(0, y0, -0.3, 0.07, len, 0.035, TUR.dark, { rx: 0.35, ao: 0.1 });
+}
+
+/** Cabeza de la torreta (origen = eje de giro; cañón hacia +Z, longitud ~0,6; alto ~0,3). */
+function torretaHead(b, level) {
+  const r1 = level === 1;
+  const hw = r1 ? 0.17 : 0.13;
+  b.cyl(0, -0.06, 0, 0.06, 0.06, 0.08, TUR.dark, 6, { ao: 0 });                    // vástago hasta el plato
+  b.cyl(0, 0, 0, 0.14, 0.14, 0.035, TUR.dark, 10, { ao: 0.1 });
+  b.box(0, 0.035, 0.01, 2 * hw, r1 ? 0.19 : 0.17, 0.3, r1 ? TUR.steel : TUR.olive, { ao: 0.2 });   // carcasa
+  b.box(0, 0.04, 0.17, 2 * hw - 0.04, r1 ? 0.15 : 0.12, 0.05, TUR.dark, { ao: 0.1 });               // mantelete
+  const yb = 0.125;
+  for (const x of r1 ? [-0.075, 0.075] : [0]) {
+    prismZ(b, x, yb, r1 ? 0.028 : 0.03, 0.19, 0.58, 8, TUR.light, { ao: 0.1 });
+    prismZ(b, x, yb, r1 ? 0.042 : 0.048, 0.19, r1 ? 0.34 : 0.32, 8, TUR.dark, { ao: 0.1 });
+    prismZ(b, x, yb, r1 ? 0.04 : 0.043, 0.5, 0.6, 8, TUR.dark, { ao: 0.1 });
+  }
+  if (r1) {
+    for (const sx of [-1, 1]) {
+      prismX(b, 0.1, -0.02, 0.06, sx * (hw + 0.005), sx * (hw + 0.075), 8, TUR.olive, { ao: 0.1 });   // tambor de munición
+      b.box(sx * hw, 0.04, 0.0, 0.03, 0.18, 0.26, TUR.dark, { ao: 0.05, rz: -sx * 0.35 });            // placa lateral
+    }
+    b.box(0, 0.225, 0.06, 0.3, 0.02, 0.2, TUR.dark, { ao: 0 });                    // visera blindada
+  } else {
+    b.box(-hw - 0.04, 0.05, -0.02, 0.08, 0.12, 0.14, TUR.oliveD, { ao: 0.15 });    // cajón de munición
+  }
+  // sensor / cámara
+  const sx0 = r1 ? 0.0 : 0.06, sy = r1 ? 0.235 : 0.205;
+  b.box(sx0, sy, 0.0, 0.1, 0.07, 0.1, TUR.dark, { ao: 0.1 });
+  b.box(sx0, sy + 0.015, 0.055, 0.055, 0.04, 0.012, 0x35c8ff, { ao: 0 });
+  b.box(sx0 + 0.04, sy + 0.07, -0.02, 0.012, 0.02, 0.012, 0xff3b2b, { ao: 0 });
+  b.box(sx0 - 0.04, sy, -0.03, 0.014, r1 ? 0.06 : 0.09, 0.014, TUR.light, { ao: 0 });
+}
+
+// ---------------------------------------------------------------- foco de obra
+
+const FL = { yc: 2.2, zc: 0.2, w: 0.42, h: 0.3, d: 0.14, tilt: (35 * Math.PI) / 180 };
+
+/** Cada proyector va de espaldas al mástil, mirando a ±Z (s) e inclinado 35° hacia abajo; pivota sobre su centro. */
+function floodProjector(b, s) {
+  const rot = { rx: FL.tilt, ry: s > 0 ? 0 : Math.PI };
+  const part = (w, h, d, ox, oyc, oz, color, ao = 0.12) =>
+    b.box(0, FL.yc, s * FL.zc, w, h, d, color, { ...rot, ox, oy: oyc - h / 2, oz, ao });
+  part(FL.w, FL.h, FL.d, 0, 0, 0, 0xe8b630);                                            // carcasa
+  part(FL.w - 0.06, FL.h - 0.06, 0.016, 0, 0, FL.d / 2 + 0.002, 0xe7e0c6, 0);           // cristal
+  part(FL.w + 0.03, 0.022, 0.1, 0, FL.h / 2 + 0.01, FL.d / 2 + 0.03, 0x2f353c, 0.05);   // visera
+  for (const x of [-0.12, 0, 0.12]) part(0.022, FL.h - 0.04, 0.045, x, 0, -FL.d / 2 - 0.02, 0x30353b, 0.1); // aletas
+  for (const sx of [-1, 1]) part(0.025, 0.04, 0.05, sx * (FL.w / 2 + 0.012), 0, 0.0, 0x4f5862, 0.05);        // pivotes
+}
+
+/** Foco de obra: trípode, batería de contrapeso, mástil telescópico y dos proyectores (+Z / -Z). */
+function foco(b) {
+  const H = 1.0, R = 0.4;
+  for (const a of [Math.PI / 2, Math.PI / 2 + (Math.PI * 2) / 3, Math.PI / 2 + (Math.PI * 4) / 3]) {
+    tripodLeg(b, a, R, H, 0.045, 0x3a4149);
+    b.cyl(R * Math.cos(a), 0, R * Math.sin(a), 0.055, 0.055, 0.03, 0x23272c, 6, { ao: 0.1 });
+  }
+  // batería / contrapeso en la base
+  b.box(0, 0, 0, 0.34, 0.28, 0.34, 0x3b4148, { ao: 0.2 });
+  for (let k = 0; k < 4; k++) b.box(-0.12 + k * 0.08, 0.281, 0.0, 0.04, 0.006, 0.34, k % 2 ? BLK : YEL, { ao: 0 });
+  b.box(0, 0.12, 0.172, 0.18, 0.08, 0.008, YEL, { ao: 0 });
+  for (const sx of [-1, 1]) b.cyl(sx * 0.1, 0.28, -0.1, 0.022, 0.022, 0.03, sx > 0 ? 0xd9381e : 0x23272c, 6, { ao: 0 });
+  // mástil telescópico, collares y yugo
+  b.cyl(0, 0.28, 0, 0.05, 0.05, 1.0, 0x5b646e, 8, { ao: 0.15 });
+  b.cyl(0, 0.96, 0, 0.07, 0.07, 0.07, 0x23272c, 6, { ao: 0.1 });
+  b.cyl(0, 1.28, 0, 0.06, 0.06, 0.05, 0x23272c, 8, { ao: 0.1 });
+  b.cyl(0, 1.33, 0, 0.034, 0.034, 0.82, 0x9aa3ad, 8, { ao: 0.1 });
+  b.box(0.05, 0.3, 0, 0.014, 1.75, 0.014, 0x1c1f23, { ao: 0 });                          // cable
+  b.box(0, FL.yc - 0.02, 0, 0.07, 0.06, 2 * FL.zc, 0x30353b, { ao: 0.05 });               // yugo
+  b.cyl(0, 2.1, 0, 0.045, 0.045, 0.06, 0x23272c, 6, { ao: 0 });
+  floodProjector(b, 1);
+  floodProjector(b, -1);
+}
+
 // ---------------------------------------------------------------- API pública
 
 /**
  * Geometría de una pieza de construcción.
- * @param {'barricada'|'sacos'|'puerta'|'pinchos'|'cepo'|'mina'} type
+ * @param {'barricada'|'sacos'|'puerta'|'pinchos'|'cepo'|'mina'|'alambre'|'barril'|'valla'|'generador'|'torreta'|'foco'} type
  * @param {number} level índice de nivel (0..n-1; se limita al rango de build.json)
  * @returns {THREE.BufferGeometry} no indexada; position + normal + color (lineal), sin uv.
  *   Coordenadas locales de la celda (centro en 0,0,0; base en y=0); la pieza corre a lo largo de X.
  *   La mina incluye el piloto rojo como color; para que brille, superponer mineLightGeometry().
+ *   alambre/valla corren a lo largo de X (panel fino en Z): en una columna (eje Z) rotar 90° en Y.
+ *   torreta devuelve SOLO la base (hasta y = 0,9): la cabeza giratoria es turretHeadGeometry(level), a y = headHeight.
+ *   foco: los cristales de los proyectores se pueden hacer brillar superponiendo floodLensGeometry().
  */
 export function structureGeometry(type, level = 0) {
   const def = build.pieces[type];
@@ -473,6 +823,12 @@ export function structureGeometry(type, level = 0) {
     case 'pinchos': pinchos(b, lv); break;
     case 'cepo': cepo(b, lv); break;
     case 'mina': mina(b); break;
+    case 'alambre': alambre(b, lv); break;
+    case 'barril': barril(b); break;
+    case 'valla': valla(b, lv); break;
+    case 'generador': generador(b); break;
+    case 'torreta': torretaBase(b, lv); break;
+    case 'foco': foco(b); break;
     default: throw new Error(`structureGeometry: tipo sin modelo "${type}"`);
   }
   return finish(b);
@@ -519,6 +875,43 @@ export function mineLightGeometry() {
 }
 
 /**
+ * Cabeza giratoria de la torreta. Origen = eje de giro (se coloca en y = build.pieces.torreta.headHeight);
+ * el cañón apunta a +Z (longitud ~0,6, sale de la celda por +Z). Alto ~0,3 sobre el origen (el vástago baja 0,06 hasta el plato).
+ * Girar el Group de la cabeza en Y para apuntar (rotation.y = atan2(dx, dz)).
+ */
+export function turretHeadGeometry(level = 0) {
+  const lv = Math.max(0, Math.min(build.pieces.torreta.levels.length - 1, level | 0));
+  const b = new PropBuilder();
+  b.root(0, 0, 0);
+  torretaHead(b, lv);
+  return finish(b);
+}
+
+/**
+ * Caras frontales de los cristales de los dos proyectores del foco (blanco cálido), en la MISMA posición que en
+ * structureGeometry('foco') pero 4 mm adelantadas. Pintar con un MeshBasicMaterial({ vertexColors: true }) para que brillen de noche.
+ */
+export function floodLensGeometry() {
+  const b = new PropBuilder();
+  b.root(0, 0, 0);
+  const L = b.layers.solid, col = lin(0xfff6dc);
+  const gw = (FL.w - 0.06) / 2, gh = (FL.h - 0.06) / 2, zl = FL.d / 2 + 0.002 + 0.008 + 0.004;
+  for (const s of [1, -1]) {
+    const m = new THREE.Matrix4().makeTranslation(0, FL.yc, s * FL.zc)
+      .multiply(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(FL.tilt, s > 0 ? 0 : Math.PI, 0, 'YXZ')));
+    const P = [[-gw, -gh], [gw, -gh], [gw, gh], [-gw, gh]].map(([x, y]) => {
+      const v = new THREE.Vector3(x, y, zl).applyMatrix4(m);
+      return [v.x, v.y, v.z];
+    });
+    const n = new THREE.Vector3(0, 0, 1).transformDirection(m);
+    const hint = [n.x, n.y, n.z];
+    tri(L, P[0], P[1], P[2], col, col, col, hint);
+    tri(L, P[0], P[2], P[3], col, col, col, hint);
+  }
+  return finish(b);
+}
+
+/**
  * Versión simplificada (una o dos cajas, blanca) para la vista previa de colocación.
  * Las alturas salen de build.json. Los colores son blancos para poder teñirlos con el material.
  */
@@ -534,6 +927,10 @@ export function structureGhostGeometry(type) {
     case 'pinchos': b.box(0, 0, 0, 0.92, h, 0.92, W, { ao: 0 }); break;
     case 'cepo': b.box(0, 0, 0, 0.9, h * 0.6, 0.7, W, { ao: 0 }); break;
     case 'mina': b.cyl(0, 0, 0, 0.3, 0.3, h, W, 16, { ao: 0 }); break;
+    case 'barril': b.cyl(0, 0, 0, 0.31, 0.31, h, W, 16, { ao: 0 }); break;
+    case 'valla': b.box(0, 0, 0, 1, h, 0.14, W, { ao: 0.06 }); break;
+    case 'alambre': b.box(0, 0, 0, 0.98, h, 0.5, W, { ao: 0 }); break;
+    case 'foco': b.cyl(0, 0, 0, 0.3, 0.3, h, W, 16, { ao: 0 }); break;
     default: b.box(0, 0, 0, 0.96, h, 0.96, W, { ao: 0.06 });
   }
   return finish(b);

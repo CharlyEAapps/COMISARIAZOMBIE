@@ -1,6 +1,7 @@
 import { PHASE } from '../systems/DayNight.js';
-import { PIECE_ORDER } from '../systems/BuildSystem.js';
+import { PIECE_PAGES } from '../systems/BuildSystem.js';
 import { WEAPON_IDS } from '../systems/WeaponSystem.js';
+import { isBossNight } from '../systems/WaveDirector.js';
 import interactions from '../data/interactions.json';
 
 const MEDKIT_TIME = interactions._medkit.useTime;
@@ -38,11 +39,13 @@ export class Hud {
         <div class="ammo"><span class="ammo-mag" data-k="mag">12</span><span class="ammo-res" data-k="res">/ ∞</span></div>
         <div class="bar thin"><div class="fill reload" data-k="reload"></div></div>
       </div>
+      <div class="boss-bar panel" data-k="boss"><div class="boss-name" data-k="bossName"></div><div class="bar"><div class="fill boss" data-k="bossHp"></div></div></div>
       <div class="hurt" data-k="hurt"></div>
       <div class="toasts" data-k="toasts"></div>
       <div class="banner" data-k="banner"><div class="banner-title" data-k="bannerTitle"></div><div class="banner-sub" data-k="bannerSub"></div></div>
       <div class="build-bar" data-k="buildBar">
         <div class="build-info panel" data-k="buildInfo"></div>
+        <div class="build-tabs" data-k="buildTabs"></div>
         <div class="build-cards" data-k="buildCards"></div>
       </div>
       <div class="prompt-wrap">
@@ -73,16 +76,28 @@ export class Hud {
     this.el = {};
     root.querySelectorAll('[data-k]').forEach((e) => { this.el[e.dataset.k] = e; });
     this.el.retry.addEventListener('click', () => game.restart());
-    // Tarjetas de piezas del modo construcción (clic para seleccionar).
-    this.cards = PIECE_ORDER.map((type, n) => {
+    // Tarjetas de piezas del modo construcción, por páginas (Tab o clic en la pestaña).
+    this.tabs = PIECE_PAGES.map((page, p) => {
+      const el = document.createElement('div');
+      el.className = 'build-tab panel interactive';
+      el.textContent = page.name;
+      el.addEventListener('mousedown', (e) => { e.stopPropagation(); game.build.select(page.pieces[0]); });
+      this.el.buildTabs.appendChild(el);
+      return el;
+    });
+    const hint = document.createElement('span');
+    hint.className = 'build-tab-hint';
+    hint.innerHTML = '<span class="key">Tab</span> cambiar';
+    this.el.buildTabs.appendChild(hint);
+    this.cards = PIECE_PAGES.flatMap((page, p) => page.pieces.map((type, n) => {
       const def = game.build.pieces[type];
       const el = document.createElement('div');
       el.className = 'build-card panel interactive';
       el.innerHTML = `<span class="key">${n + 1}</span><span class="icon">${def.icon}</span><span class="name">${def.name}</span><span class="cost"></span>`;
-      el.addEventListener('mousedown', (e) => { e.stopPropagation(); game.build.selected = type; });
+      el.addEventListener('mousedown', (e) => { e.stopPropagation(); game.build.select(type); });
       this.el.buildCards.appendChild(el);
-      return { type, el, cost: el.querySelector('.cost') };
-    });
+      return { type, page: p, el, cost: el.querySelector('.cost') };
+    }));
     this._last = {};
     this.hintTimer = 14;
     this.bannerTimer = 0;
@@ -93,6 +108,10 @@ export class Hud {
     bus.on('phase:dia', ({ night }) => { if (night > 1) this.banner(`Día ${night}`, 'Repara, compra y prepárate', 2.5); });
     bus.on('score:nightSummary', ({ night, lines, total }) => this.banner(`¡Noche ${night} superada!`, `${lines.join(' · ')}<br><b>+${total}</b>`, 5));
     bus.on('run:start', () => this.banner('Turno de noche', 'Comisaría del Distrito 13 · Día 1', 3));
+    bus.on('boss:killed', () => this.banner('¡Jefe abatido!', 'El antidisturbios ha caído', 3.5));
+    bus.on('phase:noche', ({ night }) => {
+      if (isBossNight(game.waves.cfg.boss, night)) this.toast('📻 Central: algo grande viene hacia la comisaría esta noche…', 7);
+    });
   }
 
   /** Solo toca el DOM cuando cambia un valor. */
@@ -133,6 +152,12 @@ export class Hud {
     this.set('time', overtime ? `${dayNight.formatClock()}+` : dayNight.formatClock());
     this.set('phase', PHASE_TEXT[dayNight.phase](dayNight.night), 'innerHTML');
     this.set('phaseBar', `${(dayNight.progress * 100).toFixed(1)}%`, 'width');
+    const boss = this.game.zombies.boss;
+    this.set('boss', !!boss, 'show');
+    if (boss) {
+      this.set('bossName', `☠ ${boss.data.name}`);
+      this.set('bossHp', `${Math.max(0, (boss.hp / boss.maxHp) * 100).toFixed(1)}%`, 'width');
+    }
     if (this._last.phaseAttr !== dayNight.phase) {
       this._last.phaseAttr = dayNight.phase;
       this.el.phaseBar.dataset.phase = dayNight.phase;
@@ -239,7 +264,10 @@ export class Hud {
     if (!b.active) return;
     const pts = this.game.run.points;
     const shop = this.game.shop;
+    this.tabs.forEach((el, p) => el.classList.toggle('selected', p === b.page));
     for (const c of this.cards) {
+      c.el.classList.toggle('hidden', c.page !== b.page);
+      if (c.page !== b.page) continue;
       const cost = b.costOf(c.type);
       const locked = !shop.isUnlocked(c.type, 0);
       c.el.classList.toggle('selected', b.selected === c.type);
@@ -253,6 +281,8 @@ export class Hud {
     if (s) {
       const lvl = s.def.levels[s.level];
       const parts = [`<b>${s.def.icon} ${lvl.name}</b> ${Math.ceil(s.hp)}/${s.maxHp}`];
+      if (s.type === 'torreta') parts.push(`Munición ${s.ammo}/${s.ammoMax}${s.ammo < s.ammoMax ? ' (recarga con E)' : ''}`);
+      if (s.type === 'valla' && !b.powered) parts.push('<i>Sin corriente: construye un generador</i>');
       if (!b.inReachXY(s.cx, s.cz)) {
         parts.push('<i>Demasiado lejos</i>');
       } else {
@@ -271,7 +301,14 @@ export class Hud {
     } else {
       const def = b.pieces[b.selected];
       const drag = def.blocks && b.selected !== 'puerta' ? ' (arrastra para hacer una fila)' : '';
-      const warn = b.selected === 'mina' ? ' · <i>¡También te daña a ti!</i>' : '';
+      const WARN = {
+        mina: '¡También te daña a ti!',
+        barril: 'Dispárale para detonarlo. ¡También te daña!',
+        valla: b.powered ? '' : 'Necesita un generador para dar corriente',
+        generador: 'Da corriente a las vallas, pero atrae a los vándalos',
+        torreta: 'Munición limitada: recárgala con E',
+      };
+      const warn = WARN[b.selected] ? ` · <i>${WARN[b.selected]}</i>` : '';
       const width = b.hoverCells.length;
       const what = width > 1 ? `${def.name.toLowerCase()} de ${width} celdas (${b.placeCost(b.selected, b.hoverCell)})` : def.name.toLowerCase();
       info = `<span class="key">Clic</span> Construir ${what}${drag} · <span class="key">Clic dcho</span> Salir${b.isNight ? ` · <i>De noche +${surcharge} %</i>` : ''}${warn}`;

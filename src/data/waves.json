@@ -19,6 +19,34 @@
         "type": "caminante",
         "weight": 1,
         "fromNight": 1
+      },
+      {
+        "type": "corredor",
+        "weight": 0.22,
+        "fromNight": 2,
+        "perNight": 0.04,
+        "maxWeight": 0.5
+      },
+      {
+        "type": "escupidor",
+        "weight": 0.1,
+        "fromNight": 3,
+        "perNight": 0.02,
+        "maxWeight": 0.25
+      },
+      {
+        "type": "explosivo",
+        "weight": 0.1,
+        "fromNight": 3,
+        "perNight": 0.02,
+        "maxWeight": 0.25
+      },
+      {
+        "type": "tanque",
+        "weight": 0.05,
+        "fromNight": 4,
+        "perNight": 0.015,
+        "maxWeight": 0.18
       }
     ],
     "firstSpawnDelay": 2,
@@ -32,5 +60,12 @@
     "maxAlive": 3,
     "type": "caminante",
     "intervalJitter": 0.3
+  },
+  "boss": {
+    "type": "antidisturbios",
+    "every": 5,
+    "delay": 25,
+    "title": "¡JEFE: ANTIDISTURBIOS!",
+    "sub": "Su escudo para las balas de frente: flanquéalo o usa explosivos"
   }
 }

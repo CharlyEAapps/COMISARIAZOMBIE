@@ -336,3 +336,21 @@ html, body {
   .toasts { top: auto; bottom: 150px; }
   .banner-title { font-size: 30px; }
 }
+
+/* Fase 5: barra del jefe y páginas de construcción */
+.boss-bar {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  width: min(460px, 70vw); padding: 8px 14px 10px; display: none; text-align: center;
+}
+.boss-bar.show { display: block; }
+.boss-name { font: 800 14px/1.2 var(--font); letter-spacing: 0.12em; text-transform: uppercase; color: #ff8a7a; margin-bottom: 6px; }
+.boss-bar .bar { height: 10px; }
+.fill.boss { background: linear-gradient(90deg, #8a1c1c, #e0443a); transition: width 0.15s linear; }
+.build-tabs { display: flex; gap: 6px; align-items: center; justify-content: center; }
+.build-tab { padding: 4px 12px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--hud-dim); cursor: pointer; }
+.build-tab.selected { color: var(--hud-fg); border-color: var(--accent); background: rgba(58, 48, 24, 0.92); }
+.build-tab-hint { font-size: 11px; color: var(--hud-dim); margin-left: 4px; }
+.build-card.hidden { display: none; }
+@media (max-width: 1100px) {
+  .boss-bar { left: 340px; right: 14px; width: auto; transform: none; }
+}

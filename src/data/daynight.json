@@ -76,6 +76,13 @@
     "sirenHz": 4,
     "glowDay": 0.85,
     "glowNightLit": 1.0,
-    "glowNightDark": 0.5
+    "glowNightDark": 0.5,
+    "focoPointLights": 3,
+    "focoPointIntensity": 16,
+    "focoPointDistance": 12,
+    "focoPoolRadius": 6,
+    "focoPoolOpacity": 0.4,
+    "focoHeight": 2.3,
+    "focoMinNight": 0.15
   }
 }

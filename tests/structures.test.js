@@ -3,10 +3,13 @@ import * as THREE from 'three';
 import build from '../src/data/build.json';
 import {
   structureGeometry, doorLeafGeometry, doorFrameGeometry, doorSignGeometry, mineLightGeometry,
-  structureGhostGeometry, transformerDamageGeometry, STRUCTURE_MATERIAL_OPTIONS,
+  structureGhostGeometry, transformerDamageGeometry, turretHeadGeometry, floodLensGeometry, STRUCTURE_MATERIAL_OPTIONS,
 } from '../src/render/StructureModels.js';
 
 const TOL = 0.02;
+const CASE_COUNT = Object.values(build.pieces).reduce((n, d) => n + d.levels.length, 0); // 12 piezas, 20 casos
+// Trampas "bajas" (altura <= 0,25); alambre y barril son trampas altas y se comparan con def.height.
+const LOW_TRAPS = new Set(['pinchos', 'cepo', 'mina']);
 const cases = [];
 for (const [type, def] of Object.entries(build.pieces)) {
   def.levels.forEach((lv, level) => cases.push({ type, level, def, name: `${type} nivel ${level} (${lv.name})` }));
@@ -26,9 +29,9 @@ function checkAttributes(g) {
 const bbox = (g) => { g.computeBoundingBox(); return g.boundingBox; };
 
 describe('StructureModels: piezas de build.json', () => {
-  it('cubre las 6 piezas del JSON', () => {
-    expect(Object.keys(build.pieces).sort()).toEqual(['barricada', 'cepo', 'mina', 'pinchos', 'puerta', 'sacos']);
-    expect(cases.length).toBe(12);
+  it('cubre las 12 piezas del JSON', () => {
+    expect(Object.keys(build.pieces).sort()).toEqual(['alambre', 'barricada', 'barril', 'cepo', 'foco', 'generador', 'mina', 'pinchos', 'puerta', 'sacos', 'torreta', 'valla']);
+    expect(cases.length).toBe(CASE_COUNT);
   });
 
   for (const { type, level, def, name } of cases) {
@@ -44,9 +47,12 @@ describe('StructureModels: piezas de build.json', () => {
         expect(b.min.y).toBeGreaterThanOrEqual(-0.01);
         expect(b.min.y).toBeLessThanOrEqual(0.05);
       });
-      it('la altura coincide con build.json (±0,1; trampas ≤ 0,25)', () => {
+      it('la altura coincide con build.json (±0,1; trampas bajas ≤ 0,25; torreta: base ≤ headHeight)', () => {
         const top = bbox(g).max.y;
-        if (def.kind === 'trampa') {
+        if (type === 'torreta') {
+          expect(top).toBeLessThanOrEqual(def.headHeight);
+          expect(top).toBeGreaterThan(def.headHeight - 0.1);
+        } else if (LOW_TRAPS.has(type)) {
           expect(top).toBeLessThanOrEqual(0.25);
           expect(top).toBeGreaterThan(0.05);
         } else {
@@ -67,13 +73,36 @@ describe('StructureModels: piezas de build.json', () => {
     });
   }
 
-  it('las piezas bloqueantes ocupan casi toda la celda (>= 0,85 en X y Z)', () => {
+  it('las piezas bloqueantes ocupan casi toda la celda (>= 0,85 en X y Z; excepciones por forma)', () => {
+    // puerta y valla son paneles finos en Z; barril/torreta/foco son columnas más estrechas que la celda
+    const thinZ = new Set(['puerta', 'valla']), slim = new Set(['barril', 'torreta', 'foco']);
     for (const { type, level, def } of cases) {
-      if (!def.blocks || type === 'puerta') continue;
+      if (!def.blocks || slim.has(type)) continue;
       const b = bbox(structureGeometry(type, level));
       expect(b.max.x - b.min.x, `${type} ${level} X`).toBeGreaterThanOrEqual(0.85);
-      expect(b.max.z - b.min.z, `${type} ${level} Z`).toBeGreaterThanOrEqual(0.85);
+      if (!thinZ.has(type)) expect(b.max.z - b.min.z, `${type} ${level} Z`).toBeGreaterThanOrEqual(0.85);
     }
+  });
+
+  it('valla: panel fino en Z (0,1-0,2; 0,25 con el remate del nivel 1) que llega de borde a borde en X (para unirse en fila)', () => {
+    for (const level of [0, 1]) {
+      const b = bbox(structureGeometry('valla', level));
+      expect(b.max.x - b.min.x, `valla ${level} X`).toBeGreaterThanOrEqual(0.96);
+      expect(b.max.z - b.min.z, `valla ${level} Z`).toBeLessThanOrEqual(level === 1 ? 0.25 : 0.2);
+      expect(b.max.z - b.min.z, `valla ${level} Z`).toBeGreaterThanOrEqual(0.1);
+    }
+  });
+
+  it('alambre: rollos que llegan casi de borde a borde en X; barril: diámetro ~0,6 centrado', () => {
+    for (const level of [0, 1]) {
+      const b = bbox(structureGeometry('alambre', level));
+      expect(b.max.x - b.min.x, `alambre ${level}`).toBeGreaterThanOrEqual(0.9);
+    }
+    const b = bbox(structureGeometry('barril', 0));
+    expect(b.max.x - b.min.x).toBeGreaterThanOrEqual(0.55);
+    expect(b.max.x - b.min.x).toBeLessThanOrEqual(0.66);
+    expect(Math.abs(b.max.x + b.min.x)).toBeLessThan(0.03);
+    expect(Math.abs(b.max.z + b.min.z)).toBeLessThan(0.03);
   });
 
   it('la puerta va de lado a lado en X y tiene el grosor de build.json en Z', () => {
@@ -86,7 +115,8 @@ describe('StructureModels: piezas de build.json', () => {
   });
 
   it('tipo desconocido lanza error; nivel fuera de rango se limita', () => {
-    expect(() => structureGeometry('torreta', 0)).toThrow();
+    expect(() => structureGeometry('lanzallamas', 0)).toThrow();
+    expect(structureGeometry('torreta', 9).attributes.position.count).toBe(structureGeometry('torreta', 1).attributes.position.count);
     expect(structureGeometry('mina', 5).attributes.position.count).toBe(structureGeometry('mina', 0).attributes.position.count);
   });
 
@@ -129,6 +159,50 @@ describe('StructureModels: puerta (hoja y marco)', () => {
     const g = doorSignGeometry(1);
     expect(g.attributes.uv.count).toBe(g.attributes.position.count);
     for (const v of g.attributes.position.array) expect(Number.isFinite(v)).toBe(true);
+  });
+});
+
+describe('StructureModels: cabeza de la torreta y lente del foco', () => {
+  const T = build.pieces.torreta;
+  for (const level of [0, 1]) {
+    it(`turretHeadGeometry(${level}): atributos válidos, cañón hacia +Z y altura total ≈ build.json`, () => {
+      const g = turretHeadGeometry(level);
+      checkAttributes(g);
+      const b = bbox(g);
+      const tris = g.attributes.position.count / 3;
+      expect(tris).toBeGreaterThanOrEqual(100);
+      expect(tris).toBeLessThanOrEqual(700);
+      expect(b.max.z).toBeGreaterThanOrEqual(0.55);           // cañón de ~0,6
+      expect(b.max.z).toBeLessThanOrEqual(0.65);
+      expect(b.min.z).toBeGreaterThanOrEqual(-0.25);          // casi centrada hacia atrás
+      expect(b.min.x).toBeGreaterThanOrEqual(-0.35);
+      expect(b.max.x).toBeLessThanOrEqual(0.35);
+      expect(b.min.y).toBeGreaterThanOrEqual(-0.1);           // vástago bajo el origen
+      const baseTop = bbox(structureGeometry('torreta', level)).max.y;
+      expect(Math.abs(T.headHeight + b.max.y - T.height)).toBeLessThanOrEqual(0.1);
+      expect(baseTop).toBeLessThanOrEqual(T.headHeight);
+      expect(b.min.y + T.headHeight).toBeLessThanOrEqual(baseTop + 0.01); // la cabeza apoya en la base sin hueco
+    });
+  }
+  it('el nivel 1 de la torreta tiene doble cañón (más triángulos y más ancho)', () => {
+    const a = turretHeadGeometry(0), c = turretHeadGeometry(1);
+    expect(c.attributes.position.count).toBeGreaterThan(a.attributes.position.count);
+    expect(bbox(c).max.x - bbox(c).min.x).toBeGreaterThan(bbox(a).max.x - bbox(a).min.x);
+    expect(turretHeadGeometry(7).attributes.position.count).toBe(c.attributes.position.count);
+  });
+  it('floodLensGeometry: dos cristales (4 triángulos), casi blancos, dentro de la silueta del foco', () => {
+    const g = floodLensGeometry();
+    checkAttributes(g);
+    expect(g.attributes.position.count / 3).toBe(4);
+    const col = g.attributes.color.array;
+    for (let i = 0; i < col.length; i += 3) expect(Math.min(col[i], col[i + 1], col[i + 2])).toBeGreaterThan(0.6);
+    const b = bbox(g), f = bbox(structureGeometry('foco', 0));
+    expect(b.min.x).toBeGreaterThanOrEqual(f.min.x);
+    expect(b.max.x).toBeLessThanOrEqual(f.max.x);
+    expect(b.max.y).toBeLessThanOrEqual(f.max.y);
+    expect(b.min.y).toBeGreaterThan(1.5);
+    expect(b.max.z).toBeGreaterThan(0.2);                       // un cristal en cada lado
+    expect(b.min.z).toBeLessThan(-0.2);
   });
 });
 
@@ -183,7 +257,7 @@ if (process.env.STRUCT_TABLE) {
         return { pieza, tris: g.attributes.position.count / 3, ancho: +(b.max.x - b.min.x).toFixed(2), fondo: +(b.max.z - b.min.z).toFixed(2), minx: +b.min.x.toFixed(2), maxx: +b.max.x.toFixed(2), alto: +b.max.y.toFixed(3) };
       };
       const rows = cases.map(({ type, level }) => row(`${type} ${level}`, structureGeometry(type, level)));
-      rows.push(row('hoja0', doorLeafGeometry(0)), row('hoja1', doorLeafGeometry(1)), row('marco0', doorFrameGeometry(0)), row('marco1', doorFrameGeometry(1)), row('luz mina', mineLightGeometry()), row('transformador', transformerDamageGeometry()));
+      rows.push(row('cabeza torreta 0', turretHeadGeometry(0)), row('cabeza torreta 1', turretHeadGeometry(1)), row('lente foco', floodLensGeometry()), row('hoja0', doorLeafGeometry(0)), row('hoja1', doorLeafGeometry(1)), row('marco0', doorFrameGeometry(0)), row('marco1', doorFrameGeometry(1)), row('luz mina', mineLightGeometry()), row('transformador', transformerDamageGeometry()));
       console.table(rows);
     });
   });

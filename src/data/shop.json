@@ -116,6 +116,64 @@
       "requires": "unlock:cepo:0"
     },
     {
+      "id": "unlock:alambre:0",
+      "name": "Alambre de espino",
+      "desc": "Frena mucho y hace algo de daño.",
+      "price": 140
+    },
+    {
+      "id": "unlock:barril:0",
+      "name": "Barriles explosivos",
+      "desc": "Dispárales o deja que los golpeen: ¡bum!",
+      "price": 200
+    },
+    {
+      "id": "unlock:foco:0",
+      "name": "Focos",
+      "desc": "Iluminan una zona de noche.",
+      "price": 150
+    },
+    {
+      "id": "unlock:generador:0",
+      "name": "Generadores",
+      "desc": "Dan corriente a las vallas electrificadas. Atraen a los vándalos.",
+      "price": 300
+    },
+    {
+      "id": "unlock:valla:0",
+      "name": "Vallas electrificadas",
+      "desc": "Con un generador en marcha, electrocutan a quien las toque.",
+      "price": 260,
+      "requires": "unlock:generador:0"
+    },
+    {
+      "id": "unlock:torreta:0",
+      "name": "Torretas automáticas",
+      "desc": "Disparan solas. Munición limitada: recárgalas con E.",
+      "price": 600
+    },
+    {
+      "id": "unlock:alambre:1",
+      "name": "Concertina",
+      "desc": "Mejora el alambre de espino.",
+      "price": 220,
+      "requires": "unlock:alambre:0"
+    },
+    {
+      "id": "unlock:valla:1",
+      "name": "Vallas reforzadas",
+      "desc": "Mejora las vallas electrificadas.",
+      "price": 320,
+      "requires": "unlock:valla:0"
+    },
+    {
+      "id": "unlock:torreta:1",
+      "name": "Torretas pesadas",
+      "desc": "Mejora las torretas: más daño, cadencia y munición.",
+      "price": 700,
+      "requires": "unlock:torreta:0"
+    },
+    {
       "id": "kit_reparacion",
       "name": "Kit de reparación",
       "desc": "Repara todas tus construcciones con un 30 % de descuento.",

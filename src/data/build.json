@@ -141,6 +141,147 @@
       ],
       "falloff": 0.6,
       "knockback": 0.25
+    },
+    "alambre": {
+      "name": "Alambre de espino",
+      "icon": "➰",
+      "kind": "trampa",
+      "blocks": false,
+      "blocksShot": false,
+      "height": 0.5,
+      "dps": 6,
+      "slow": 0.45,
+      "wearPerZombieSecond": 1.5,
+      "levels": [
+        {
+          "name": "Alambre de espino",
+          "cost": 45,
+          "hp": 60
+        },
+        {
+          "name": "Concertina",
+          "cost": 80,
+          "hp": 120,
+          "dps": 10,
+          "slow": 0.35
+        }
+      ]
+    },
+    "barril": {
+      "name": "Barril explosivo",
+      "icon": "🛢️",
+      "kind": "trampa",
+      "blocks": true,
+      "blocksShot": false,
+      "height": 0.95,
+      "inset": 0.2,
+      "damage": 220,
+      "radius": 3.2,
+      "falloff": 0.6,
+      "knockback": 0.35,
+      "playerDamageMul": 0.4,
+      "chainDelay": 0.15,
+      "levels": [
+        {
+          "name": "Barril explosivo",
+          "cost": 60,
+          "hp": 40
+        }
+      ]
+    },
+    "valla": {
+      "name": "Valla electrificada",
+      "icon": "⚡",
+      "kind": "estructura",
+      "blocks": true,
+      "blocksShot": false,
+      "height": 1.6,
+      "zapDamage": 22,
+      "zapInterval": 0.9,
+      "zapStun": 0.5,
+      "zapReach": 0.45,
+      "levels": [
+        {
+          "name": "Valla electrificada",
+          "cost": 70,
+          "hp": 300
+        },
+        {
+          "name": "Valla reforzada",
+          "cost": 130,
+          "hp": 650,
+          "zapDamage": 34
+        }
+      ]
+    },
+    "generador": {
+      "name": "Generador",
+      "icon": "🔋",
+      "kind": "utilidad",
+      "blocks": true,
+      "blocksShot": true,
+      "height": 1.2,
+      "maxCount": 2,
+      "levels": [
+        {
+          "name": "Generador diésel",
+          "cost": 350,
+          "hp": 500
+        }
+      ]
+    },
+    "torreta": {
+      "name": "Torreta automática",
+      "icon": "🎯",
+      "kind": "utilidad",
+      "blocks": true,
+      "blocksShot": false,
+      "height": 1.25,
+      "maxCount": 4,
+      "range": 9,
+      "fireRate": 4,
+      "damage": 14,
+      "ammo": 150,
+      "ammoCost": 0.6,
+      "turnSpeed": 6,
+      "spreadDeg": 3,
+      "aimTolerance": 0.25,
+      "headHeight": 0.95,
+      "knockback": 0.05,
+      "retarget": 0.3,
+      "levels": [
+        {
+          "name": "Torreta",
+          "cost": 600,
+          "hp": 350
+        },
+        {
+          "name": "Torreta pesada",
+          "cost": 900,
+          "hp": 600,
+          "damage": 22,
+          "fireRate": 5,
+          "ammo": 250
+        }
+      ]
+    },
+    "foco": {
+      "name": "Foco",
+      "icon": "💡",
+      "kind": "utilidad",
+      "blocks": true,
+      "blocksShot": false,
+      "height": 2.4,
+      "lightRange": 9,
+      "lightIntensity": 30,
+      "maxCount": 8,
+      "levels": [
+        {
+          "name": "Foco halógeno",
+          "cost": 120,
+          "hp": 150
+        }
+      ]
     }
   },
   "transformer": {
@@ -157,5 +298,29 @@
   "sellConfirmTime": 2.0,
   "maxPerType": 200,
   "placeMargin": 0.05,
-  "trapDamageTick": 0.25
+  "trapDamageTick": 0.25,
+  "pages": [
+    {
+      "name": "Defensas",
+      "pieces": [
+        "barricada",
+        "sacos",
+        "puerta",
+        "valla",
+        "generador",
+        "torreta",
+        "foco"
+      ]
+    },
+    {
+      "name": "Trampas",
+      "pieces": [
+        "pinchos",
+        "alambre",
+        "cepo",
+        "mina",
+        "barril"
+      ]
+    }
+  ]
 }

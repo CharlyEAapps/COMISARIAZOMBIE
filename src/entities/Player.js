@@ -36,6 +36,7 @@ export class Player {
     this.facing = 0;               // ángulo en Y (0 = mirando a +Z)
     this.aimDir = new THREE.Vector3(0, 0, 1);
     this.velocity = new THREE.Vector3();
+    this.push = { x: 0, z: 0 }; // empuje recibido (golpes de tanques y jefes)
     this.walkPhase = 0;
     this.reset();
   }
@@ -59,6 +60,15 @@ export class Player {
     this.alive = true;
     this.mesh.rotation.set(0, 0, 0);
     this.velocity.set(0, 0, 0);
+    this.push.x = this.push.z = 0;
+  }
+
+  /** Empuja al jugador `distance` metros en la dirección (dx, dz) normalizada. */
+  knockback(dx, dz, distance) {
+    if (!this.alive || this.game.debug.flags.godMode) return;
+    const v = distance * this.data.pushDecay;
+    this.push.x += dx * v;
+    this.push.z += dz * v;
   }
 
   heal(amount) {
@@ -128,8 +138,10 @@ export class Player {
       (this.medkitTimer > 0 ? MEDKIT.moveMul : 1) * this.buff('speed');
     this.velocity.set(input.move.x * speed, 0, input.move.y * speed);
     const x0 = this.position.x, z0 = this.position.z;
-    this.position.x += this.velocity.x * dt;
-    this.position.z += this.velocity.z * dt;
+    this.position.x += (this.velocity.x + this.push.x) * dt;
+    this.position.z += (this.velocity.z + this.push.z) * dt;
+    const decay = Math.exp(-this.data.pushDecay * dt);
+    this.push.x *= decay; this.push.z *= decay;
     resolveCircleVsGrid(this.position, this.radius, this.game.grid);
     // Solo gasta resistencia si realmente avanza (no al empujar contra un muro).
     const moved = Math.hypot(this.position.x - x0, this.position.z - z0);

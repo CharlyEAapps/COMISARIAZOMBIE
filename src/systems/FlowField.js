@@ -17,6 +17,7 @@ export class FlowField {
     this.heapK = new Int32Array(n * 8);
     this.heapD = new Float64Array(n * 8);
     this.target = { i: -1, j: -1 };
+    this._single = [0];
   }
 
   /**
@@ -29,13 +30,18 @@ export class FlowField {
   }
 
   compute(ti, tj) {
+    this._single[0] = tj * this.grid.w + ti;
+    this.target.i = ti;
+    this.target.j = tj;
+    this.computeMulti(this._single);
+  }
+
+  /** Flow field hacia la más cercana de varias celdas objetivo (índices k). */
+  computeMulti(targets) {
     const { grid, dist, next, heapK, heapD } = this;
     const w = grid.w;
     dist.fill(Infinity);
     next.fill(-1);
-    this.target.i = ti;
-    this.target.j = tj;
-    if (!this.passable(ti, tj)) return;
 
     let size = 0;
     const push = (k, d) => {
@@ -64,9 +70,11 @@ export class FlowField {
       return k;
     };
 
-    const t = tj * w + ti;
-    dist[t] = 0;
-    push(t, 0);
+    for (const t of targets) {
+      if (t < 0 || !this.passable(t % w, (t / w) | 0) || dist[t] === 0) continue;
+      dist[t] = 0;
+      push(t, 0);
+    }
     while (size > 0) {
       const d0 = heapD[0];
       const k = pop();

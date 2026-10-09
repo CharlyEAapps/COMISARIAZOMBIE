@@ -13,6 +13,7 @@ export const KEYMAP = {
   KeyG: 'grenade',
   KeyB: 'build',
   KeyN: 'ready',
+  Tab: 'buildPage',
   Escape: 'pause',
   F1: 'debug',
   Enter: 'confirm', NumpadEnter: 'confirm',
@@ -33,7 +34,7 @@ export class Input {
     this._onKeyDown = (e) => {
       const a = KEYMAP[e.code];
       if (!a) return;
-      if (a === 'debug' || a === 'pause') e.preventDefault();
+      if (a === 'debug' || a === 'pause' || a === 'buildPage') e.preventDefault();
       if (!this.held.has(a)) this.pressed.add(a);
       this.held.add(a);
       this.lastDevice = 'kbm';

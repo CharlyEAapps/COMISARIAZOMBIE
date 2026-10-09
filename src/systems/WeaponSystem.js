@@ -231,12 +231,23 @@ export class WeaponSystem {
       const dx = Math.sin(base), dz = Math.cos(base);
 
       // Las balas salen del centro del jugador (no atraviesan el muro que tenga pegado).
-      const wallDist = raycastGrid(grid, ox, oz, dx, dz, d.range, this.shotBlocked);
+      // Un barril explosivo en el camino para la bala y estalla.
+      const wallDist0 = raycastGrid(grid, ox, oz, dx, dz, d.range, this.shotBlocked);
+      const barrel = game.build.barrelRaycast(ox, oz, dx, dz, wallDist0);
+      const wallDist = barrel ? barrel.t : wallDist0;
       let endDist = wallDist;
+      let shielded = false;
       this._exclude.clear();
       for (let pierce = 0; pierce <= d.pierce; pierce++) {
         const hit = zombies.raycast(ox, oz, dx, dz, wallDist, this._exclude);
         if (!hit) break;
+        // El escudo del jefe para la bala (y la perforación) si le llega de frente.
+        if (zombies.shieldBlocks(hit.zombie, dx, dz)) {
+          zombies.shieldHit(hit.zombie, dx, dz);
+          endDist = hit.t;
+          shielded = true;
+          break;
+        }
         this._exclude.add(hit.zombie);
         zombies.damage(hit.zombie, w.stats.damage, dx, dz, d.knockback);
         effects.burst(hit.zombie.pos.x, 1.2, hit.zombie.pos.z, 7, 0x4a1d1d, { speed: 2.5, dirX: dx, dirZ: dz, size: 0.08 });
@@ -244,7 +255,8 @@ export class WeaponSystem {
         // Sin perforación restante, la trazadora acaba en este zombi; si no, sigue hasta el muro.
         endDist = pierce === d.pierce ? hit.t : wallDist;
       }
-      if (endDist === wallDist && wallDist < d.range) {
+      if (barrel && !shielded && endDist === wallDist) game.build.detonateBarrel(barrel.s, 0);
+      else if (endDist === wallDist && wallDist < d.range) {
         effects.burst(ox + dx * wallDist, SHOT_HEIGHT, oz + dz * wallDist, 4, 0xbfb6a3, { speed: 1.5, dirX: -dx, dirZ: -dz, size: 0.06, life: 0.4 });
       }
       this._to.set(ox + dx * endDist, SHOT_HEIGHT, oz + dz * endDist);
@@ -259,7 +271,7 @@ export class WeaponSystem {
   taserChain(first, w) {
     const { zombies, effects, grid } = this.game;
     const d = w.data, st = w.stats;
-    first.stunTimer = Math.max(first.stunTimer, st.stun);
+    zombies.stun(first, st.stun);
     let from = first;
     const hit = this._chainHit;
     hit.clear();
@@ -270,13 +282,13 @@ export class WeaponSystem {
         if (z.state !== 0 || hit.has(z)) continue;
         const dx = z.pos.x - from.pos.x, dz = z.pos.z - from.pos.z;
         const dd = Math.hypot(dx, dz);
-        if (dd >= bestD || dd < 1e-4) continue;
+        if (dd >= bestD || dd < 1e-4 || zombies.shieldBlocks(z, dx / dd, dz / dd)) continue;
         if (raycastGrid(grid, from.pos.x, from.pos.z, dx / dd, dz / dd, dd, this.shotBlocked) < dd) continue;
         bestD = dd; best = z;
       }
       if (!best) break;
       hit.add(best);
-      best.stunTimer = Math.max(best.stunTimer, st.stun);
+      zombies.stun(best, st.stun);
       zombies.damage(best, st.damage * d.chainDamageMul);
       this._from.set(from.pos.x, 1.2, from.pos.z);
       this._to.set(best.pos.x, 1.2, best.pos.z);
@@ -301,6 +313,7 @@ export class WeaponSystem {
       if (dist - z.radius > d.range || dist < 1e-4) continue;
       if ((dx * ax + dz * az) / dist < cosArc) continue;
       if (raycastGrid(grid, ox, oz, dx / dist, dz / dist, dist, this.shotBlocked) < dist) continue;
+      if (zombies.shieldBlocks(z, dx / dist, dz / dist)) { zombies.shieldHit(z, dx / dist, dz / dist); continue; }
       zombies.damage(z, w.stats.damage, dx / dist, dz / dist, d.knockback);
       effects.burst(z.pos.x, 1.2, z.pos.z, 6, 0x4a1d1d, { speed: 2, dirX: dx / dist, dirZ: dz / dist, size: 0.08 });
       hits++;

@@ -1,8 +1,14 @@
+import * as THREE from 'three';
 import buildData from '../data/build.json';
 import { PHASE } from './DayNight.js';
 import { explode } from './Explosions.js';
+import { raycastGrid, rayCircle } from './Physics.js';
 
-export const PIECE_ORDER = ['barricada', 'sacos', 'puerta', 'pinchos', 'cepo', 'mina'];
+/** Páginas de la barra de construcción (Tab cambia de página; 1-9 eligen dentro de ella). */
+export const PIECE_PAGES = buildData.pages;
+export const PIECE_ORDER = PIECE_PAGES.flatMap((p) => p.pieces);
+/** Piezas con lista propia (para recorrerlas sin filtrar todas las construcciones). */
+const LISTED = ['generador', 'torreta', 'valla', 'foco', 'barril'];
 const NO_BUILD_CHARS = new Set(['S', 'A', 'M', 'W']);
 const MAX_DOOR_WIDTH = 6;
 
@@ -35,6 +41,23 @@ export class BuildSystem {
     this.nextId = 1;
     this.sellArmed = -1;         // id de la pieza con la venta "armada"
     this.sellArmedUntil = 0;
+    this.page = 0;
+    this.lists = {};
+    for (const t of LISTED) this.lists[t] = [];
+    this.generators = this.lists.generador;
+    this.turrets = this.lists.torreta;
+    this.fences = this.lists.valla;
+    this.lights = this.lists.foco;
+    this.barrels = this.lists.barril;
+    this._near = new Array(256);
+    this._from = new THREE.Vector3();
+    this._to = new THREE.Vector3();
+    this.shotBlocked = (i, j) => this.game.grid.isShotBlocked(i, j);
+    // Solo los muros y objetos del mapa (para las explosiones contra construcciones).
+    this.staticShotBlocked = (i, j) => {
+      const g = this.game.grid;
+      return !g.inBounds(i, j) || g.blocksShot[g.index(i, j)] === 1;
+    };
     this.initTransformer();
     this.reset();
   }
@@ -78,6 +101,30 @@ export class BuildSystem {
     }
   }
 
+  // ------------------------------------------------------------------ vándalos y corriente
+  /** ¿Queda algo eléctrico que los vándalos puedan romper? */
+  vandalTargetsAlive() {
+    return (this.transformer?.hp > 0) || this.generators.length > 0;
+  }
+
+  /** Celdas objetivo de los vándalos: el transformador y las celdas junto a cada generador. */
+  vandalTargetCells(out) {
+    out.length = 0;
+    const g = this.game.grid;
+    if (this.transformer?.hp > 0 && this.transformer.cell >= 0) out.push(this.transformer.cell);
+    for (const s of this.generators) {
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        if ((di || dj) && g.isStaticWalkable(s.i + di, s.j + dj)) out.push(g.index(s.i + di, s.j + dj));
+      }
+    }
+    return out;
+  }
+
+  /** Las vallas electrificadas funcionan si hay algún generador en pie. */
+  get powered() {
+    return this.generators.length > 0;
+  }
+
   transformerRepairCost() {
     const t = this.transformer;
     if (!t || t.hp >= t.maxHp) return 0;
@@ -100,10 +147,12 @@ export class BuildSystem {
     const { grid } = this.game;
     for (const s of this.all) {
       for (const k of s.cells) grid.clearDynamic(k);
-      if (s.type === 'puerta') this.game.interactions?.removeItem(`puerta_${s.id}`);
+      this.game.interactions?.removeItem(`puerta_${s.id}`);
+      this.game.interactions?.removeItem(`torreta_${s.id}`);
     }
     this.structures.clear();
     this.all.clear();
+    for (const t of LISTED) this.lists[t].length = 0;
     this.active = false;
     this.dragging = false;
     if (this.transformer) { this.transformer.hp = this.transformer.maxHp; this.transformer.flash = 0; this.transformer.alertAt = -Infinity; }
@@ -209,7 +258,8 @@ export class BuildSystem {
       sx += grid.centerX(i); sz += grid.centerZ(j);
     }
     if (!this.inReachXY(sx / cells.length, sz / cells.length)) return 'Demasiado lejos';
-    if (this.countOf(type) >= this.cfg.maxPerType) return 'Límite de piezas de este tipo';
+    const max = def.maxCount ?? this.cfg.maxPerType;
+    if (this.countOf(type) >= max) return `Máximo ${max} de este tipo`;
     for (const it of interactions.items) {
       if (!it.dynamic && cells.includes(grid.walkableCellAt(it.x, it.z))) return 'Bloquearía un objeto útil';
     }
@@ -239,7 +289,7 @@ export class BuildSystem {
       const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
       return s.axis === 'x' ? [x0, cz - half, x1, cz + half] : [cx - half, z0, cx + half, z1];
     }
-    return g.cellBox(i, j, 0);
+    return g.cellBox(i, j, s.def.inset ?? 0);
   }
 
   applyGrid(s) {
@@ -270,12 +320,15 @@ export class BuildSystem {
       id: this.nextId++, type, def, cells, n, k: cells[0], i, j, cx: cx / n, cz: cz / n,
       level: 0, hp, maxHp: hp, invested: cost,
       flash: 0, open: false, axis: type === 'puerta' ? this.doorAxis(i, j) : 'x',
-      rearm: 0, fuse: -1, repairReady: 0,
+      rearm: 0, fuse: -1, repairReady: 0, zap: 0,
     };
     for (const c of cells) this.structures.set(c, s);
     this.all.add(s);
+    this.lists[type]?.push(s);
     this.applyGrid(s);
     if (type === 'puerta') this.registerDoor(s);
+    if (type === 'torreta') this.initTurret(s);
+    if (type === 'generador' && this.generators.length === 1 && this.fences.length) this.game.hud?.toast('⚡ Vallas electrificadas en marcha', 3);
     this.game.floating?.spawn(`-${cost}`, s.cx, 1.6, s.cz, 'neg');
     this.game.bus.emit('build:placed', { type, k });
     this.changed(def.blocks);
@@ -300,6 +353,7 @@ export class BuildSystem {
     s.maxHp = s.def.levels[s.level].hp * s.n;
     s.hp = s.maxHp;
     s.invested += cost;
+    if (s.type === 'torreta') this.initTurret(s, true);
     this.applyGrid(s);
     this.game.floating?.spawn(`-${cost}`, s.cx, 1.6, s.cz, 'neg');
     this.changed(s.def.blocks);
@@ -340,24 +394,40 @@ export class BuildSystem {
       this.structures.delete(k);
     }
     this.all.delete(s);
+    const list = this.lists[s.type];
+    if (list) list.splice(list.indexOf(s), 1);
     if (s.type === 'puerta') this.game.interactions.removeItem(`puerta_${s.id}`);
+    if (s.type === 'torreta') this.game.interactions.removeItem(`torreta_${s.id}`);
+    if (s.type === 'generador' && !this.generators.length && this.fences.length) {
+      this.game.hud?.toast('⚡ Sin generadores: las vallas ya no dan corriente', 4);
+    }
     if (this.sellArmed === s.id) this.sellArmed = -1;
     this.changed(s.def.blocks);
   }
 
-  /** Daño de un zombi a la pieza que ocupa la celda k. */
-  damageCell(k, amount) {
+  /**
+   * Daño a la pieza que ocupa la celda k (golpes de zombis, ácido, explosiones).
+   * @param {boolean} [quiet] daño continuo: sin cascotes en cada golpe
+   */
+  damageCell(k, amount, quiet = false) {
     const s = this.structures.get(k);
     // Una puerta abierta no se interpone: los zombis la ignoran y no le hacen daño
     // (aunque alguno estuviera a mitad de golpe cuando se abrió).
     if (!s || s.hp <= 0 || s.open) return;
     s.hp -= amount;
     s.flash = 0.12;
+    // Un barril golpeado hasta romperse estalla.
+    if (s.type === 'barril') {
+      if (s.hp <= 0) this.detonateBarrel(s, 0.05);
+      return;
+    }
     const g = this.game.grid;
     const x = g.centerX(k % g.w), z = g.centerZ((k / g.w) | 0);
     const debris = s.level === 0 && s.type === 'barricada' ? 0x8a5a32 : s.type === 'sacos' ? 0xc9b48a : 0x9a9a9a;
-    this.game.effects.burst(x, 0.9, z, 4, debris, { speed: 2, up: 2.5, size: 0.07, life: 0.7 });
+    if (!quiet) this.game.effects.burst(x, 0.9, z, 4, debris, { speed: 2, up: 2.5, size: 0.07, life: 0.7 });
     if (s.hp <= 0) {
+      if (s.type === 'generador') this.game.hud?.toast('🔋 ¡Han destruido un generador!', 4);
+      if (s.type === 'torreta') this.game.hud?.toast('🎯 ¡Han destruido una torreta!', 4);
       for (const c of s.cells) {
         this.game.effects.burst(g.centerX(c % g.w), 0.7, g.centerZ((c / g.w) | 0), 22, debris, { speed: 3.5, up: 4, size: 0.12, life: 1.5 });
       }
@@ -368,6 +438,168 @@ export class BuildSystem {
     }
     // El coste en el flow field baja con la vida: la horda insiste en lo que ya está roto.
     if (s.def.blocks && !s.open) for (const c of s.cells) g.extraCost[c] = s.hp * this.cfg.flowCostPerHp;
+  }
+
+  // ------------------------------------------------------------------ barriles y explosiones
+  /** Retira el barril y programa su explosión (las cadenas se ven en cascada). */
+  detonateBarrel(s, delay) {
+    if (!this.all.has(s)) return;
+    this.remove(s);
+    this.game.blasts.schedule(s.cx, s.cz, s.def, delay);
+  }
+
+  /** Primer barril que corta el rayo antes de maxT, o null. */
+  barrelRaycast(ox, oz, dx, dz, maxT) {
+    let best = null, bestT = maxT;
+    for (const s of this.barrels) {
+      const t = rayCircle(ox, oz, dx, dz, s.cx, s.cz, 0.5 - s.def.inset);
+      if (t >= 0 && t < bestT) { bestT = t; best = s; }
+    }
+    return best ? { s: best, t: bestT } : null;
+  }
+
+  /**
+   * Onda expansiva sobre las construcciones: los barriles del radio estallan en cadena y, si
+   * `damage` > 0 (zombis explosivos), daña lo construido y el transformador. Solo protegen
+   * los muros del mapa.
+   */
+  blast(x, z, R, damage, falloff) {
+    const g = this.game.grid;
+    const reach = (px, pz) => {
+      const d = Math.hypot(px - x, pz - z);
+      if (d > R) return -1;
+      if (d > 1e-3 && raycastGrid(g, x, z, (px - x) / d, (pz - z) / d, d, this.staticShotBlocked) < d) return -1;
+      return 1 - (d / R) * falloff;
+    };
+    for (let n = this.barrels.length - 1; n >= 0; n--) {
+      const s = this.barrels[n];
+      if (reach(s.cx, s.cz) >= 0) this.detonateBarrel(s, s.def.chainDelay);
+    }
+    if (damage <= 0) return;
+    for (const s of [...this.all]) {
+      if (s.def.kind === 'trampa' || !this.all.has(s)) continue;
+      let k = -1;
+      for (const c of s.cells) k = Math.max(k, reach(g.centerX(c % g.w), g.centerZ((c / g.w) | 0)));
+      if (k >= 0) this.damageCell(s.k, damage * k * s.n);
+    }
+    const t = this.transformer;
+    if (t && t.hp > 0) {
+      const cx = Math.max(t.box[0], Math.min(x, t.box[2])), cz = Math.max(t.box[1], Math.min(z, t.box[3]));
+      const k = reach(cx, cz);
+      if (k >= 0) this.damageTransformer(damage * k);
+    }
+  }
+
+  // ------------------------------------------------------------------ torretas
+  initTurret(s, refill = false) {
+    const max = this.levelStat(s.def, s.level, 'ammo');
+    if (!refill) {
+      s.yaw = 0; s.cooldown = 0; s.target = null; s.retarget = 0; s.emptyWarned = false;
+      this.game.interactions.addItem({ id: `torreta_${s.id}`, type: 'recargar_torreta', x: s.cx, z: s.cz, cell: s.k, dynamic: true });
+    }
+    s.ammoMax = max;
+    s.ammo = max;
+  }
+
+  turretReloadCost(k) {
+    const s = this.structures.get(k);
+    if (!s || s.type !== 'torreta' || s.ammo >= s.ammoMax) return 0;
+    return Math.max(1, Math.ceil((s.ammoMax - s.ammo) * s.def.ammoCost * this.surcharge));
+  }
+
+  reloadTurret(k) {
+    const cost = this.turretReloadCost(k);
+    if (!cost || this.game.run.points < cost) return null;
+    const s = this.structures.get(k);
+    this.game.run.points -= cost;
+    s.ammo = s.ammoMax;
+    s.emptyWarned = false;
+    this.game.floating?.spawn(`-${cost}`, s.cx, 1.6, s.cz, 'neg');
+    return `🎯 Torreta recargada (−${cost})`;
+  }
+
+  updateTurrets(dt) {
+    const { zombies, grid, effects } = this.game;
+    for (const s of this.turrets) {
+      const def = s.def;
+      s.cooldown -= dt;
+      s.retarget -= dt;
+      if (s.target && (s.target.state !== 0 || !s.target.active)) s.target = null;
+      if (s.retarget <= 0) {
+        // Objetivo: el zombi más cercano dentro del alcance y con línea de tiro.
+        s.retarget = def.retarget;
+        let best = null, bestD = def.range;
+        for (const z of zombies.active) {
+          if (z.state !== 0) continue;
+          const dx = z.pos.x - s.cx, dz = z.pos.z - s.cz;
+          const d = Math.hypot(dx, dz);
+          if (d >= bestD || d < 1e-3) continue;
+          if (raycastGrid(grid, s.cx, s.cz, dx / d, dz / d, d, this.shotBlocked) < d) continue;
+          bestD = d; best = z;
+        }
+        s.target = best;
+      }
+      const z = s.target;
+      if (!z) continue;
+      const want = Math.atan2(z.pos.x - s.cx, z.pos.z - s.cz);
+      let dy = want - s.yaw;
+      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      const step = def.turnSpeed * dt;
+      s.yaw += Math.max(-step, Math.min(step, dy));
+      if (Math.abs(dy) > def.aimTolerance || s.cooldown > 0) continue;
+      if (s.ammo <= 0) {
+        if (!s.emptyWarned) {
+          s.emptyWarned = true;
+          this.game.hud?.toast('🎯 Una torreta se ha quedado sin munición: recárgala con E', 4);
+        }
+        continue;
+      }
+      s.ammo--;
+      s.cooldown = 1 / this.levelStat(def, s.level, 'fireRate');
+      const a = s.yaw + THREE.MathUtils.degToRad(def.spreadDeg) * (Math.random() - 0.5);
+      const dx = Math.sin(a), dz = Math.cos(a);
+      const wall = raycastGrid(grid, s.cx, s.cz, dx, dz, def.range, this.shotBlocked);
+      const hit = zombies.raycast(s.cx, s.cz, dx, dz, wall);
+      let end = wall;
+      if (hit) {
+        end = hit.t;
+        if (zombies.shieldBlocks(hit.zombie, dx, dz)) zombies.shieldHit(hit.zombie, dx, dz);
+        else zombies.damage(hit.zombie, this.levelStat(def, s.level, 'damage'), dx, dz, def.knockback);
+      }
+      const h = def.headHeight;
+      this._from.set(s.cx + dx * 0.55, h, s.cz + dz * 0.55);
+      this._to.set(s.cx + dx * end, h, s.cz + dz * end);
+      effects.tracer(this._from, this._to, 0xffd27a);
+      this.game.bus.emit('turret:fired', { s });
+    }
+  }
+
+  // ------------------------------------------------------------------ vallas electrificadas
+  updateFences(dt) {
+    const { zombies, effects } = this.game;
+    const powered = this.powered;
+    const grid = this.game.grid;
+    for (const s of this.fences) {
+      if (s.zap > 0) s.zap -= dt;
+      if (!powered || s.zap > 0) continue;
+      const reach = s.def.zapReach;
+      const n = zombies.hash.queryInto(s.cx, s.cz, 1.6, this._near);
+      let zapped = 0;
+      for (let q = 0; q < n; q++) {
+        const z = this._near[q];
+        if (z.state !== 0 || !zombies.nearBox(z, grid.dynBox, s.k * 4, z.radius + reach)) continue;
+        zombies.damage(z, this.levelStat(s.def, s.level, 'zapDamage'), 0, 0, 0);
+        zombies.stun(z, s.def.zapStun);
+        effects.burst(z.pos.x, 1.0, z.pos.z, 6, 0x8fdcff, { speed: 3, up: 3, size: 0.05, life: 0.3 });
+        zapped++;
+      }
+      if (zapped) {
+        s.zap = s.def.zapInterval;
+        s.flash = 0.15;
+        effects.burst(s.cx, 1.2, s.cz, 8, 0xd8f4ff, { speed: 2.5, up: 2, size: 0.04, life: 0.25 });
+        this.game.bus.emit('fence:zap', { s, count: zapped });
+      }
+    }
   }
 
   // ------------------------------------------------------------------ puertas
@@ -418,18 +650,21 @@ export class BuildSystem {
       const k = grid.cellX(z.pos.x) + grid.cellZ(z.pos.z) * grid.w;
       const s = this.structures.get(k);
       if (!s || s.def.kind !== 'trampa') continue;
-      if (s.type === 'pinchos') {
+      if (s.type === 'pinchos' || s.type === 'alambre') {
         // Daño continuo acumulado y aplicado por ticks (sin destello constante).
         z.trapAcc = (z.trapAcc ?? 0) + this.levelStat(s.def, s.level, 'dps') * dt;
         const tickDmg = this.levelStat(s.def, s.level, 'dps') * this.cfg.trapDamageTick;
         if (z.trapAcc >= tickDmg) { zombies.damage(z, z.trapAcc, 0, 0, 0, true); z.trapAcc = 0; }
-        z.slowMul = s.def.slow;
+        z.slowMul = Math.min(z.slowMul, this.levelStat(s.def, s.level, 'slow'));
         s.hp -= s.def.wearPerZombieSecond * dt;
         if (Math.random() < dt * 6) effects.burst(z.pos.x, 0.3, z.pos.z, 1, 0x4a1d1d, { speed: 1, up: 1.5, size: 0.06, life: 0.5 });
-        if (s.hp <= 0) { this.game.hud.toast('📌 Unos pinchos se han roto'); this.remove(s); }
+        if (s.hp <= 0) {
+          this.game.hud.toast(s.type === 'pinchos' ? '📌 Unos pinchos se han roto' : '➰ Un alambre de espino se ha roto');
+          this.remove(s);
+        }
       } else if (s.type === 'cepo') {
         if (s.rearm > 0 || z.stunTimer > 0) continue;
-        z.stunTimer = this.levelStat(s.def, s.level, 'holdTime');
+        zombies.stun(z, this.levelStat(s.def, s.level, 'holdTime'));
         z.pos.x = s.cx; z.pos.z = s.cz;
         zombies.damage(z, s.def.damage);
         effects.burst(z.pos.x, 0.3, z.pos.z, 8, 0x4a1d1d, { speed: 2, up: 2, size: 0.07, life: 0.8 });
@@ -450,6 +685,14 @@ export class BuildSystem {
   }
 
   // ------------------------------------------------------------------ modo construcción
+  /** Selecciona una pieza (desde el HUD) y salta a su página. */
+  select(type) {
+    const page = PIECE_PAGES.findIndex((p) => p.pieces.includes(type));
+    if (page < 0) return;
+    this.page = page;
+    this.selected = type;
+  }
+
   setActive(on) {
     this.active = on;
     this.dragging = false;
@@ -492,14 +735,21 @@ export class BuildSystem {
       }
     }
     this.updateTraps(dt);
+    this.updateTurrets(dt);
+    this.updateFences(dt);
 
     if (input.consume('build') && player.alive && !game.shop?.open) this.setActive(!this.active);
     if (this.active && game.shop?.open) this.setActive(false);
     if (!player.alive && this.active) this.setActive(false);
     if (!this.active) return;
 
-    for (let n = 0; n < PIECE_ORDER.length; n++) {
-      if (input.consume(`weapon${n + 1}`)) this.selected = PIECE_ORDER[n];
+    if (input.consume('buildPage')) {
+      this.page = (this.page + 1) % PIECE_PAGES.length;
+      this.selected = PIECE_PAGES[this.page].pieces[0];
+    }
+    const pieces = PIECE_PAGES[this.page].pieces;
+    for (let n = 0; n < pieces.length; n++) {
+      if (input.consume(`weapon${n + 1}`)) this.selected = pieces[n];
     }
 
     // Celda bajo el cursor y huella de la pieza seleccionada.

@@ -3,7 +3,11 @@ import playerData from '../data/player.json';
 import interactions from '../data/interactions.json';
 
 const MEDKIT = interactions._medkit;
-import { buildPolice, computePose, makePose, PART_NAMES, PARTS, WEAPON_MOUNT } from '../render/BlockyCharacter.js';
+const FXP = config.fx.player;
+const RELOAD = FXP.reload;
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+import config from '../data/config.json';
+import { buildPolice, computePose, makePose, PART_NAMES, PARTS, WEAPON_MOUNT, armAnglesToward, weaponPointInChar, reloadPhases } from '../render/BlockyCharacter.js';
 import { resolveCircleVsGrid } from '../systems/Physics.js';
 import { weaponGeometry, WEAPON_SPECS, WEAPON_MATERIAL_OPTIONS } from '../render/WeaponModels.js';
 
@@ -126,7 +130,10 @@ export class Player {
         this.heal(MEDKIT.heal);
       }
     } else if (input.consume('medkit')) {
-      if (this.medkits > 0 && this.hp < this.maxHp) this.medkitTimer = MEDKIT.useTime;
+      if (this.medkits > 0 && this.hp < this.maxHp) {
+        this.medkitTimer = MEDKIT.useTime;
+        this.game.bus.emit('medkit:use');
+      }
     }
 
     const moving = input.move.x !== 0 || input.move.y !== 0;
@@ -176,6 +183,20 @@ export class Player {
     const spec = WEAPON_SPECS[id];
     this.muzzle.position.fromArray(spec.muzzle);
     this.weaponId = id;
+    // Estado de la animación (respiración, recarga): se crea con la primera arma.
+    if (!this._fx) {
+      const mag = new THREE.Mesh(new THREE.BoxGeometry(...RELOAD.magSize), new THREE.MeshStandardMaterial({ color: Number(RELOAD.magColor), roughness: 0.6 }));
+      mag.position.set(0, RELOAD.magHandY, 0.03);
+      mag.castShadow = true;
+      mag.visible = false;
+      this.parts.armL.add(mag);
+      this._fx = {
+        mag, idle: 1, last: performance.now(), magZ: RELOAD.magwellZ,
+        ph: { lower: 0, belt: 0, mag: 0, hasMag: false, bump: 0 },
+        base: { x: 0, z: 0 }, tgt: { x: 0, z: 0 }, pt: new THREE.Vector3(),
+      };
+    }
+    this._fx.magZ = spec.support ? spec.support[2] * 0.55 : RELOAD.magwellZ;
     // Armas de dos manos: el brazo izquierdo apunta al guardamanos (IK de un solo hueso:
     // con orden de Euler XYZ, la dirección del brazo (0,-1,0) gira primero en Z y luego en X).
     if (spec.support) {
@@ -190,27 +211,85 @@ export class Player {
 
   /** Animación y aspecto; se llama una vez por frame de render. */
   render() {
+    const { game, pose, parts, data } = this;
+    const fx = this._fx, ph = fx.ph;
+    const W = game.weapons, t = game.time;
     this.mesh.rotation.y = this.facing;
-    const moving = this.velocity.lengthSq() > 0.01;
-    computePose(this.pose, this.walkPhase, moving ? 1 : 0, 'police');
+    const speed = this.velocity.length();
+    const moving = speed > 0.1;
+    computePose(pose, this.walkPhase, moving ? 1 : 0, 'police');
+    const relaxedLeft = !!this.leftArmAim?.relaxed;
     if (this.leftArmAim) {
       // Relajado: cuelga y se balancea al andar (como las piernas, en contrafase).
-      this.pose.armL.x = this.leftArmAim.relaxed ? -this.pose.legL.x * 0.6 : this.leftArmAim.x;
-      this.pose.armL.z = this.leftArmAim.z;
+      pose.armL.x = relaxedLeft ? -pose.legL.x * 0.6 : this.leftArmAim.x;
+      pose.armL.z = this.leftArmAim.z;
     }
     // Porra: golpe de arriba abajo mientras dura el ataque.
-    const W = this.game.weapons;
     if (this.weaponId === 'porra' && W?.meleeTimer > 0) {
       const p = W.defs.porra, sw = p.swing;
       const k = 1 - W.meleeTimer * p.fireRate; // 0 → 1 durante el golpe
-      this.pose.armR.x = sw.raise + Math.min(1, k * sw.speed) * sw.sweep;
-      this.pose.armR.z = sw.twistFrom + k * sw.twist;
+      pose.armR.x = sw.raise + Math.min(1, k * sw.speed) * sw.sweep;
+      pose.armR.z = sw.twistFrom + k * sw.twist;
     }
-    // Las piernas se balancean respecto a la dirección de marcha, no de la mirada:
-    // basta con el balanceo simple para el blockout.
+
+    // Capas de animación sobre la pose base (todas derivadas del estado del juego, así que
+    // no hay nada que reiniciar al empezar de nuevo).
+    const now = performance.now();
+    const dtv = Math.min(0.1, (now - fx.last) / 1000);
+    fx.last = now;
+    fx.idle += ((moving ? 0 : 1) - fx.idle) * (1 - Math.exp(-8 * dtv));
+    // Respiración en reposo: el pecho sube y baja, los brazos y la cabeza lo acompañan.
+    const breath = Math.sin(t * FXP.breathSpeed) * fx.idle;
+    pose.torso.x += breath * FXP.breathTorso;
+    pose.armL.z += breath * FXP.breathArm;
+    pose.armR.z -= breath * FXP.breathArm;
+    pose.armR.x += Math.sin(t * FXP.breathSpeed * 0.8 + 1) * FXP.breathSway * fx.idle;
+    parts.head.position.y = PARTS.head.pivot[1] + breath * FXP.breathHead;
+    // Al esprintar se inclina hacia delante.
+    const sprint = clamp01((speed / data.speed - 1) / (data.sprintSpeed / data.speed - 1));
+    pose.torso.x += sprint * FXP.sprintLean;
+    pose.head.x -= sprint * FXP.sprintLean * 0.7;
+    // Retroceso del arma al disparar (el arma sube y el cuerpo se echa atrás).
+    const rc = game.effects?.recoil ?? 0;
+    if (rc > 0 && this.weaponId !== 'porra') {
+      pose.armR.x -= rc * FXP.recoilArm;
+      if (!relaxedLeft) pose.armL.x -= rc * FXP.recoilArm * 0.8;
+      pose.torso.x -= rc * FXP.recoilTorso;
+      pose.head.x += rc * FXP.recoilTorso * 0.5;
+    }
+    // Encogimiento al recibir daño.
+    if (this.alive && this.hurtTimer > 0) {
+      const k = this.hurtTimer / data.hurtFlashTime;
+      pose.torso.x -= k * FXP.flinchTorso;
+      pose.torso.z += Math.sin(t * 38) * k * FXP.flinchTorso * 0.4;
+      pose.head.x -= k * FXP.flinchHead;
+      pose.armR.x -= k * FXP.flinchArm;
+      if (!relaxedLeft) pose.armL.x -= k * FXP.flinchArm;
+    }
+    // Recarga: el arma baja y se ladea, la mano izquierda va a la cartuchera, coge el cargador
+    // y lo encaja; después se vuelve a la posición de tiro.
+    const wp = W?.weapon;
+    let cant = 0;
+    ph.hasMag = false;
+    if (this.alive && wp && wp.reloading > 0 && !wp.data.melee) {
+      reloadPhases(ph, 1 - wp.reloading / wp.stats.reloadTime);
+      pose.armR.x += ph.lower * RELOAD.armDown + ph.bump * RELOAD.insertBump;
+      pose.torso.x += ph.lower * RELOAD.torsoLean;
+      pose.head.x += ph.lower * RELOAD.headDown;
+      cant = ph.lower * RELOAD.cant;
+      // Objetivo de la mano: el hueco del cargador del arma (ya girada con el brazo).
+      weaponPointInChar(fx.pt, pose.armR.x, 0, RELOAD.magwellY, fx.magZ);
+      armAnglesToward(fx.tgt, PARTS.armL.pivot[0], PARTS.armL.pivot[1], PARTS.armL.pivot[2], fx.pt.x, fx.pt.y, fx.pt.z);
+      const wBase = 1 - ph.belt - ph.mag;
+      pose.armL.x = pose.armL.x * wBase + RELOAD.beltX * ph.belt + fx.tgt.x * ph.mag;
+      pose.armL.z = pose.armL.z * wBase + RELOAD.beltZ * ph.belt + fx.tgt.z * ph.mag;
+    }
+    this.weaponMesh.rotation.z = cant;
+    fx.mag.visible = ph.hasMag;
+
     for (const n of PART_NAMES) {
-      this.parts[n].rotation.x = this.pose[n].x;
-      this.parts[n].rotation.z = this.pose[n].z;
+      parts[n].rotation.x = pose[n].x;
+      parts[n].rotation.z = pose[n].z;
     }
   }
 

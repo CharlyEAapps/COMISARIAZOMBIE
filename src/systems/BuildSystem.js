@@ -365,6 +365,7 @@ export class BuildSystem {
     }
     this.applyGrid(s);
     this.game.floating?.spawn(`-${cost}`, s.cx, 1.6, s.cz, 'neg');
+    this.game.bus.emit('build:upgraded', { s });
     this.changed(s.def.blocks);
     return true;
   }
@@ -379,6 +380,7 @@ export class BuildSystem {
     this.game.run.points -= cost;
     s.hp = s.maxHp;
     s.repairReady = this.game.time + this.cfg.repairCooldown;
+    this.game.bus.emit('build:repaired', { s });
     // La reparación no cuenta como inversión: vender devuelve sobre lo construido/mejorado.
     this.applyGrid(s);
     this.game.floating?.spawn(`-${cost}`, s.cx, 1.6, s.cz, 'neg');
@@ -394,6 +396,7 @@ export class BuildSystem {
     const v = this.sellValue(s);
     this.game.run.points += v;
     this.game.floating?.spawn(`+${v}`, s.cx, 1.6, s.cz, 'pts');
+    this.game.bus.emit('build:sold', { s });
     this.remove(s);
   }
 
@@ -433,14 +436,11 @@ export class BuildSystem {
     }
     const g = this.game.grid;
     const x = g.centerX(k % g.w), z = g.centerZ((k / g.w) | 0);
-    const debris = s.level === 0 && s.type === 'barricada' ? 0x8a5a32 : s.type === 'sacos' ? 0xc9b48a : 0x9a9a9a;
-    if (!quiet) this.game.effects.burst(x, 0.9, z, 4, debris, { speed: 2, up: 2.5, size: 0.07, life: 0.7 });
+    // Los escombros por material los pinta Effects al oír 'structure:hit' y 'build:destroyed'.
+    if (!quiet) this.game.bus.emit('structure:hit', { s, x, z });
     if (s.hp <= 0) {
       if (s.type === 'generador') this.game.hud?.toast(`🔋 ¡Han destruido un generador!${this.game.humor?.tag('generatorDown') ?? ''}`, 5);
       if (s.type === 'torreta') this.game.hud?.toast('🎯 ¡Han destruido una torreta!', 4);
-      for (const c of s.cells) {
-        this.game.effects.burst(g.centerX(c % g.w), 0.7, g.centerZ((c / g.w) | 0), 22, debris, { speed: 3.5, up: 4, size: 0.12, life: 1.5 });
-      }
       this.game.effects.shake(0.12);
       this.game.bus.emit('build:destroyed', { type: s.type, k });
       this.remove(s);
@@ -555,6 +555,7 @@ export class BuildSystem {
       s.yaw += Math.max(-step, Math.min(step, dy));
       if (Math.abs(dy) > def.aimTolerance || s.cooldown > 0) continue;
       if (s.ammo <= 0) {
+        this.game.bus.emit('turret:empty', { s });
         if (!s.emptyWarned) {
           s.emptyWarned = true;
           this.game.hud?.toast(`🎯 Una torreta se ha quedado sin munición: recárgala con E.${this.game.humor?.tag('turretEmpty') ?? ''}`, 5);
@@ -642,6 +643,7 @@ export class BuildSystem {
     }
     this.applyGrid(s);
     this.changed(true);
+    this.game.bus.emit('door:toggle', { open: s.open, x: s.cx, z: s.cz });
     return null;
   }
 
@@ -668,6 +670,7 @@ export class BuildSystem {
         if (z.trapAcc >= tickDmg) { zombies.damage(z, z.trapAcc, 0, 0, 0, true); z.trapAcc = 0; }
         z.slowMul = Math.min(z.slowMul, this.levelStat(s.def, s.level, 'slow'));
         s.hp -= s.def.wearPerZombieSecond * dt;
+        if (Math.random() < dt * 3) this.game.bus.emit('trap', { kind: 'spike', x: s.cx, z: s.cz });
         if (Math.random() < dt * 6) effects.burst(z.pos.x, 0.3, z.pos.z, 1, 0x4a1d1d, { speed: 1, up: 1.5, size: 0.06, life: 0.5 });
         if (s.hp <= 0) {
           this.game.hud.toast(s.type === 'pinchos' ? '📌 Unos pinchos se han roto' : '➰ Un alambre de espino se ha roto');
@@ -681,10 +684,12 @@ export class BuildSystem {
         effects.burst(z.pos.x, 0.3, z.pos.z, 8, 0x4a1d1d, { speed: 2, up: 2, size: 0.07, life: 0.8 });
         s.rearm = this.levelStat(s.def, s.level, 'holdTime') + s.def.rearmTime;
         s.flash = 0.2;
+        this.game.bus.emit('trap', { kind: 'trap_snap', x: s.cx, z: s.cz });
         s.hp -= 1;
         if (s.hp <= 0) this.remove(s);
       } else if (s.type === 'mina' && s.fuse < 0) {
         s.fuse = s.def.fuse;
+        this.game.bus.emit('trap', { kind: 'mine_beep', x: s.cx, z: s.cz });
         s.flash = s.def.fuse;
       }
     }

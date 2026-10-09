@@ -67,6 +67,7 @@ export class AcidSystem {
     const p = this.puddles.find((o) => !o.active) ?? this.puddles.reduce((a, o) => (o.timer < a.timer ? o : a));
     Object.assign(p, { active: true, x: b.x1, z: b.z1, r: sp.puddleRadius, timer: sp.puddleTime, life: sp.puddleTime, sp, acc: 0 });
     game.effects.burst(b.x1, 0.2, b.z1, 12, BLOB_COLOR, { speed: 2.5, up: 2.5, size: 0.08, life: 0.6 });
+    game.bus.emit('acid:splash', { x: b.x1, z: b.z1 });
     const pl = game.player;
     if (Math.hypot(pl.position.x - b.x1, pl.position.z - b.z1) < sp.puddleRadius + pl.radius) pl.damage(sp.impactDamage);
   }

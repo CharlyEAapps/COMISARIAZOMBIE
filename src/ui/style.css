@@ -114,10 +114,13 @@ html, body {
   transition: opacity 0.1s;
 }
 
+.hint { display: none; }
+.hint.show { display: block; }
 .hint {
-  position: absolute; left: 12px; bottom: 12px;
+  /* Va en la misma columna que los avisos de acción (abajo, centrado): nunca se solapan. */
   padding: 8px 14px; font-size: 12.5px; color: var(--hud-fg);
-  white-space: nowrap; transition: opacity 0.6s;
+  white-space: normal; text-align: center; max-width: min(760px, calc(100vw - 24px));
+  line-height: 1.9; transition: opacity 0.6s;
 }
 
 .key {
@@ -323,7 +326,7 @@ html, body {
 @media (max-width: 640px) {
   .panel-status { width: 200px; }
   .clock-big { font-size: 26px; }
-  .hint { display: none; }
+  .hint, .hint.show { display: none; }
   .panel-case { top: 290px; width: 200px; }
 }
 @media (max-width: 900px) {
@@ -333,7 +336,8 @@ html, body {
 }
 @media (max-width: 1000px) {
   .banner { top: 58%; }
-  .toasts { top: auto; bottom: 150px; }
+  /* Avisos arriba, a la derecha del panel de estado (abajo chocaban con los textos de acción). */
+  .toasts { top: 14px; left: 330px; right: 12px; width: auto; transform: none; }
   .banner-title { font-size: 30px; }
 }
 
@@ -358,10 +362,9 @@ html, body {
 @media (max-width: 1100px) {
   .boss-bar { left: 340px; right: 14px; width: auto; transform: none; }
 }
-@media (max-width: 1000px) {
-  .hud.boss-on .toasts { top: auto; }
-  /* En modo construcción los avisos suben por encima de la barra de piezas. */
-  .hud.building .toasts { bottom: 290px; }
+@media (max-width: 640px) {
+  .toasts { left: 228px; }
+  .toast { font-size: 12px; padding: 6px 10px; }
 }
 @media (max-width: 700px) {
   /* Arriba, a la derecha del panel de estado (200 px en móvil). */
@@ -374,3 +377,8 @@ html, body {
 .shop-row .flavor { font-size: 11px; font-style: italic; color: var(--hud-dim); margin-top: 2px; }
 .obit { font-style: italic; color: var(--hud-dim); margin: 10px auto 14px; max-width: 420px; text-align: center; }
 .banner-sub i { color: var(--hud-dim); font-size: 14px; }
+
+/* Volúmenes (menú de pausa) */
+.volumes { display: grid; gap: 10px; margin-top: 16px; text-align: left; pointer-events: auto; }
+.volumes label { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 12px; font-size: 14px; }
+.volumes input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }

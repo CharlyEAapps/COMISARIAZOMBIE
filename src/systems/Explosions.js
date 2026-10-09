@@ -32,9 +32,9 @@ export function explode(game, x, z, o) {
     player.damage(o.damage * o.playerDamageMul * (1 - (dp / R) * F));
   }
   game.build?.blast(x, z, R, o.structureDamage ?? 0, F);
-  effects.burst(x, 0.4, z, 40, o.color ?? 0xff9a2a, { speed: 6, up: 6, size: 0.1, life: 0.7 });
-  effects.burst(x, 0.4, z, 25, 0x2a2a2a, { speed: 3, up: 5, size: 0.16, life: 1.6 });
-  effects.muzzleFlash({ x, y: 1.2, z });
+  // Humo, brasas, onda y destello los pinta Effects al oír 'explosion'; aquí solo el color
+  // propio de las explosiones de zombi (ácido verdoso).
+  if (o.color) effects.burst(x, 0.4, z, 30, o.color, { speed: 6, up: 6, size: 0.1, life: 0.7 });
   effects.shake(config.combat.explosionShake);
   game.bus.emit('explosion', { x, z, radius: R });
   return hits;

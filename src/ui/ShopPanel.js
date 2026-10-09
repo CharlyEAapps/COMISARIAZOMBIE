@@ -30,7 +30,11 @@ export class ShopPanel {
 
   buy(id) {
     const why = this.game.shop.whyNot(id);
-    if (why) { this.game.hud.toast(`✋ ${why}`, 2); return; }
+    if (why) {
+      this.game.hud.toast(`✋ ${why}`, 2);
+      this.game.bus.emit('shop:denied', { id, why });
+      return;
+    }
     const msg = this.game.shop.buy(id);
     if (msg) this.game.hud.toast(msg, 3);
     this.render(true);

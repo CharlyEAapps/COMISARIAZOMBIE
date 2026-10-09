@@ -27,7 +27,7 @@ De día preparas la comisaría; al anochecer suena la sirena y llega la horda. A
 | N | Empezar la noche ya (de día) |
 | B | Modo construcción (Tab cambia entre Defensas y Trampas · 1-7 eligen pieza · clic construye/repara/mejora · arrastrar = fila · clic dcho ×2 vende · clic dcho en vacío sale) |
 | Rueda | Zoom |
-| Esc | Pausa |
+| Esc | Pausa (con volumen de música, efectos y general) |
 | Enter | Reintentar tras morir |
 | F1 | Panel de depuración (modo dios, saltar a la noche, generar zombis, ver flow field…) |
 
@@ -90,6 +90,11 @@ Al empezar solo puedes construir barricadas y sacos de madera.
 | 📋 Pizarra de casos | Objetivo para la noche con recompensa |
 | 🚓 Coches patrulla | La sirena atrae a los zombis cercanos durante 10 s |
 | 🚨 Alarma | Luces de emergencia y zombis más lentos durante 20 s (una vez por noche) |
+
+## Sonido
+- Efectos posicionales: los oyes desde donde ocurren (el oyente va con el policía). La mayoría se sintetizan por código; los gruñidos, el rugido del jefe, la sirena, los pasos, los golpes y la música son grabaciones CC0 (ver `CREDITS.md`).
+- Música de día tranquila e inquietante; de noche, ambiente tenso. Cambian con un fundido al anochecer y al amanecer.
+- Los volúmenes se ajustan en la pausa y se recuerdan entre partidas.
 
 ## Desarrollo
 - `npm test`: tests unitarios.

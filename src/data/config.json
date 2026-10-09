@@ -43,5 +43,331 @@
     "fireBuffer": 0.15,
     "explosionShake": 0.45,
     "explosionBodyPad": 0.5
+  },
+  "fx": {
+    "_comment": "Constantes visuales (fase 6). Colores en hex RGB; tiempos en segundos; distancias en metros.",
+    "particles": {
+      "max": 600,
+      "gravity": 12,
+      "floorDamp": 0.6
+    },
+    "tracers": {
+      "max": 24,
+      "life": 0.07,
+      "width": 0.05
+    },
+    "flash": {
+      "intensity": 25,
+      "time": 0.05,
+      "explosionIntensity": 70,
+      "explosionTime": 0.22
+    },
+    "casings": {
+      "max": 48,
+      "life": 2.0,
+      "fadeTime": 0.35,
+      "gravity": 16,
+      "bounce": 0.4,
+      "friction": 0.55,
+      "restSpeed": 0.5,
+      "size": [0.05, 0.05, 0.12],
+      "ejectSpeed": 2.2,
+      "ejectSpeedJitter": 0.4,
+      "ejectUp": 3.2,
+      "ejectBack": 0.5,
+      "ejectSide": 0.04,
+      "spin": 22,
+      "floorY": 0.02,
+      "restOffsetY": 0.012
+    },
+    "puffs": {
+      "max": 260
+    },
+    "rings": {
+      "max": 12,
+      "inner": 0.92
+    },
+    "weapons": {
+      "pistola": {
+        "casings": 1,
+        "casingColor": "0xe0aa3c",
+        "casingScale": 1,
+        "smoke": 1,
+        "recoil": 0.8,
+        "ejectBack": 0.11
+      },
+      "escopeta": {
+        "casings": 1,
+        "casingColor": "0xc8372d",
+        "casingScale": 1.9,
+        "smoke": 2.2,
+        "recoil": 1.7,
+        "ejectBack": 0.37
+      },
+      "subfusil": {
+        "casings": 1,
+        "casingColor": "0xe0aa3c",
+        "casingScale": 0.9,
+        "smoke": 0.8,
+        "recoil": 0.45,
+        "ejectBack": 0.21
+      },
+      "fusil": {
+        "casings": 1,
+        "casingColor": "0xd8a23a",
+        "casingScale": 1.25,
+        "smoke": 1.2,
+        "recoil": 0.7,
+        "ejectBack": 0.35
+      },
+      "francotirador": {
+        "casings": 1,
+        "casingColor": "0xd8a23a",
+        "casingScale": 1.6,
+        "smoke": 1.8,
+        "recoil": 2.0,
+        "ejectBack": 0.44
+      },
+      "taser": {
+        "casings": 0,
+        "casingColor": "0xffffff",
+        "casingScale": 1,
+        "smoke": 0,
+        "recoil": 0.3,
+        "ejectBack": 0.1
+      }
+    },
+    "muzzleSmoke": {
+      "size": 0.14,
+      "grow": 3.2,
+      "life": 0.55,
+      "alpha": 0.3,
+      "speed": 0.9,
+      "rise": 0.5,
+      "color": "0xb4b4b4"
+    },
+    "wallSpark": {
+      "count": 8,
+      "speed": 3.2,
+      "up": 1.6,
+      "size": 0.05,
+      "life": 0.35,
+      "color": "0xffd98a",
+      "dustCount": 3,
+      "dustColor": "0xbfb6a3",
+      "width": 0.05,
+      "puffSize": 0.14,
+      "puffLife": 0.5,
+      "puffAlpha": 0.4
+    },
+    "zombieDeath": {
+      "yawJitter": 0.7,
+      "settleBounce": 0.07,
+      "settleStart": 0.82,
+      "fallPower": 2.2,
+      "landDist": 1.1,
+      "dustPuffs": 2,
+      "dustSpeed": 1.4,
+      "dustSize": 0.28,
+      "dustGrow": 2.4,
+      "dustLife": 0.7,
+      "dustAlpha": 0.32,
+      "dustColor": "0xb9ad98"
+    },
+    "decals": {
+      "max": 96,
+      "stainLife": 20,
+      "stainFadeFraction": 0.55,
+      "stainAlpha": 0.62,
+      "stainColor": "0x2a1214",
+      "stainRadius": 0.62,
+      "stainRadiusJitter": 0.25,
+      "stainOffset": 0.45,
+      "stainAspect": [0.8, 1.25],
+      "scorchLife": 30,
+      "scorchFadeFraction": 0.5,
+      "scorchAlpha": 0.9,
+      "scorchColor": "0x0a0908",
+      "scorchRadiusMul": 0.6,
+      "y": 0.012,
+      "yStep": 0.00015,
+      "polygonOffsetFactor": -2,
+      "polygonOffsetUnits": -2,
+      "textureSize": 128,
+      "blobBumps": 9,
+      "growTime": 0.5,
+      "growFrom": 0.35,
+      "yCycle": 64
+    },
+    "explosion": {
+      "ringMul": 1.15,
+      "ringLife": 0.45,
+      "ringColor": "0xffb15a",
+      "ring2Delay": 0.08,
+      "ring2Life": 0.7,
+      "ring2Color": "0xd9cbb2",
+      "ringY": 0.08,
+      "smokeCount": 14,
+      "smokeDelay": 0.045,
+      "smokeLife": 2.4,
+      "smokeLifeJitter": 0.35,
+      "smokeRise": 3.0,
+      "smokeSize": 0.7,
+      "smokeGrow": 2.4,
+      "smokeSpread": 0.9,
+      "smokeAlpha": 0.55,
+      "smokeColor": "0x3a3836",
+      "smokeColorLight": "0x8d8985",
+      "dustCount": 12,
+      "dustSpeed": 5.0,
+      "dustSize": 0.5,
+      "dustGrow": 1.8,
+      "dustLife": 0.9,
+      "dustAlpha": 0.45,
+      "dustColor": "0xc2b49a",
+      "emberCount": 16,
+      "emberSpeed": 7,
+      "emberUp": 8,
+      "emberSize": 0.05,
+      "emberLife": 0.8,
+      "emberColor": "0xffc13a",
+      "refRadius": 4,
+      "ringBright": 0.5,
+      "ring2Bright": 0.28
+    },
+    "sprintDust": {
+      "interval": 0.11,
+      "speedThreshold": 6.0,
+      "size": 0.2,
+      "grow": 2.8,
+      "life": 0.5,
+      "alpha": 0.5,
+      "color": "0xc9bda5",
+      "backSpeed": 0.8,
+      "rise": 0.5,
+      "footSide": 0.12,
+      "flecks": 2,
+      "fleckSize": 0.07
+    },
+    "debris": {
+      "wood": {
+        "colors": ["0x8a5a32", "0x6e4524", "0xa56d3a"],
+        "chips": 16,
+        "splinters": 10,
+        "dust": 4,
+        "dustColor": "0xb89a74",
+        "sparks": 0
+      },
+      "metal": {
+        "colors": ["0x8d9096", "0x6b6e73", "0xb3b6bb"],
+        "chips": 14,
+        "splinters": 0,
+        "dust": 3,
+        "dustColor": "0x9a9a9a",
+        "sparks": 16
+      },
+      "concrete": {
+        "colors": ["0xa8a8a2", "0x8d8d88", "0xc0c0ba"],
+        "chips": 16,
+        "splinters": 0,
+        "dust": 8,
+        "dustColor": "0xb4b1a8",
+        "sparks": 0
+      },
+      "sack": {
+        "colors": ["0xd2bd8f", "0xc2a874", "0xe0cfa6"],
+        "chips": 14,
+        "splinters": 0,
+        "dust": 8,
+        "dustColor": "0xd9c9a2",
+        "sparks": 0
+      },
+      "types": {
+        "sacos": "sack"
+      },
+      "barricadaLevels": ["wood", "metal", "concrete"],
+      "puertaLevels": ["wood", "metal"],
+      "default": "metal",
+      "hitChips": 3,
+      "hitDust": 1,
+      "chipSpeed": 3.6,
+      "chipUp": 4.5,
+      "chipSize": 0.1,
+      "chipLife": 1.3,
+      "splinterSize": 0.04,
+      "dustSize": 0.3,
+      "dustGrow": 2.0,
+      "dustLife": 0.8,
+      "dustAlpha": 0.5,
+      "splinterLong": 5,
+      "sparkSpeed": 5.5,
+      "sparkUp": 4,
+      "sparkColor": "0xffcf7a",
+      "sparkLife": 0.5,
+      "hitSparks": 5
+    },
+    "player": {
+      "breathSpeed": 2.3,
+      "breathTorso": 0.018,
+      "breathArm": 0.02,
+      "breathHead": 0.012,
+      "recoilArm": 0.3,
+      "recoilTorso": 0.09,
+      "recoilDecay": 13,
+      "recoilWeaponTilt": 0.12,
+      "flinchTorso": 0.4,
+      "flinchHead": 0.55,
+      "flinchArm": 0.5,
+      "sprintLean": 0.22,
+      "reload": {
+        "lowerAt": 0.16,
+        "raiseFrom": 0.84,
+        "beltAt": 0.22,
+        "handoffAt": 0.42,
+        "insertAt": 0.52,
+        "returnAt": 0.62,
+        "backAt": 0.8,
+        "bumpWidth": 0.06,
+        "armDown": 0.75,
+        "cant": 0.55,
+        "headDown": 0.3,
+        "torsoLean": 0.1,
+        "beltX": -0.42,
+        "beltZ": 0.14,
+        "magwellY": -0.07,
+        "magwellZ": 0.02,
+        "insertBump": 0.12,
+        "magSize": [0.07, 0.16, 0.09],
+        "magColor": "0x7b828e",
+        "magHandY": -0.56
+      },
+      "breathSway": 0.012
+    },
+    "sparks": {
+      "max": 200,
+      "streak": 0.035
+    },
+    "muzzleFlash": {
+      "count": 4,
+      "speed": 9,
+      "up": 0.4,
+      "color": "0xffd27a",
+      "life": 0.07,
+      "width": 0.07,
+      "spread": 0.22
+    },
+    "turret": {
+      "height": 1.1,
+      "muzzle": 0.6,
+      "casingColor": "0xd8a23a"
+    },
+    "zombieHit": {
+      "time": 0.18,
+      "torsoTilt": 0.5,
+      "headTilt": 0.8,
+      "armKick": 0.6,
+      "shift": 0.14,
+      "resistDamp": 0.85
+    }
   }
 }

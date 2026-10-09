@@ -42,6 +42,7 @@ export class Score {
     // Un explosivo que revienta él solo no cuenta como baja (ni para el combo).
     if (selfDestruct) return;
     run.killsByType[type] = (run.killsByType[type] ?? 0) + 1;
+    const before = this.multiplier;
     this.combo = this.comboTimer > 0 ? this.combo + 1 : 1;
     this.comboTimer = this.cfg.comboWindow;
     this.maxCombo = Math.max(this.maxCombo, this.combo);
@@ -49,6 +50,7 @@ export class Score {
     this.nightStats.kills++;
     run.kills++;
     const mult = this.multiplier;
+    if (mult > before) this.game.bus.emit('combo', { mult });
     const pts = Math.round(points * mult);
     this.addPoints(pts, x, z, mult > 1 ? `+${pts} ×${mult}` : `+${pts}`);
   }

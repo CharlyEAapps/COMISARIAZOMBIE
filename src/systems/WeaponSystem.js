@@ -159,6 +159,7 @@ export class WeaponSystem {
         const take = w.reserve < 0 ? need : Math.min(need, w.reserve);
         w.mag += take;
         if (w.reserve >= 0) w.reserve -= take;
+        this.game.bus.emit('weapon:reloaded', { weapon: w });
       }
     }
     if (!player.alive) return;
@@ -188,6 +189,8 @@ export class WeaponSystem {
       return;
     }
     if (cur.mag <= 0) {
+      // Sin balas ni reserva: solo el clic del gatillo.
+      if (cur.reserve === 0 && cur.buffer > 0) { cur.buffer = 0; this.game.bus.emit('weapon:empty'); }
       this.startReload();
       return;
     }
@@ -255,16 +258,14 @@ export class WeaponSystem {
         // Sin perforación restante, la trazadora acaba en este zombi; si no, sigue hasta el muro.
         endDist = pierce === d.pierce ? hit.t : wallDist;
       }
+      // El impacto en el muro (chispas y polvo) lo pinta Effects.tracer al detectar el muro.
       if (barrel && !shielded && endDist === wallDist) game.build.detonateBarrel(barrel.s, 0);
-      else if (endDist === wallDist && wallDist < d.range) {
-        effects.burst(ox + dx * wallDist, SHOT_HEIGHT, oz + dz * wallDist, 4, 0xbfb6a3, { speed: 1.5, dirX: -dx, dirZ: -dz, size: 0.06, life: 0.4 });
-      }
       this._to.set(ox + dx * endDist, SHOT_HEIGHT, oz + dz * endDist);
       effects.tracer(muzzle, this._to, d.tracerColor);
     }
     effects.muzzleFlash(muzzle);
     effects.shake(d.shake);
-    game.bus.emit('weapon:fired', { weapon: d });
+    game.bus.emit('weapon:fired', { weapon: d, id: w.id });
   }
 
   /** Táser: aturde al zombi alcanzado y salta a los más cercanos (sin atravesar muros). */

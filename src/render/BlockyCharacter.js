@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import config from '../data/config.json';
 
 // Personaje "de bloques" (estilo vóxel) compartido por el policía y los zombis.
 // Cada parte tiene su pivote (cadera, hombro, cuello) para animar por rotación.
@@ -106,4 +107,79 @@ export function buildPolice() {
   mount.add(muzzle);
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return { root, parts, mount, muzzle };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Animación (funciones puras, sin asignaciones: reciben el objeto de salida)
+// ---------------------------------------------------------------------------------------------
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+/** Suavizado 0→1 entre a y b (smoothstep). */
+export function smooth(a, b, v) {
+  const t = clamp01((v - a) / (b - a));
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Curva del ángulo de caída de un zombi muerto (t y resultado en 0..1): arranca despacio,
+ * acelera (gravedad) y rebota un poco al tocar el suelo.
+ */
+export function fallCurve(t, cfg = config.fx.zombieDeath) {
+  const c = clamp01(t);
+  if (c >= 1) return 1;
+  if (c < cfg.settleStart) return Math.pow(c / cfg.settleStart, cfg.fallPower);
+  const k = (c - cfg.settleStart) / (1 - cfg.settleStart);
+  return 1 - cfg.settleBounce * Math.sin(k * Math.PI);
+}
+
+/** Intensidad (1→0) de la reacción a un impacto `age` segundos después de recibirlo. */
+export function hitReaction(age, time) {
+  if (age < 0 || age >= time) return 0;
+  const k = 1 - age / time;
+  return k * k;
+}
+
+/**
+ * Giros (x, z) que apuntan un brazo "de un solo hueso" desde el hombro (sx,sy,sz) hacia el
+ * punto (tx,ty,tz). Con orden de Euler XYZ, la dirección (0,-1,0) del brazo gira primero en
+ * Z y luego en X: dir = (sin z, -cos z·cos x, -cos z·sin x).
+ */
+export function armAnglesToward(out, sx, sy, sz, tx, ty, tz) {
+  const dx = tx - sx, dy = ty - sy, dz = tz - sz;
+  const l = Math.hypot(dx, dy, dz) || 1;
+  out.z = Math.asin(Math.max(-1, Math.min(1, dx / l)));
+  out.x = Math.atan2(-dz / l, -dy / l);
+  return out;
+}
+
+/**
+ * Punto (wx,wy,wz) del arma en el espacio del personaje, con el brazo derecho girado `armX`.
+ * El soporte del arma gira con el brazo: Rx(armX+90°)·p + Rx(armX)·montaje + hombro.
+ */
+export function weaponPointInChar(out, armX, wx, wy, wz) {
+  const a = armX + WEAPON_MOUNT.rotationX;
+  const ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(armX), sb = Math.sin(armX);
+  const my = WEAPON_MOUNT.position.y, mz = WEAPON_MOUNT.position.z;
+  const piv = PARTS.armR.pivot;
+  out.x = piv[0] + wx;
+  out.y = piv[1] + wy * ca - wz * sa + my * cb - mz * sb;
+  out.z = piv[2] + wy * sa + wz * ca + my * sb + mz * cb;
+  return out;
+}
+
+/**
+ * Fases de la animación de recarga para el progreso p (0→1). Rellena `out`:
+ *  lower  0..1  cuánto baja y se ladea el arma,
+ *  belt   0..1  peso de la mano izquierda yendo a la cartuchera,
+ *  mag    0..1  peso de la mano izquierda en el cargador del arma,
+ *  hasMag       si lleva el cargador en la mano,
+ *  bump   0..1  sacudida al encajar el cargador.
+ */
+export function reloadPhases(out, p, cfg = config.fx.player.reload) {
+  const q = clamp01(p);
+  out.lower = smooth(0, cfg.lowerAt, q) * (1 - smooth(cfg.raiseFrom, 1, q));
+  out.belt = smooth(0, cfg.beltAt, q) - smooth(cfg.beltAt, cfg.handoffAt, q);
+  out.mag = smooth(cfg.beltAt, cfg.handoffAt, q) - smooth(cfg.returnAt, cfg.backAt, q);
+  out.hasMag = q > cfg.beltAt && q < cfg.insertAt;
+  out.bump = Math.max(0, 1 - Math.abs(q - cfg.insertAt) / cfg.bumpWidth);
+  return out;
 }

@@ -87,10 +87,12 @@ export class Humor {
       const [a, b] = this.cfg.radio.nightInterval;
       this.radioTimer = a + Math.random() * (b - a);
       hud?.toast(this.pick('radio.night'), 7);
+      this.game.bus.emit('radio');
     }
     if (dayNight.phase === PHASE.DAY && (this.dayTimer -= dt) <= 0) {
       this.dayTimer = Infinity;
       hud?.toast(this.pick('radio.day'), 7);
+      this.game.bus.emit('radio');
     }
   }
 }

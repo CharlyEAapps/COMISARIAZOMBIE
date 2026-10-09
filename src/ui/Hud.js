@@ -49,16 +49,21 @@ export class Hud {
         <div class="build-cards" data-k="buildCards"></div>
       </div>
       <div class="prompt-wrap">
+        <div class="hint panel" data-k="hint">
+          <span class="key">WASD</span> mover <span class="key">Ratón</span> apuntar y disparar <span class="key">R</span> recargar <span class="key">1-7</span> armas <span class="key">G</span> granada <span class="key">E</span> interactuar <span class="key">Q</span> botiquín <span class="key">Esc</span> pausa
+        </div>
         <div class="prompt panel" data-k="prompt">
           <span class="key">E</span><span data-k="promptText"></span>
           <div class="bar thin"><div class="fill prompt-fill" data-k="promptFill"></div></div>
         </div>
         <div class="prompt panel subtle" data-k="ready"><span class="key">B</span> Construir<span data-k="readyNight"> <span class="key">N</span> Empezar la noche ya</span></div>
       </div>
-      <div class="hint panel" data-k="hint">
-        <span class="key">WASD</span> mover <span class="key">Ratón</span> apuntar y disparar <span class="key">R</span> recargar <span class="key">1-7</span> armas <span class="key">G</span> granada <span class="key">E</span> interactuar <span class="key">Q</span> botiquín <span class="key">Esc</span> pausa
-      </div>
-      <div class="overlay" data-k="pause"><div class="panel modal"><h1>Pausa</h1><p>Pulsa <span class="key">Esc</span> para continuar</p></div></div>
+      <div class="overlay" data-k="pause"><div class="panel modal"><h1>Pausa</h1><p>Pulsa <span class="key">Esc</span> para continuar</p>
+        <div class="volumes">
+          <label><span>🎵 Música</span><input type="range" min="0" max="1" step="0.05" data-vol="music"></label>
+          <label><span>🔊 Efectos</span><input type="range" min="0" max="1" step="0.05" data-vol="sfx"></label>
+          <label><span>🎚️ General</span><input type="range" min="0" max="1" step="0.05" data-vol="master"></label>
+        </div></div></div>
       <div class="overlay" data-k="over">
         <div class="panel modal">
           <h1 class="danger">Has caído</h1>
@@ -123,6 +128,16 @@ export class Hud {
     bus.on('phase:noche', ({ night }) => {
       if (isBossNight(game.waves.cfg.boss, night)) this.toast(game.humor.pick('events.bossWarning'), 8);
     });
+  }
+
+  /** Conecta los deslizadores de volumen del menú de pausa con el audio. */
+  bindAudio(audio) {
+    for (const input of this.root.querySelectorAll('[data-vol]')) {
+      const kind = input.dataset.vol;
+      input.value = String(audio.volumes[kind]);
+      input.addEventListener('input', () => audio.setVolume(kind, Number(input.value)));
+      input.addEventListener('mousedown', (e) => e.stopPropagation());
+    }
   }
 
   /** Solo toca el DOM cuando cambia un valor. */
@@ -255,6 +270,8 @@ export class Hud {
 
     this.hintTimer -= dt;
     this.set('hint', this.hintTimer > 0 ? '1' : '0', 'opacity');
+    // Tras el fundido deja de ocupar sitio en la columna de avisos.
+    this.set('hint', this.hintTimer > -0.7, 'show');
 
     if (this.bannerTimer > 0 && (this.bannerTimer -= dt) <= 0) this.el.banner.classList.remove('show');
 

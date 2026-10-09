@@ -10,6 +10,7 @@ import { CameraRig } from '../render/CameraRig.js';
 import { MapRenderer } from '../render/MapRenderer.js';
 import { PropRenderer, PROP_TILES } from '../render/PropRenderer.js';
 import { Effects } from '../render/Effects.js';
+import { Decals } from '../render/Decals.js';
 import { Lighting } from '../render/Lighting.js';
 import { updateCutaway } from '../render/Cutaway.js';
 import { FlowFieldViz } from '../render/DebugViz.js';
@@ -31,6 +32,7 @@ import { ShopSystem } from '../systems/ShopSystem.js';
 import { BlastQueue } from '../systems/Explosions.js';
 import { AcidSystem } from '../systems/AcidSystem.js';
 import { Humor } from '../systems/Humor.js';
+import { AudioSystem } from '../audio/AudioSystem.js';
 import zombieData from '../data/zombies.json';
 import { ShopPanel } from '../ui/ShopPanel.js';
 import { WEAPON_IDS } from '../systems/WeaponSystem.js';
@@ -60,6 +62,8 @@ export class Game {
     this.mapRenderer = new MapRenderer(this.scene, this.grid, { skip: PROP_TILES });
     this.props = new PropRenderer(this.scene, this.grid);
     this.effects = new Effects(this.scene);
+    this.effects.bind(this);
+    this.decals = new Decals(this);
     this.player = new Player(this);
     this.zombies = new ZombieSystem(this);
     this.weapons = new WeaponSystem(this);
@@ -84,6 +88,8 @@ export class Game {
     this.flowViz = new FlowFieldViz(this.scene, this.grid);
     this.hud = new Hud(this);
     this.shopPanel = new ShopPanel(this);
+    this.audio = new AudioSystem(this);
+    this.hud.bindAudio(this.audio);
 
     this.aimPoint = new THREE.Vector3();
     this._raycaster = new THREE.Raycaster();
@@ -93,9 +99,6 @@ export class Game {
     this._ndc = new THREE.Vector2();
     this._cutTarget = new THREE.Vector3();
 
-    this.bus.on('zombie:killed', ({ x, z }) => {
-      this.effects.burst(x, 0.9, z, 14, 0x3d1a1a, { speed: 3, up: 3, size: 0.11, life: 1.4 });
-    });
     this.bus.on('player:died', () => { this.deathTimer = this.player.data.gameOverDelay; });
     this.bus.on('phase:noche', ({ night, duration }) => this.waves.startNight(night, duration));
     this.deathTimer = 0;
@@ -183,6 +186,9 @@ export class Game {
     this.grenadeRenderer.dispose();
     this.acid.dispose();
     this.zombies.dispose();
+    this.effects.dispose();
+    this.decals.dispose();
+    this.audio.dispose();
     this.lighting.dispose();
     this.debug.gui.destroy();
     this.renderer.renderer.dispose();
@@ -215,6 +221,7 @@ export class Game {
     this.build.reset();
     this.shop.reset();
     this.effects.reset();
+    this.decals.reset();
     this.blasts.reset();
     this.acid.reset();
     this.floating.reset();
@@ -286,6 +293,7 @@ export class Game {
     this.grenadeRenderer.update();
     this.acid.render(this.time);
     this.effects.update(visualDt);
+    this.decals.update(visualDt);
     this.lighting.update(visualDt);
     if (this.debug.flags.showFlowField) this.flowViz.update(this.zombies.flow, visualDt);
 
@@ -295,6 +303,7 @@ export class Game {
     this._cutTarget.set(pp.x, 1.0, pp.z);
     updateCutaway(this.cameraRig.camera.position, this._cutTarget);
     this.renderer.followFocus(this.cameraRig.focus);
+    this.audio.update(visualDt);
     this.renderer.render(this.cameraRig.camera);
 
     this.hud.update(dt);

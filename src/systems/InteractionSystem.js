@@ -196,6 +196,7 @@ export class InteractionSystem {
     if (e.repairTransformer) msg = game.build.repairTransformer();
     if (e.reloadTurret) msg = game.build.reloadTurret(it.cell);
     if (e.alarm) {
+      game.bus.emit('alarm', { seconds: e.alarm });
       game.lighting.triggerAlarm(e.alarm);
       game.zombies.slowAll(e.alarmSlow, e.alarm);
     }

@@ -3,9 +3,14 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import zombieData from '../data/zombies.json';
 import { FlowField, WideFlowField } from './FlowField.js';
 import { resolveCircleVsGrid, raycastGrid, rayCircle, SpatialHash } from './Physics.js';
-import { PARTS, PART_NAMES, partGeometry, computePose, makePose } from '../render/BlockyCharacter.js';
+import { PARTS, PART_NAMES, partGeometry, computePose, makePose, fallCurve, hitReaction } from '../render/BlockyCharacter.js';
+import config from '../data/config.json';
 import { ACCESSORIES, ACCESSORY_SETS } from '../render/ZombieAccessories.js';
 
+const FX_HIT = config.fx.zombieHit;
+const FX_DEATH = config.fx.zombieDeath;
+const AXIS_X = new THREE.Vector3(1, 0, 0);
+const AXIS_Y = new THREE.Vector3(0, 1, 0);
 const SHIRTS = [0x7a5c3e, 0x4b5d73, 0x8c3b3b, 0x5f6b4e, 0x6b6b6b, 0x6a4f7a];
 const PANTS = [0x2e3542, 0x3e3328, 0x24282e, 0x40464f];
 const WHITE = new THREE.Color(0xffffff);
@@ -46,6 +51,7 @@ function makeZombie(id) {
     state: Z_STATE.CHASE, windup: 0, cooldown: 0, attackAnim: 0,
     losTimer: 0, hasLos: false, walkPhase: 0, flash: 0,
     deathTimer: 0, fall: 0, sink: 0,
+    hitAt: -9, hitDirX: 0, hitDirZ: 0, hitPower: 1, fallYaw: 0, // reacciones visuales a impactos
     stunTimer: 0, slowMul: 1, vandal: false, attackTarget: 0, // 0 jugador, 1 estructura, 2 transformador
     targetCell: -1, body: null, turn: 0, big: false, nick: '', shieldMsgAt: -9,
     spitCd: 0, spitWindup: 0, spitLos: false, selfDestruct: false, exploded: false,
@@ -131,6 +137,8 @@ export class ZombieSystem {
     this._s = new THREE.Vector3();
     this._one = new THREE.Vector3(1, 1, 1);
     this._c = new THREE.Color();
+    this._qa = new THREE.Quaternion();
+    this._qb = new THREE.Quaternion();
   }
 
   get aliveCount() {
@@ -228,6 +236,7 @@ export class ZombieSystem {
     zb.hasLos = false;
     zb.walkPhase = Math.random() * 10;
     zb.flash = 0; zb.deathTimer = 0; zb.fall = 0; zb.sink = 0;
+    zb.hitAt = -9; zb.hitDirX = zb.hitDirZ = 0; zb.hitPower = 1; zb.fallYaw = 0;
     zb.stunTimer = 0; zb.slowMul = 1; zb.attackTarget = 0; zb.targetCell = -1;
     zb.turn = d.turnSharpness ?? this.ai.turnSharpness;
     zb.spitCd = d.spit ? d.spit.cooldown * Math.random() : 0;
@@ -270,6 +279,12 @@ export class ZombieSystem {
     knockback *= 1 - (zb.data.knockbackResist ?? 0);
     if (!quiet) {
       zb.flash = 0.1;
+      // Reacción visual: sacudida en la dirección del impacto y caída hacia allí al morir.
+      if (dirX || dirZ) {
+        zb.hitDirX = dirX; zb.hitDirZ = dirZ;
+        zb.hitAt = this.game.time ?? 0;
+        zb.hitPower = 1 - (zb.data.knockbackResist ?? 0) * FX_HIT.resistDamp;
+      }
       if (knockback) {
         zb.pos.x += dirX * knockback;
         zb.pos.z += dirZ * knockback;
@@ -292,6 +307,9 @@ export class ZombieSystem {
     zb.windup = 0;
     zb.attackAnim = 0;
     zb.spitWindup = 0;
+    // Cae en la dirección del último impacto (con algo de variación); sin impacto, hacia atrás.
+    const hasDir = zb.hitDirX !== 0 || zb.hitDirZ !== 0;
+    zb.fallYaw = (hasDir ? Math.atan2(zb.hitDirX, zb.hitDirZ) : zb.facing + Math.PI) + (Math.random() - 0.5) * 2 * FX_DEATH.yawJitter;
     if (this.boss === zb) {
       this.boss = null;
       this.game.bus.emit('boss:killed', { type: zb.type, x: zb.pos.x, z: zb.pos.z });
@@ -304,6 +322,7 @@ export class ZombieSystem {
     // Si revienta él solo al alcanzarte, no da puntos.
     this.game.bus.emit('zombie:killed', {
       type: zb.type, points: zb.selfDestruct ? 0 : d.points, x: zb.pos.x, z: zb.pos.z, selfDestruct: zb.selfDestruct,
+      fallX: Math.sin(zb.fallYaw), fallZ: Math.cos(zb.fallYaw), scale: zb.scale,
     });
   }
 
@@ -652,7 +671,8 @@ export class ZombieSystem {
   }
 
   render() {
-    const { meshList, pose, _base, _part, _m, _q, _e, _v, _s, _c, _partM } = this;
+    const { meshList, pose, _base, _part, _m, _q, _e, _v, _s, _c, _partM, _qa, _qb } = this;
+    const now = this.game.time ?? 0;
     const acc = this.accessoryMeshes;
     for (const name in acc) acc[name].mesh.count = 0;
     let count = 0;
@@ -667,10 +687,34 @@ export class ZombieSystem {
         pose.armR.x = -0.35 - zb.attackAnim * 2.5; pose.armR.z = 0.05;
       }
       if (zb.spitWindup > 0) pose.head.x = -0.35; // echa la cabeza atrás antes de escupir
-      // Base: posición, giro, inclinación al correr, caída hacia atrás al morir y hundimiento final.
-      _e.set(-zb.fall * Math.PI / 2 + body.lean * moving, zb.facing, 0, 'YXZ');
-      _q.setFromEuler(_e);
-      _v.set(zb.pos.x, -zb.sink * 0.6 + zb.fall * 0.12, zb.pos.z);
+      // Reacción a un impacto: el torso y la cabeza se echan hacia donde empuja la bala y los
+      // brazos se sacuden; el cuerpo se desplaza un poco (solo visual, la física no cambia).
+      let shift = 0;
+      if (!dying) {
+        const hk = hitReaction(now - zb.hitAt, FX_HIT.time) * zb.hitPower;
+        if (hk > 0) {
+          const hf = zb.hitDirX * Math.sin(zb.facing) + zb.hitDirZ * Math.cos(zb.facing);
+          const hr = zb.hitDirX * Math.cos(zb.facing) - zb.hitDirZ * Math.sin(zb.facing);
+          pose.torso.x += hf * hk * FX_HIT.torsoTilt; pose.torso.z -= hr * hk * FX_HIT.torsoTilt;
+          pose.head.x += hf * hk * FX_HIT.headTilt; pose.head.z -= hr * hk * FX_HIT.headTilt;
+          pose.armL.x -= hk * FX_HIT.armKick; pose.armR.x -= hk * FX_HIT.armKick;
+          shift = hk * FX_HIT.shift;
+        }
+      }
+      // Base: posición, giro, inclinación al correr y, al morir, caída hacia la dirección del
+      // último impacto (con rebote al asentarse) y hundimiento final.
+      if (dying) {
+        // Ry(caída) · Rx(ángulo) · Ry(mirada − caída): el cuerpo cae hacia `fallYaw`.
+        _qa.setFromAxisAngle(AXIS_Y, zb.fallYaw);
+        _qb.setFromAxisAngle(AXIS_X, fallCurve(zb.fall) * Math.PI / 2);
+        _qa.multiply(_qb);
+        _qb.setFromAxisAngle(AXIS_Y, zb.facing - zb.fallYaw);
+        _q.copy(_qa).multiply(_qb);
+      } else {
+        _e.set(body.lean * moving, zb.facing, 0, 'YXZ');
+        _q.setFromEuler(_e);
+      }
+      _v.set(zb.pos.x + zb.hitDirX * shift, -zb.sink * 0.6 + zb.fall * 0.12, zb.pos.z + zb.hitDirZ * shift);
       // El explosivo se hincha y parpadea mientras está a punto de reventar.
       const fusing = d.explosion && zb.windup > 0 && !dying;
       const swell = fusing ? 1 + zb.attackAnim * 0.18 * (0.6 + 0.4 * Math.sin(zb.attackAnim * 40)) : 1;

@@ -1,0 +1,548 @@
+{
+  "_comment": "Mezcla y reglas del audio. sounds: vol (0-1), rate (variación de tono ±), min (s entre repeticiones), max (a la vez). files: sonidos en archivo (sustituyen a la receta sintetizada del mismo nombre o se añaden a un grupo). music.files: pistas de día y noche.",
+  "volumes": {
+    "master": 0.9,
+    "music": 0.5,
+    "sfx": 0.85
+  },
+  "voices": {
+    "positional": 28,
+    "flat": 10
+  },
+  "distanceModel": "inverse",
+  "refDistance": 6,
+  "rolloff": 1.1,
+  "maxDistance": 60,
+  "listenerHeight": 2,
+  "sourceHeight": 1,
+  "groups": {
+    "groan": [
+      "zombie_01",
+      "zombie_02",
+      "zombie_03",
+      "zombie_04",
+      "zombie_05",
+      "zombie_06",
+      "zombie_07",
+      "zombie_08",
+      "zombie_09",
+      "zombie_10",
+      "zombie_11",
+      "zombie_12",
+      "zombie_13",
+      "zombie_14",
+      "zombie_15",
+      "zombie_16",
+      "zombie_17",
+      "zombie_18",
+      "zombie_19",
+      "zombie_20",
+      "zombie_21",
+      "zombie_22",
+      "zombie_23",
+      "zombie_24",
+      "zombie_25",
+      "zombie_26",
+      "zombie_27",
+      "zombie_28",
+      "zombie_29",
+      "zombie_30",
+      "zombie_31",
+      "zombie_32",
+      "zombie_33"
+    ],
+    "zombie_death": [
+      "zombie_death",
+      "death_1"
+    ],
+    "step": [
+      "step_1",
+      "step_2",
+      "step_3",
+      "step_4",
+      "step_5"
+    ],
+    "hit_wood": [
+      "wood_1",
+      "wood_2",
+      "wood_3",
+      "wood_4",
+      "wood_5"
+    ],
+    "hit_metal": [
+      "metal_1",
+      "metal_2",
+      "metal_3",
+      "metal_4",
+      "metal_5"
+    ],
+    "hit_soft": [
+      "soft_1",
+      "soft_2",
+      "soft_3",
+      "soft_4",
+      "soft_5"
+    ],
+    "hit_concrete": [
+      "concrete_1",
+      "concrete_2",
+      "concrete_3",
+      "concrete_4",
+      "concrete_5"
+    ],
+    "melee_hit": [
+      "punch_1",
+      "punch_2",
+      "punch_3",
+      "punch_4",
+      "punch_5"
+    ],
+    "hurt": [
+      "hurt",
+      "punch_1",
+      "punch_2"
+    ],
+    "place": [
+      "plate_1",
+      "plate_2",
+      "plate_3",
+      "plate_4",
+      "plate_5"
+    ]
+  },
+  "sounds": {
+    "shot_pistola": {
+      "vol": 0.55,
+      "rate": 0.06,
+      "min": 0.03,
+      "max": 3
+    },
+    "shot_escopeta": {
+      "vol": 0.7,
+      "rate": 0.05,
+      "min": 0.05,
+      "max": 2
+    },
+    "shot_subfusil": {
+      "vol": 0.42,
+      "rate": 0.07,
+      "min": 0.03,
+      "max": 4
+    },
+    "shot_fusil": {
+      "vol": 0.55,
+      "rate": 0.05,
+      "min": 0.03,
+      "max": 4
+    },
+    "shot_francotirador": {
+      "vol": 0.7,
+      "rate": 0.04,
+      "min": 0.1,
+      "max": 2
+    },
+    "shot_taser": {
+      "vol": 0.45,
+      "rate": 0.08,
+      "min": 0.1,
+      "max": 2
+    },
+    "shot_torreta": {
+      "vol": 0.35,
+      "rate": 0.1,
+      "min": 0.04,
+      "max": 4
+    },
+    "swing": {
+      "vol": 0.4,
+      "rate": 0.1,
+      "min": 0.1,
+      "max": 2
+    },
+    "melee_hit": {
+      "vol": 0.6,
+      "rate": 0.1,
+      "min": 0.05,
+      "max": 3
+    },
+    "reload": {
+      "vol": 0.45,
+      "rate": 0.05,
+      "min": 0.2,
+      "max": 1
+    },
+    "reloaded": {
+      "vol": 0.45,
+      "rate": 0.05,
+      "min": 0.2,
+      "max": 1
+    },
+    "switch": {
+      "vol": 0.35,
+      "rate": 0.05,
+      "min": 0.1,
+      "max": 1
+    },
+    "grenade_throw": {
+      "vol": 0.45,
+      "rate": 0.1,
+      "min": 0.1,
+      "max": 2
+    },
+    "hit_flesh": {
+      "vol": 0.35,
+      "rate": 0.15,
+      "min": 0.03,
+      "max": 4
+    },
+    "hit_shield": {
+      "vol": 0.5,
+      "rate": 0.1,
+      "min": 0.05,
+      "max": 3
+    },
+    "explosion": {
+      "vol": 0.9,
+      "rate": 0.08,
+      "min": 0.06,
+      "max": 4
+    },
+    "groan": {
+      "vol": 0.4,
+      "rate": 0.12,
+      "min": 0.25,
+      "max": 3
+    },
+    "zombie_death": {
+      "vol": 0.4,
+      "rate": 0.12,
+      "min": 0.12,
+      "max": 3
+    },
+    "runner_screech": {
+      "vol": 0.35,
+      "rate": 0.12,
+      "min": 0.4,
+      "max": 2
+    },
+    "tank_grunt": {
+      "vol": 0.55,
+      "rate": 0.08,
+      "min": 0.8,
+      "max": 1
+    },
+    "bloat_hiss": {
+      "vol": 0.4,
+      "rate": 0.1,
+      "min": 0.3,
+      "max": 2
+    },
+    "boss_roar": {
+      "vol": 0.85,
+      "rate": 0.05,
+      "min": 1,
+      "max": 1
+    },
+    "spit": {
+      "vol": 0.45,
+      "rate": 0.1,
+      "min": 0.1,
+      "max": 3
+    },
+    "splash": {
+      "vol": 0.4,
+      "rate": 0.1,
+      "min": 0.1,
+      "max": 3
+    },
+    "hit_wood": {
+      "vol": 0.45,
+      "rate": 0.12,
+      "min": 0.05,
+      "max": 4
+    },
+    "hit_metal": {
+      "vol": 0.35,
+      "rate": 0.1,
+      "min": 0.05,
+      "max": 4
+    },
+    "hit_soft": {
+      "vol": 0.45,
+      "rate": 0.12,
+      "min": 0.05,
+      "max": 4
+    },
+    "hit_concrete": {
+      "vol": 0.45,
+      "rate": 0.12,
+      "min": 0.05,
+      "max": 4
+    },
+    "break": {
+      "vol": 0.7,
+      "rate": 0.08,
+      "min": 0.1,
+      "max": 3
+    },
+    "place": {
+      "vol": 0.55,
+      "rate": 0.1,
+      "min": 0.04,
+      "max": 3
+    },
+    "upgrade": {
+      "vol": 0.5,
+      "rate": 0.03,
+      "min": 0.1,
+      "max": 2
+    },
+    "repair": {
+      "vol": 0.5,
+      "rate": 0.05,
+      "min": 0.1,
+      "max": 2
+    },
+    "sell": {
+      "vol": 0.45,
+      "rate": 0.03,
+      "min": 0.1,
+      "max": 2
+    },
+    "spike": {
+      "vol": 0.3,
+      "rate": 0.15,
+      "min": 0.15,
+      "max": 2
+    },
+    "trap_snap": {
+      "vol": 0.6,
+      "rate": 0.08,
+      "min": 0.05,
+      "max": 3
+    },
+    "mine_beep": {
+      "vol": 0.45,
+      "rate": 0,
+      "min": 0.1,
+      "max": 3
+    },
+    "zap": {
+      "vol": 0.4,
+      "rate": 0.1,
+      "min": 0.08,
+      "max": 3
+    },
+    "turret_empty": {
+      "vol": 0.4,
+      "rate": 0,
+      "min": 1.5,
+      "max": 2
+    },
+    "door": {
+      "vol": 0.5,
+      "rate": 0.06,
+      "min": 0.15,
+      "max": 2
+    },
+    "hurt": {
+      "vol": 0.55,
+      "rate": 0.1,
+      "min": 0.15,
+      "max": 1
+    },
+    "heartbeat": {
+      "vol": 0.55,
+      "rate": 0,
+      "min": 0.5,
+      "max": 1
+    },
+    "medkit": {
+      "vol": 0.45,
+      "rate": 0.05,
+      "min": 0.3,
+      "max": 1
+    },
+    "coffee": {
+      "vol": 0.45,
+      "rate": 0.05,
+      "min": 0.3,
+      "max": 1
+    },
+    "step": {
+      "vol": 0.22,
+      "rate": 0.15,
+      "min": 0.12,
+      "max": 2
+    },
+    "ui_click": {
+      "vol": 0.35,
+      "rate": 0,
+      "min": 0.03,
+      "max": 2
+    },
+    "ui_buy": {
+      "vol": 0.45,
+      "rate": 0,
+      "min": 0.05,
+      "max": 2
+    },
+    "ui_error": {
+      "vol": 0.35,
+      "rate": 0,
+      "min": 0.15,
+      "max": 1
+    },
+    "interact": {
+      "vol": 0.35,
+      "rate": 0,
+      "min": 0.1,
+      "max": 1
+    },
+    "radio": {
+      "vol": 0.4,
+      "rate": 0.05,
+      "min": 0.5,
+      "max": 1
+    },
+    "combo": {
+      "vol": 0.35,
+      "rate": 0,
+      "min": 0.1,
+      "max": 1
+    },
+    "siren": {
+      "vol": 0.45,
+      "rate": 0,
+      "min": 2,
+      "max": 1
+    },
+    "alarm": {
+      "vol": 0.4,
+      "rate": 0,
+      "min": 0.9,
+      "max": 1
+    },
+    "night_start": {
+      "vol": 0.7,
+      "rate": 0,
+      "min": 2,
+      "max": 1
+    },
+    "dawn": {
+      "vol": 0.5,
+      "rate": 0,
+      "min": 2,
+      "max": 1
+    },
+    "boss_horn": {
+      "vol": 0.6,
+      "rate": 0,
+      "min": 2,
+      "max": 1
+    }
+  },
+  "ambient": {
+    "groanInterval": 0.7,
+    "groanChance": 0.35,
+    "groanRange": 18,
+    "bossRoarEvery": 9,
+    "heartbeatBelow": 0.3,
+    "heartbeatInterval": 0.95,
+    "sirenRepeats": 2,
+    "alarmRepeats": 6
+  },
+  "music": {
+    "crossfade": 2.5,
+    "levels": {
+      "dia": 0.55,
+      "noche": 0.7,
+      "jefe": 0.75
+    },
+    "dayBpm": 66,
+    "nightBpm": [
+      76,
+      124
+    ],
+    "intensityZombies": 40,
+    "files": {
+      "dia": "audio/music_day.ogg",
+      "noche": "audio/music_night.ogg",
+      "jefe": "audio/music_boss.ogg"
+    }
+  },
+  "files": {
+    "boss_roar": "audio/boss_roar.ogg",
+    "concrete_1": "audio/concrete_1.ogg",
+    "concrete_2": "audio/concrete_2.ogg",
+    "concrete_3": "audio/concrete_3.ogg",
+    "concrete_4": "audio/concrete_4.ogg",
+    "concrete_5": "audio/concrete_5.ogg",
+    "death_1": "audio/death_1.ogg",
+    "metal_1": "audio/metal_1.ogg",
+    "metal_2": "audio/metal_2.ogg",
+    "metal_3": "audio/metal_3.ogg",
+    "metal_4": "audio/metal_4.ogg",
+    "metal_5": "audio/metal_5.ogg",
+    "plate_1": "audio/plate_1.ogg",
+    "plate_2": "audio/plate_2.ogg",
+    "plate_3": "audio/plate_3.ogg",
+    "plate_4": "audio/plate_4.ogg",
+    "plate_5": "audio/plate_5.ogg",
+    "punch_1": "audio/punch_1.ogg",
+    "punch_2": "audio/punch_2.ogg",
+    "punch_3": "audio/punch_3.ogg",
+    "punch_4": "audio/punch_4.ogg",
+    "punch_5": "audio/punch_5.ogg",
+    "siren": "audio/siren.ogg",
+    "soft_1": "audio/soft_1.ogg",
+    "soft_2": "audio/soft_2.ogg",
+    "soft_3": "audio/soft_3.ogg",
+    "soft_4": "audio/soft_4.ogg",
+    "soft_5": "audio/soft_5.ogg",
+    "step_1": "audio/step_1.ogg",
+    "step_2": "audio/step_2.ogg",
+    "step_3": "audio/step_3.ogg",
+    "step_4": "audio/step_4.ogg",
+    "step_5": "audio/step_5.ogg",
+    "wood_1": "audio/wood_1.ogg",
+    "wood_2": "audio/wood_2.ogg",
+    "wood_3": "audio/wood_3.ogg",
+    "wood_4": "audio/wood_4.ogg",
+    "wood_5": "audio/wood_5.ogg",
+    "zombie_01": "audio/zombie_01.ogg",
+    "zombie_02": "audio/zombie_02.ogg",
+    "zombie_03": "audio/zombie_03.ogg",
+    "zombie_04": "audio/zombie_04.ogg",
+    "zombie_05": "audio/zombie_05.ogg",
+    "zombie_06": "audio/zombie_06.ogg",
+    "zombie_07": "audio/zombie_07.ogg",
+    "zombie_08": "audio/zombie_08.ogg",
+    "zombie_09": "audio/zombie_09.ogg",
+    "zombie_10": "audio/zombie_10.ogg",
+    "zombie_11": "audio/zombie_11.ogg",
+    "zombie_12": "audio/zombie_12.ogg",
+    "zombie_13": "audio/zombie_13.ogg",
+    "zombie_14": "audio/zombie_14.ogg",
+    "zombie_15": "audio/zombie_15.ogg",
+    "zombie_16": "audio/zombie_16.ogg",
+    "zombie_17": "audio/zombie_17.ogg",
+    "zombie_18": "audio/zombie_18.ogg",
+    "zombie_19": "audio/zombie_19.ogg",
+    "zombie_20": "audio/zombie_20.ogg",
+    "zombie_21": "audio/zombie_21.ogg",
+    "zombie_22": "audio/zombie_22.ogg",
+    "zombie_23": "audio/zombie_23.ogg",
+    "zombie_24": "audio/zombie_24.ogg",
+    "zombie_25": "audio/zombie_25.ogg",
+    "zombie_26": "audio/zombie_26.ogg",
+    "zombie_27": "audio/zombie_27.ogg",
+    "zombie_28": "audio/zombie_28.ogg",
+    "zombie_29": "audio/zombie_29.ogg",
+    "zombie_30": "audio/zombie_30.ogg",
+    "zombie_31": "audio/zombie_31.ogg",
+    "zombie_32": "audio/zombie_32.ogg",
+    "zombie_33": "audio/zombie_33.ogg"
+  },
+  "normalizePeak": 0.9
+}

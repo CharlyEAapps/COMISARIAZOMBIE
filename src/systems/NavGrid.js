@@ -59,8 +59,10 @@ export class NavGrid {
   /**
    * Cajas de colisión por celda (fuente única para física, raycast y render del mapa).
    * Los tiles con collisionInset (muros, vallas, rejas) son barras finas de grosor
-   * cellSize − 2·inset que llegan al borde solo hacia vecinos de su mismo tipo "fino";
-   * el resto de tiles no transitables ocupan la celda entera.
+   * cellSize − 2·inset que llegan al borde solo hacia vecinos de su mismo tipo "fino"; los
+   * muros llegan también hasta el borde de los huecos de puerta ('D'), para que el hueco
+   * quede enmarcado y una puerta construida encaje justo entre ellos.
+   * El resto de tiles no transitables ocupan la celda entera.
    */
   buildCollisionBoxes() {
     const n = this.w * this.h;
@@ -81,7 +83,10 @@ export class NavGrid {
           this.boxCount[k] = 1;
           continue;
         }
-        const e = thinAt(i + 1, j), w = thinAt(i - 1, j), s = thinAt(i, j + 1), nn = thinAt(i, j - 1);
+        const isWall = this.chars[k] === '#';
+        const doorAt = (a, b) => isWall && this.inBounds(a, b) && this.tiles[this.chars[b * this.w + a]].door === true;
+        const joins = (a, b) => thinAt(a, b) || doorAt(a, b);
+        const e = joins(i + 1, j), w = joins(i - 1, j), s = joins(i, j + 1), nn = joins(i, j - 1);
         const lo = inset, hi = cs - inset;
         let count = 0;
         if (e || w) { boxes.push(x0 + (w ? 0 : lo), z0 + lo, x0 + (e ? cs : hi), z0 + hi); count++; }

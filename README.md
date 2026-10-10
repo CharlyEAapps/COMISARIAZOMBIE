@@ -105,9 +105,20 @@ Al empezar solo puedes construir barricadas y sacos de madera.
 - Música de día tranquila e inquietante; de noche, ambiente tenso. Cambian con un fundido al anochecer y al amanecer.
 - Los volúmenes se ajustan en la pausa y se recuerdan entre partidas.
 
+## Jugar en el móvil / instalar
+El juego es una app web instalable (PWA): a pantalla completa, en horizontal y **sin conexión** una vez cargado la primera vez.
+- **iPhone / iPad (Safari):** abre la página → botón Compartir → **Añadir a pantalla de inicio**. Ábrelo desde el icono nuevo.
+- **Android (Chrome):** menú ⋮ → **Instalar app** (o "Añadir a pantalla de inicio").
+- En iPhone, **el interruptor de silencio (lateral) silencia el juego**; sube también el volumen del teléfono. El audio se activa con el primer toque.
+- Para actualizar, basta con abrirlo con conexión: el juego se refresca solo (la primera carga tras una versión nueva puede tardar un poco).
+- Publicación: `npm run build` y subir `dist/` a cualquier hosting estático. Las rutas son relativas, así que vale en la raíz (Netlify) o en una subruta (GitHub Pages, `/turno-de-noche/`).
+
 ## Desarrollo
 - `npm test`: tests unitarios.
 - `npm run build`: build de producción.
 - `node tools/genmap.cjs`: regenera `src/data/map.json` (mapa de la comisaría).
+- `python tools/gen_icons.py`: regenera los iconos de la PWA en `public/icons/` (Pillow).
+- `python tools/convert_audio.py`: genera el `.mp3` de cada `.ogg` de `public/audio` (ffmpeg). Safari/iOS usa los MP3. Hay que ejecutarlo al añadir un sonido nuevo.
+- Service worker (`public/sw.js`): la lista de archivos a precachear se inyecta al hacer el build (`vite.config.js`). Si cambia la lógica de caché, sube `CACHE` (`tdn-v2`…).
 - Estado del proyecto: ver [PROGRESS.md](PROGRESS.md).
 - Créditos de assets: ver [CREDITS.md](CREDITS.md).

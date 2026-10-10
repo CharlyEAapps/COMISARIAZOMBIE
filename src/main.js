@@ -13,7 +13,7 @@ window.__game = game;
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     try {
-      console.warn('SWREG'); navigator.serviceWorker.register('./sw.js').then(r=>console.warn('SWOK',r.scope)).catch((e) => console.warn('Service worker:', e));
+      navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('Service worker:', e));
     } catch (e) {
       console.warn('Service worker:', e);
     }

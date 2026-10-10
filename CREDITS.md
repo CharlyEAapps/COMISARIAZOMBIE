@@ -1,6 +1,6 @@
 # Créditos
 
-Todos los assets de terceros son **CC0** (dominio público). Aunque no es obligatorio, se acredita a sus autores. Licencia comprobada en la página de cada asset el 2026-10-09. Los originales se han recortado y convertido a OGG (mono, 22 kHz para efectos) con ffmpeg.
+Todos los assets de terceros son **CC0** (dominio público). Aunque no es obligatorio, se acredita a sus autores. Licencia comprobada en la página de cada asset el 2026-10-09. Los originales se han recortado y convertido a OGG (mono, 22 kHz para efectos) con ffmpeg. Cada OGG tiene además una copia MP3 (`tools/convert_audio.py`) para Safari/iOS. Los iconos de la app se generan por código (`tools/gen_icons.py`).
 
 | Asset | Autor | URL | Licencia | Ruta local |
 |---|---|---|---|---|

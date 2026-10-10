@@ -191,7 +191,7 @@
   - Efectos posicionales con `THREE.PositionalAudio`: el oyente va sobre el policía, orientado como la cámara. Además hay voces planas para la interfaz.
   - Límites de voces por sonido, normalización de volumen y audio suspendido con la pestaña oculta.
   - ~55 efectos sintetizados por código (disparos de cada arma, recargas, explosiones, trampas, valla, ácido, interfaz, radio…) y 71 clips CC0: gruñidos de zombi, rugido del jefe, sirena, pasos y golpes por material (madera, metal, hormigón, sacos).
-  - Música CC0 con melodía: día (*Forget Me Not*), noche (*Zombies' March*) y jefe (*8bit Action Boss Battle*), con fundido cruzado.
+  - Música CC0: día (*Synthwave House Loop*), noche (*Zombies' March*) y jefe (*Boss Battle #9 [Metal]*), elegidas por Carlos, con fundido cruzado.
   - Volúmenes de música, efectos y general en la pausa, guardados en el navegador. Créditos en `CREDITS.md`.
 - **Partículas, calcomanías y animaciones:**
   - Casquillos, humo y chispas de boca, e impactos en los muros.

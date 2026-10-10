@@ -12,11 +12,11 @@ describe('Mapa de la comisaría', () => {
     expect(grid.h).toBe(80);
   });
 
-  it('tiene un inicio de jugador, ≥4 puntos de aparición y las 3 tiendas', () => {
+  it('tiene un inicio de jugador, ≥4 puntos de aparición y las 4 tiendas', () => {
     expect(grid.playerStart).not.toBeNull();
     expect(map.rows.join('').split('P').length - 1).toBe(1);
     expect(grid.spawns.length).toBeGreaterThanOrEqual(4);
-    for (const s of ['armeria', 'enfermeria', 'almacen']) expect(grid.shops[s]?.length).toBeGreaterThan(0);
+    for (const s of ['armeria', 'enfermeria', 'almacen', 'despacho']) expect(grid.shops[s]?.length).toBeGreaterThan(0);
   });
 
   it('todos los puntos de aparición y tiendas son alcanzables desde el inicio', () => {

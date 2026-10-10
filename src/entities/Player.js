@@ -53,6 +53,7 @@ export class Player {
     this.maxHp = this.data.maxHp;
     this.stamina = this.data.maxStamina;
     this.staminaDelay = 0;
+    this.staminaDrainMul = 1; // vestuarios reformados (despacho del jefe)
     this.sprintLocked = false;
     this.hurtTimer = 0;
     this.medkits = 1;
@@ -158,7 +159,7 @@ export class Player {
     // Solo gasta resistencia si realmente avanza (no al empujar contra un muro).
     const moved = Math.hypot(this.position.x - x0, this.position.z - z0);
     if (wantsSprint && moved > speed * dt * 0.3) {
-      this.stamina = Math.max(0, this.stamina - this.data.staminaDrain * dt);
+      this.stamina = Math.max(0, this.stamina - this.data.staminaDrain * this.staminaDrainMul * dt);
       this.staminaDelay = this.data.staminaRegenDelay;
     } else if (this.staminaDelay > 0) {
       this.staminaDelay -= dt;

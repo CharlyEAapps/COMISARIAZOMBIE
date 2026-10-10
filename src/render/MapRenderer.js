@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { withCutaway } from './Cutaway.js';
+import { roomAt, ROOM_BY_ID } from '../systems/Station.js';
 
 // Blockout del mapa a partir de la rejilla: un plano de suelo con textura por celda
 // (1 draw call) y un InstancedMesh por tipo de obstáculo. En la fase 6 se sustituye por assets.
@@ -10,7 +11,48 @@ export const FLOOR_COLORS = {
   asfalto: [0x7e8187, 0x80838a, 0x7b7e84],
   interior: [0xe9e4d9, 0xb9b2a5], // damero de baldosas suave
 };
-const TEX_RES = 2; // píxeles de textura por celda (damero de 50 cm)
+const TEX_RES = 8; // píxeles de textura por celda (12,5 cm por píxel)
+
+/**
+ * Suelos de las salas (station.json → rooms[].floor): dibujo y paleta. x, y = píxel de la textura.
+ *   checker = damero de 50 cm · small = damero de 25 cm · tiles = baldosa de 50 cm con junta ·
+ *   planks = tarima · noise = moteado suave · speckle = terrazo · diamond = chapa estriada.
+ */
+export const ROOM_FLOORS = {
+  damero: { pattern: 'checker', colors: [0xe9e4d9, 0xb9b2a5] },
+  hormigon: { pattern: 'noise', colors: [0xa9a8a2, 0xa3a29c, 0xb0afa8] },
+  hormigon_lineas: { pattern: 'noise', colors: [0x9c9c98, 0x969692, 0xa3a39e] },
+  moqueta: { pattern: 'noise', colors: [0x7b8aa0, 0x7686a0, 0x8090a6] },
+  linoleo: { pattern: 'small', colors: [0xddd6bb, 0xc9c3a8] },
+  madera: { pattern: 'planks', colors: [0xb07a48, 0xa06c3e, 0xbb8552, 0x7a4e2c] },
+  chapa: { pattern: 'diamond', colors: [0x8a929c, 0xa3abb5] },
+  baldosa_blanca: { pattern: 'tiles', colors: [0xf0f1ec, 0xc9cec9] },
+  baldosa_azul: { pattern: 'tiles', colors: [0xb4d2e4, 0x86a8bc] },
+  terrazo: { pattern: 'speckle', colors: [0xe2dbcd, 0xc7b9a3, 0xf1ece2] },
+};
+
+const pixHash = (x, y) => (((x * 73856093) ^ (y * 19349663)) >>> 0) % 1000;
+
+/** Color (hex) de un píxel del suelo de una sala. */
+function roomFloorPixel(f, x, y) {
+  const c = f.colors;
+  switch (f.pattern) {
+    case 'checker': return c[((x >> 2) + (y >> 2)) & 1];
+    case 'small': return c[((x >> 1) + (y >> 1)) & 1];
+    case 'tiles': return (x % 4 === 0 || y % 4 === 0) ? c[1] : c[0];
+    case 'diamond': return ((x + y) % 4 === 0 || (x - y + 64) % 4 === 0) ? c[1] : c[0];
+    case 'planks': {
+      const plank = y >> 1, off = (plank * 5) % 16;
+      if ((x + off) % 16 === 0) return c[3];
+      return c[pixHash(plank, ((x + off) >> 4)) % 3];
+    }
+    case 'speckle': {
+      const h = pixHash(x, y);
+      return h < 45 ? c[1] : h < 90 ? c[2] : c[0];
+    }
+    default: return c[pixHash(x, y) % c.length];
+  }
+}
 
 const BLOCK_STYLE = {
   '#': { color: 0xeee5d3, cutaway: true, cap: 0x2b2b30 },
@@ -47,8 +89,11 @@ export class MapRenderer {
         const i = (x / TEX_RES) | 0, j = (y / TEX_RES) | 0;
         const t = grid.tiles[grid.chars[grid.index(i, j)]];
         const palette = FLOOR_COLORS[t.floor] ?? FLOOR_COLORS.hierba;
+        const room = t.floor === 'interior' ? roomAt(i, j) : null;
+        const rf = room ? ROOM_FLOORS[ROOM_BY_ID[room].floor] : null;
         let v;
-        if (t.floor === 'interior') v = palette[(x + y) & 1];
+        if (rf) v = roomFloorPixel(rf, x, y);
+        else if (t.floor === 'interior') v = roomFloorPixel(ROOM_FLOORS.damero, x, y);
         else v = palette[(i * 7 + j * 13 + ((i * j) % 5)) % palette.length]; // variación estable por celda
         // Bytes sRGB tal cual (la textura está marcada como sRGB): sin pasar por THREE.Color,
         // que los convertiría a lineal y oscurecería el suelo.
@@ -184,6 +229,7 @@ export class MapRenderer {
       for (const y of [0.08, height / 2, height - RAIL / 2]) rails.push({ p, y, alongX, len });
     }
     const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.6 });
+    this.barMaterial = mat; // las rejas cambian de color con el nivel de los calabozos
     const barGeo = new THREE.BoxGeometry(BAR, height, BAR);
     barGeo.translate(0, height / 2, 0);
     const barMesh = new THREE.InstancedMesh(barGeo, mat, bars.length);
@@ -204,7 +250,7 @@ export class MapRenderer {
   buildShopMarkers() {
     const { grid } = this;
     // Marcadores de tiendas (provisional): cilindro de color sobre el suelo.
-    const shopColors = { armeria: 0xe8b23a, enfermeria: 0xd9473b, almacen: 0x3a7be8 };
+    const shopColors = { armeria: 0xe8b23a, enfermeria: 0xd9473b, almacen: 0x3a7be8, despacho: 0x9b59d0 };
     const geo = new THREE.CylinderGeometry(0.4, 0.4, 0.05, 20);
     for (const [name, list] of Object.entries(grid.shops)) {
       const mat = new THREE.MeshStandardMaterial({ color: shopColors[name], emissive: shopColors[name], emissiveIntensity: 0.4 });

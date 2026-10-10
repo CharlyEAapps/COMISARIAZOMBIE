@@ -1,10 +1,14 @@
 import data from '../data/despacho.json';
+import interactionsData from '../data/interactions.json';
 import { PHASE } from './DayNight.js';
+import { ROOMS_LIST, ROOM_BY_ID, roomLevel, globalLevel, inRoom } from './Station.js';
 
-// Despacho del comisario: mejoras de la comisaría compradas con los puntos del turno (se pierden
-// al acabarlo). El estado es un objeto plano `levels` (id → nivel) que se puede guardar y
-// restaurar con getState()/setState(); apply() reaplica todos los efectos de forma idempotente.
-// Los modelos visibles de cada mejora los dibuja render/DespachoRenderer.js.
+// Despacho del jefe: reformas de la comisaría por SALAS, compradas con los puntos del turno (se
+// pierden al acabarlo). Cada sala (station.json) agrupa sus mejoras; su nivel es la suma de los
+// niveles de esas mejoras y el nivel global de la comisaría, la suma de todas. El estado es un
+// objeto plano `levels` (id de mejora → nivel) que se guarda y restaura con getState()/setState();
+// apply() reaplica todos los efectos de forma idempotente. Lo que se ve lo dibujan PropRenderer
+// (cada sala se reconstruye al cambiar su nivel) y render/DespachoRenderer.js (exterior y tejado).
 
 export const DESPACHO = data;
 export const UPGRADES = data.upgrades;
@@ -88,7 +92,9 @@ export class Despacho {
     this.game = game;
     this.cfg = data;
     this.levels = {};
-    this.version = 0; // sube con cada cambio (modelos visibles y focos)
+    this.version = 0; // sube con cada cambio (salas, modelos visibles y focos)
+    this.roomLevels = {}; // id de sala → nivel (se recalcula en apply)
+    this.global = 0;
     const { grid, build, bus } = game;
     const cs = grid.cellSize;
     this.wx = (u) => grid.originX + u * cs;
@@ -99,6 +105,9 @@ export class Despacho {
     this.emergencyTimer = 0;
     this.emergencyUsed = false;
     this.alarmUses = 0;
+    this.shockTimer = 0;
+    this._regenAcc = 0;
+    this._spark = parseInt(UPGRADES.calabozos.sparkColor.slice(1), 16);
 
     // Focos del patio: posiciones fijas (en metros) que Lighting suma a los focos construidos.
     this._yard = UPGRADES.focos.positions.map(([x, z]) => ({ cx: this.wx(x), cz: this.wz(z) }));
@@ -118,11 +127,13 @@ export class Despacho {
     const items = game.interactions.items;
     this.alarmItems = items.filter((it) => it.type === 'alarma');
     this.medkitItems = items.filter((it) => it.type === 'botiquin_pared');
+    this.lockerItems = items.filter((it) => it.type === 'taquilla');
     this._alarmBase = new Map(this.alarmItems.map((it) => [it, it.def]));
+    this._lockerBase = new Map(this.lockerItems.map((it) => [it, it.def]));
 
     this._unsub = [
       bus.on('phase:noche', ({ night }) => this.onNightfall(night)),
-      bus.on('phase:amanecer', () => this.removeShutters()),
+      bus.on('phase:amanecer', () => this.onDawn()),
       bus.on('boss:spawned', () => this.onBoss()),
       bus.on('transformer:destroyed', () => this.onTransformerDown()),
       bus.on('interact', ({ type }) => { if (type === 'alarma') this.alarmUses++; }),
@@ -138,6 +149,16 @@ export class Despacho {
     return this.level(id) > 0;
   }
 
+  /** Nivel de una sala (suma de los niveles de sus mejoras). */
+  roomLevel(roomId) {
+    return this.roomLevels[roomId] ?? 0;
+  }
+
+  /** Nivel global de la comisaría (suma de todos los niveles). */
+  get globalLevel() {
+    return this.global;
+  }
+
   /** ¿Mantiene la luz el generador de emergencia? */
   get emergencyOn() {
     return this.emergencyTimer > 0;
@@ -146,6 +167,22 @@ export class Despacho {
   /** Focos fijos del patio (vacío sin la mejora). */
   get yardLights() {
     return this.has('focos') ? this._yard : this._noLights;
+  }
+
+  /** Descuento de la armería reformada en munición y granadas (0–1). */
+  get ammoDiscount() {
+    return levelValue(UPGRADES.armeria.ammoDiscount, this.level('armeria'), 0);
+  }
+
+  /** Multiplicador de la recompensa de los casos de la pizarra (archivo ordenado). */
+  get caseRewardMul() {
+    return levelValue(UPGRADES.archivo.caseRewardMul, this.level('archivo'), 1);
+  }
+
+  /** Alcance extra de los avisos de amenaza (cámaras): `special` = especiales y jefe. */
+  threatMul(special) {
+    const C = UPGRADES.camaras, l = this.level('camaras');
+    return levelValue(special ? C.specialRangeMul : C.rangeMul, l, 1);
   }
 
   // ------------------------------------------------------------------ estado (guardado)
@@ -167,6 +204,8 @@ export class Despacho {
     this.emergencyTimer = 0;
     this.emergencyUsed = false;
     this.alarmUses = 0;
+    this.shockTimer = 0;
+    this._regenAcc = 0;
     const r = this.roofTurret;
     r.yaw = 0; r.cooldown = 0; r.target = null; r.retarget = 0;
     this.apply();
@@ -176,7 +215,9 @@ export class Despacho {
 
   /** Reaplica los efectos de los niveles actuales (idempotente). */
   apply() {
-    const { build } = this.game;
+    const { build, player } = this.game;
+    for (const room of ROOMS_LIST) this.roomLevels[room.id] = roomLevel(room, this.levels);
+    this.global = globalLevel(this.levels);
     build.setHpMul(levelValue(UPGRADES.muros.hpMul, this.level('muros'), 1));
     // Persianas que ya estén puestas: su vida sigue el nivel.
     const shutterMul = levelValue(UPGRADES.persianas.hpMul, this.level('persianas'), 1);
@@ -199,6 +240,13 @@ export class Despacho {
       const secs = base.effect.alarm + A.extraSeconds;
       it.def = { ...base, effect: { ...base.effect, alarm: secs }, msg: A.msg.replace('{s}', secs) };
     }
+    // Vestuarios II: taquillas con mejor botín y más aguante.
+    const V = UPGRADES.vestuarios, vl = this.level('vestuarios');
+    for (const it of this.lockerItems) {
+      const base = this._lockerBase.get(it);
+      it.def = vl >= V.betterLootFromLevel ? { ...base, effect: { ...base.effect, loot: V.lockerLoot } } : base;
+    }
+    if (player) player.staminaDrainMul = levelValue(V.staminaDrainMul, vl, 1);
     this.roofTurret.level = Math.max(0, this.level('torreta_tejado') - 1);
     this.version++;
   }
@@ -214,7 +262,13 @@ export class Despacho {
     const { game } = this;
     if (id === 'persianas' && game.dayNight.phase === PHASE.NIGHT) this.placeShutters();
     if (id === 'generador_emergencia') this.onTransformerDown();
-    return `🗄️ ${u.icon} ${u.name}${u.prices.length > 1 ? ` (nivel ${lvl + 1})` : ''}: ¡instalado!`;
+    return `🗄️ ${u.icon} ${u.name}${u.prices.length > 1 ? ` (nivel ${lvl + 1})` : ''}: ¡obra terminada! Comisaría nivel ${this.global}.`;
+  }
+
+  /** Sala (datos de station.json) de una mejora, o null. */
+  roomOf(id) {
+    for (const r of ROOMS_LIST) if ((r.upgrades ?? []).includes(id)) return r;
+    return null;
   }
 
   // ------------------------------------------------------------------ eventos del ciclo
@@ -223,17 +277,45 @@ export class Despacho {
     this.alarmUses = 0;
     if (this.has('persianas')) this.placeShutters();
     // Botiquines de pared: se reponen también al anochecer (uno de día y otro de noche).
-    if (this.has('botiquines')) for (const it of this.medkitItems) it.usedCycle = 0;
-    if (this.has('radar')) {
-      const R = UPGRADES.radar;
+    if (this.level('enfermeria') >= UPGRADES.enfermeria.nightRefillFromLevel) for (const it of this.medkitItems) it.usedCycle = 0;
+    if (this.has('archivo')) {
+      const R = UPGRADES.archivo;
       game.hud?.toast(R.nightMsg.replace('{side}', game.waves.dominantSide(night)), R.toastSeconds);
+    }
+  }
+
+  /** Amanecer: se retiran las persianas y llegan los regalos de las salas reformadas. */
+  onDawn() {
+    this.removeShutters();
+    const { game } = this;
+    const p = game.player;
+    if (!p?.alive) return;
+    const AR = UPGRADES.armeria;
+    if (this.level('armeria') >= AR.refillFromLevel && game.weapons) {
+      let got = 0;
+      for (const w of game.weapons.owned.values()) got += game.weapons.addAmmo(w.id, w.data.maxReserve ?? 0);
+      if (got > 0) game.hud?.toast(AR.refillMsg, 5);
+    }
+    const EN = UPGRADES.enfermeria;
+    const max = interactionsData._medkit.max;
+    if (this.level('enfermeria') >= EN.dawnMedkitFromLevel && p.medkits < max) {
+      p.medkits++;
+      game.hud?.toast(EN.dawnMedkitMsg, 4);
+    }
+    const V = UPGRADES.vestuarios;
+    if (this.has('vestuarios') && p.armor < V.vestArmor) {
+      const vest = game.shop?.cfg.enfermeria.find((i) => i.id === 'chaleco');
+      p.armor = V.vestArmor;
+      p.armorMax = Math.max(p.armorMax, vest?.armor ?? V.vestArmor);
+      if (!p.armorAbsorb) p.armorAbsorb = vest?.absorb ?? 0.5;
+      game.hud?.toast(V.vestMsg.replace('{a}', V.vestArmor), 4);
     }
   }
 
   onBoss() {
     const zb = this.game.zombies.boss;
-    if (!zb || !this.has('radar')) return;
-    const R = UPGRADES.radar;
+    if (!zb || !this.has('archivo')) return;
+    const R = UPGRADES.archivo;
     const side = sideOf(zb.pos.x - this.wx(R.center[0]), zb.pos.z - this.wz(R.center[1]));
     this.game.hud?.toast(R.bossMsg.replace('{side}', side), R.toastSeconds);
   }
@@ -302,6 +384,47 @@ export class Despacho {
         game.dayNight.phase === PHASE.NIGHT && game.lighting.alarmTimer <= 0) {
       for (const it of this.alarmItems) if (it.usedCycle === game.dayNight.night) it.usedCycle = 0;
     }
+    this.updateInfirmary(dt);
+    this.updateCells(dt);
+  }
+
+  /** Enfermería II: dentro se cura poco a poco (el número flotante sale cada punto entero). */
+  updateInfirmary(dt) {
+    const E = UPGRADES.enfermeria;
+    const p = this.game.player;
+    if (this.level('enfermeria') < E.regenFromLevel || !p?.alive || p.hp >= p.maxHp) { this._regenAcc = 0; return; }
+    const g = this.game.grid;
+    if (!inRoom('enfermeria', g.cellX(p.position.x), g.cellZ(p.position.z))) { this._regenAcc = 0; return; }
+    const add = Math.min(p.maxHp - p.hp, E.regenPerSec * dt);
+    p.hp += add;
+    this._regenAcc += add;
+    if (this._regenAcc >= E.regenPerSec) {
+      this.game.floating?.spawn(`+${Math.round(this._regenAcc)}`, p.position.x, 2.1, p.position.z, 'heal');
+      this._regenAcc = 0;
+    }
+  }
+
+  /** Calabozos: el suelo electrificado daña (y en el nivel II aturde a ratos) a los zombis dentro. */
+  updateCells(dt) {
+    const l = this.level('calabozos');
+    if (!l) return;
+    const K = UPGRADES.calabozos;
+    const { zombies, grid, effects } = this.game;
+    const dmg = levelValue(K.dps, l, 0) * dt;
+    let pulse = false;
+    if (l >= K.stunFromLevel) {
+      this.shockTimer -= dt;
+      if (this.shockTimer <= 0) { this.shockTimer = K.stunEvery; pulse = true; }
+    }
+    for (const z of zombies.active) {
+      if (z.state !== 0) continue;
+      if (!inRoom('calabozos', grid.cellX(z.pos.x), grid.cellZ(z.pos.z))) continue;
+      if (pulse) {
+        zombies.stun?.(z, K.stunSeconds);
+        effects?.burst?.(z.pos.x, 0.3, z.pos.z, 6, this._spark, { speed: 2, up: 2.5, size: 0.05, life: 0.35 });
+      }
+      zombies.damage(z, dmg, 0, 0, 0, true);
+    }
   }
 
   dispose() {
@@ -309,3 +432,6 @@ export class Despacho {
     this._unsub.length = 0;
   }
 }
+
+/** Sala de station.json por id (para la tienda y el render). */
+export { ROOM_BY_ID };

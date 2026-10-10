@@ -3,7 +3,8 @@ import weaponsData from '../data/weapons.json';
 import interactions from '../data/interactions.json';
 import { PHASE } from './DayNight.js';
 import { WEAPON_IDS, tracksOf } from './WeaponSystem.js';
-import { DESPACHO, UPGRADES, nextPrice } from './Despacho.js';
+import { UPGRADES, nextPrice } from './Despacho.js';
+import { ROOMS_LIST, roomMaxLevel } from './Station.js';
 
 const MEDKIT_MAX = interactions._medkit.max;
 const GRENADE = weaponsData._granada;
@@ -49,6 +50,12 @@ export class ShopSystem {
   /** Precio en la armería (con el descuento del tablón de mejoras). */
   armPrice(base) {
     return Math.ceil(base * (1 - this.armeriaDiscount) * this.surcharge);
+  }
+
+  /** Munición y granadas: además, el descuento de la armería reformada (despacho del jefe). */
+  ammoPrice(base) {
+    const reform = this.game.despacho?.ammoDiscount ?? 0;
+    return Math.ceil(base * (1 - this.armeriaDiscount) * (1 - reform) * this.surcharge);
   }
 
   isUnlocked(type, level) {
@@ -116,7 +123,7 @@ export class ShopSystem {
         items.push({
           id: `ammo:${id}`, section: 'Munición', name: `${d.icon} Munición de ${d.name.toLowerCase()} (+${amount || d.ammoPack.amount})`,
           desc: `Reserva ${w.reserve}/${d.maxReserve}`, amount,
-          price: this.armPrice(Math.max(1, Math.ceil(d.ammoPack.price * (amount || d.ammoPack.amount) / d.ammoPack.amount))),
+          price: this.ammoPrice(Math.max(1, Math.ceil(d.ammoPack.price * (amount || d.ammoPack.amount) / d.ammoPack.amount))),
           state: amount ? null : 'max',
         });
       }
@@ -134,7 +141,7 @@ export class ShopSystem {
     }
     items.push({
       id: 'grenade', section: 'Munición', name: `💣 Granada (${W.grenades}/${GRENADE.max})`,
-      desc: 'Se lanza con G hacia el cursor. ¡También te daña!', flavor: GRENADE.flavor, price: this.armPrice(GRENADE.price),
+      desc: 'Se lanza con G hacia el cursor. ¡También te daña!', flavor: GRENADE.flavor, price: this.ammoPrice(GRENADE.price),
       state: W.grenades >= GRENADE.max ? 'max' : null,
     });
     // Agrupado por secciones en un orden fijo: primero lo que se puede comprar de nuevo.
@@ -193,18 +200,23 @@ export class ShopSystem {
     return this.finish(items);
   }
 
-  /** Despacho del comisario: mejoras de la comisaría por bloques, con su nivel en estrellas. */
+  /** Despacho del jefe: reformas por salas (sección = sala con su nivel), cada una en estrellas. */
   despacho() {
     const D = this.game.despacho;
     const items = [];
     if (!D) return items;
-    for (const sec of DESPACHO.sections) {
-      for (const [id, u] of Object.entries(UPGRADES)) {
-        if (u.section !== sec.id) continue;
+    for (const room of ROOMS_LIST) {
+      const ups = room.upgrades ?? [];
+      if (!ups.length) continue;
+      const rl = D.roomLevel(room.id), rmax = roomMaxLevel(room);
+      const section = `${room.name} · nivel ${rl}/${rmax}`;
+      for (const id of ups) {
+        const u = UPGRADES[id];
+        if (!u) continue;
         const lvl = D.level(id), max = u.prices.length;
         const cost = nextPrice(id, lvl);
         items.push({
-          id: `despacho:${id}`, section: sec.name, name: `${u.icon} ${u.name} ${'★'.repeat(lvl)}${'☆'.repeat(max - lvl)}`,
+          id: `despacho:${id}`, section, name: `${u.icon} ${u.name} ${'★'.repeat(lvl)}${'☆'.repeat(max - lvl)}`,
           desc: u.desc[Math.min(lvl, max - 1)], flavor: u.flavor,
           price: cost ? this.price(cost) : 0, state: cost ? null : max > 1 ? 'max' : 'owned',
         });

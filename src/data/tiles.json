@@ -8,6 +8,7 @@
   "A": { "name": "armeria",     "walk": true,  "blocksShot": false, "height": 0,   "floor": "interior", "shop": "armeria" },
   "M": { "name": "enfermeria",  "walk": true,  "blocksShot": false, "height": 0,   "floor": "interior", "shop": "enfermeria" },
   "W": { "name": "almacen",     "walk": true,  "blocksShot": false, "height": 0,   "floor": "interior", "shop": "almacen" },
+  "J": { "name": "despacho",    "walk": true,  "blocksShot": false, "height": 0,   "floor": "interior", "shop": "despacho" },
   "#": { "name": "muro",        "walk": false, "blocksShot": true,  "height": 2.6, "floor": "interior", "collisionInset": 0.35 },
   "=": { "name": "valla",       "walk": false, "blocksShot": false, "height": 1.8, "floor": "hierba", "collisionInset": 0.44 },
   "|": { "name": "reja",        "walk": false, "blocksShot": false, "height": 2.6, "floor": "interior", "collisionInset": 0.425 },

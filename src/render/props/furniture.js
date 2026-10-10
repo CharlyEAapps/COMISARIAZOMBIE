@@ -43,11 +43,30 @@ function comisarioDesk(b, fp) {
   }
 }
 
+/** Mesa de saldo del jefe (despacho a nivel 0): formica, patas de hierro, cinta americana y flexo. */
+function cheapDesk(b, fp) {
+  const w = fp.lw - 0.08, d = fp.ld - 0.12;
+  b.box(0, 0.72, 0, w, 0.04, d, 0xd8cfb8);
+  b.box(0, 0.72, d / 2 - 0.004, w, 0.04, 0.008, 0x9a8f76, { ao: 0 });
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(sx * (w / 2 - 0.06), 0, sz * (d / 2 - 0.06), 0.05, 0.72, 0.05, C.iron);
+  b.box(-w / 2 + 0.35, 0.3, 0, 0.5, 0.42, d - 0.14, 0x9aa0a8);            // cajonera metálica abollada
+  b.box(w / 2 - 0.3, 0.76, d / 2 - 0.12, 0.4, 0.006, 0.05, 0xb9b3a4, { ry: 0.6, ao: 0 }); // cinta en la esquina rota
+  b.box(w / 2 - 0.3, 0.761, d / 2 - 0.12, 0.4, 0.006, 0.05, 0xb9b3a4, { ry: -0.6, ao: 0 });
+  b.box(0, 0.762, d / 2 - 0.16, 0.66, 0.025, 0.08, 0x8a8f98, { ao: 0 });
+  b.sprite('comisario', 0, 0.88, d / 2 - 0.15, 0.6, 0.19, { rx: -0.25 });
+  deskLamp(b, -0.9, 0.76, -0.2, 0.4);
+  phone(b, 0.5, 0.76, -0.15, 0.3, 0x9aa0a8);
+  papers(b, -0.2, 0.76, -0.05, fp.rnd, 6);
+  mug(b, 0.95, 0.76, 0.0, C.white);
+  cardboard(b, 0.15, 0.76, -0.2, 0.36, 0.2, 0.3, 0.2);
+}
+
 add('escritorio', {
   build(b, fp) {
     if (fp.variant === 'comisario') {
-      comisarioDesk(b, fp);
-      b.interact('tienda_despacho', 'Despacho del comisario', 0, fp.ld / 2 + 0.75);
+      // La tienda (baldosa J) va delante; la mesa mejora con el nivel del despacho.
+      if ((fp.level ?? 1) > 0) comisarioDesk(b, fp);
+      else cheapDesk(b, fp);
       return;
     }
     const w = fp.lw - 0.08, d = fp.ld - 0.12, rnd = fp.rnd;
@@ -81,7 +100,9 @@ add('escritorio', {
     }
     b.box(0.03, 0.75, 0.2, 0.13, 0.03, 0.04, C.navy, { ao: 0 }); // placa con nombre
   },
-  companions: (fp) => (fp.variant === 'comisario' ? [0.55] : [-0.47, 0.47]).map((x) => ({ type: 'silla_oficina', lx: x, lz: fp.ld / 2 + 0.12, rel: 180 })),
+  companions: (fp) => (fp.variant === 'comisario'
+    ? [{ type: 'silla_oficina', lx: 0, lz: -fp.ld / 2 - 0.35, rel: 0 }]
+    : [-0.47, 0.47].map((x) => ({ type: 'silla_oficina', lx: x, lz: fp.ld / 2 + 0.12, rel: 180 }))),
 });
 
 add('archivador', {
@@ -203,7 +224,9 @@ add('sillas_espera', {
       b.box(s, 0, z, 0.05, 0.36, 0.05, C.iron);
       b.box(s, 0, z - 0.18, 0.05, 0.36, 0.05, C.iron, { ry: 0 });
     }
+    const broken = (fp.level ?? 1) === 0 ? 1 : -1;
     for (let k = 0; k < n; k++) {
+      if (k === broken) { b.box(-fp.lw / 2 + 0.5 + k, 0.41, z, 0.36, 0.006, 0.05, 0xb9b3a4, { ao: 0, ry: 0.5 }); continue; }
       const x = -fp.lw / 2 + 0.5 + k, col = [C.blue, C.blueL, C.blue][k % 3];
       b.box(x, 0.41, z + 0.02, 0.42, 0.05, 0.4, col);
       b.box(x, 0.46, z - 0.2, 0.42, 0.4, 0.05, col, { rx: -0.1 });
@@ -227,10 +250,16 @@ add('mostrador_recepcion', {
     counterBody(b, w, 0.8, 1.0, C.cream, C.blue, C.woodD, 0.4);
     for (let k = 0; k < 3; k++) b.box(-w / 3 + k * (w / 3), 0.16, 0.405, w / 3 - 0.12, 0.7, 0.012, 0xfaf3e2, { ao: 0 });
     b.box(0, 0.9, 0.405, w, 0.06, 0.018, C.blue, { ao: 0 });
-    // mampara de cristal con ventanilla central
+    // mampara de cristal con ventanilla central: con cinta americana (nivel 0) o blindada (I+)
+    const armored = (fp.level ?? 0) > 0;
     for (const s of [-1, 1]) {
-      b.box(s * (w / 2 - 0.58), 1.05, 0.08, w / 2 - 0.45, 0.46, 0.014, 0xbfe3f2, { layer: 'glass', ao: 0 });
-      b.box(s * 0.28, 1.05, 0.08, 0.04, 0.46, 0.03, C.steel, { ao: 0 });
+      b.box(s * (w / 2 - 0.58), 1.05, 0.08, w / 2 - 0.45, 0.46, armored ? 0.05 : 0.014, armored ? 0x9fd0e6 : 0xbfe3f2, { layer: 'glass', ao: 0 });
+      b.box(s * 0.28, 1.05, 0.08, armored ? 0.08 : 0.04, 0.46, armored ? 0.07 : 0.03, armored ? C.steelD : C.steel, { ao: 0 });
+      if (!armored) {
+        for (const r of [0.6, -0.6]) b.box(s * (w / 2 - 0.58), 1.27, 0.09, w / 2 - 0.5, 0.006, 0.04, 0xb9b3a4, { rz: r, rx: PI / 2, ao: 0 });
+      } else {
+        for (const x of [w / 2 - 0.12, 0.38]) for (const y of [1.08, 1.47]) b.box(s * x, y, 0.115, 0.04, 0.04, 0.02, C.iron, { ao: 0 });
+      }
     }
     b.box(0, 1.5, 0.08, w - 0.1, 0.03, 0.03, C.steel, { ao: 0 });
     b.box(0, 1.05, 0.08, w - 0.1, 0.03, 0.03, C.steel, { ao: 0 });
@@ -338,9 +367,12 @@ add('mostrador_enfermeria', {
 });
 
 // ---------------------------------------------------------------- armero y munición
+const ARMERO_FILL = [4, 7, 10]; // de cada 10 huecos, cuántos con arma según el nivel de la armería
+
 add('armero', {
   build(b, fp) {
     const n = Math.round(fp.lw), z0 = back(fp), dep = 0.36, zc = z0 + dep / 2;
+    const fill = ARMERO_FILL[Math.min(fp.level ?? 2, ARMERO_FILL.length - 1)];
     b.box(0, 0, zc, fp.lw - 0.04, 0.92, dep, 0x59606a);
     b.box(0, 0.92, zc, fp.lw - 0.02, 0.05, dep + 0.02, C.steelL, { ao: 0 });
     b.box(0, 0.97, z0 + 0.02, fp.lw - 0.04, 1.0, 0.05, 0x8a929c);
@@ -350,8 +382,9 @@ add('armero', {
       b.box(x - 0.19, 0.5, z0 + dep + 0.02, 0.025, 0.12, 0.02, C.steel, { ao: 0 });
       b.box(x + 0.19, 0.5, z0 + dep + 0.02, 0.025, 0.12, 0.02, C.steel, { ao: 0 });
       b.box(x, 0.86, z0 + dep + 0.01, 0.96, 0.025, 0.012, C.orange, { ao: 0 });
-      // fusiles y escopetas colgados en horizontal: tres alturas por módulo
+      // fusiles y escopetas colgados en horizontal: tres alturas por módulo (medio vacío a nivel 0)
       for (let r = 0; r < 3; r++) {
+        if (((k * 3 + r) * 7) % 10 >= fill) continue;
         const y = 1.13 + r * 0.28, wood = (k + r) % 2 === 0, long = (k + r) % 3 !== 0;
         const gx = x + 0.04, zz = z0 + 0.1;
         b.box(gx - 0.2 - (long ? 0 : 0.03), y, zz, long ? 0.46 : 0.4, 0.025, 0.03, C.iron, { ao: 0 });  // cañón
@@ -390,12 +423,14 @@ add('estanteria_municion', {
 add('taquillas', {
   build(b, fp) {
     const n = Math.round(fp.lw), z0 = back(fp), dep = 0.5, rnd = fp.rnd;
+    const fresh = (fp.level ?? 2) >= 2;
     b.box(0, 0, z0 + dep / 2, fp.lw - 0.02, 0.1, dep, C.iron);
     for (let k = 0; k < n * 2; k++) {
       const x = -fp.lw / 2 + 0.25 + k * 0.5;
-      const col = (k >> 1) % 2 ? C.blueL : 0x9aa6b4;
+      const col = fresh ? ((k >> 1) % 2 ? 0x3f7fd0 : 0x2f5fa8) : (k >> 1) % 2 ? 0x8a9aa8 : 0x9a9f94;
       b.box(x, 0.1, z0 + dep / 2, 0.47, 1.78, dep, col);
-      b.box(x, 0.1, z0 + dep, 0.44, 1.74, 0.012, col === C.blueL ? 0x7aa0cc : 0xaab4c0, { ao: 0.05 });
+      b.box(x, 0.1, z0 + dep, 0.44, 1.74, 0.012, fresh ? 0x5a9ae0 : 0xa8aea0, { ao: 0.05, ry: !fresh && k === 1 ? 0.35 : 0 });
+      if (!fresh && k % 3 === 0) b.box(x + 0.05, 0.7, z0 + dep + 0.014, 0.16, 0.12, 0.006, 0x6c6a60, { ao: 0, rz: 0.4 }); // abolladura
       for (let v = 0; v < 3; v++) b.box(x, 1.55 + v * 0.05, z0 + dep + 0.008, 0.28, 0.016, 0.01, C.iron, { ao: 0 });
       b.box(x + 0.14, 0.95, z0 + dep + 0.02, 0.025, 0.14, 0.03, C.steelD, { ao: 0 });
       b.box(x, 1.38, z0 + dep + 0.012, 0.1, 0.06, 0.006, C.paper, { ao: 0 });
@@ -422,8 +457,16 @@ add('camillas', {
       b.box(0.0, 0.25, 0, L, 0.14, W, 0xeef1f4);                          // colchón
       b.box(0.0, 0.25, 0, L + 0.01, 0.03, W + 0.01, C.sky, { ao: 0 });
       b.box(-L / 2 + 0.3, 0.39, 0, 0.42, 0.1, 0.5, C.white, { ao: 0.1 }); // almohada
-      b.box(0.3, 0.39, 0, 0.9, 0.06, W - 0.02, C.teal, { ao: 0.1 });       // manta
-      b.box(0.3, 0.45, 0, 0.9, 0.012, 0.18, 0x78c0ba, { ao: 0 });
+      const lvl = fp.level ?? 1;
+      b.box(0.3, 0.39, 0, 0.9, 0.06, W - 0.02, lvl ? C.teal : 0x8a8f98, { ao: 0.1 });       // manta
+      b.box(0.3, 0.45, 0, 0.9, 0.012, 0.18, lvl ? 0x78c0ba : 0xb9b3a4, { ao: 0 });
+      if (!lvl) b.box(-0.3, 0.392, 0.1, 0.4, 0.006, 0.06, 0xb9b3a4, { ry: 0.5, ao: 0 }); // remiendo
+      if (lvl >= 2) {
+        // Monitor con el pulso en el soporte del suero y cortina hacia la cama vecina.
+        b.box(-L / 2 + 0.12, 1.0, -W / 2 + 0.06, 0.3, 0.22, 0.12, C.iron);
+        b.sprite('pantalla_radio', -L / 2 + 0.12, 1.11, -W / 2 + 0.121, 0.26, 0.17, { screen: true });
+        if (k < n - 1) b.box(L / 2 + 0.03, 0.25, 0, 0.03, 1.55, W - 0.02, 0xa8d8d0, { ao: 0.05 });
+      }
       b.box(-L / 2, 0.2, 0, 0.05, 0.62, W, C.white);                       // cabecero
       b.box(L / 2, 0.2, 0, 0.05, 0.42, W, C.white);                        // piecero
       for (const sz of [-1, 1]) {                                         // barandillas
@@ -470,8 +513,9 @@ add('armario_medicinas', {
     for (let l = 0; l < 4; l++) {
       const y = 0.96 + l * 0.23;
       b.box(0, y, z0 + dep / 2 - 0.04, w - 0.06, 0.02, dep - 0.1, C.steelL, { ao: 0 });
-      const n = 6;
+      const n = 6, empty = (fp.level ?? 1) === 0;
       for (let k = 0; k < n; k++) {
+        if (empty && (k + l) % 4 !== 0) continue;
         const x = -w / 2 + 0.2 + k * (w - 0.4) / (n - 1);
         b.cyl(x, y + 0.02, z0 + 0.2, 0.035, 0.035, 0.07 + rnd() * 0.08, [C.orange, C.sky, C.white, C.greenL, C.pink][(k + l) % 5], 7);
         b.cyl(x + 0.0, y + 0.02, z0 + 0.3, 0.03, 0.03, 0.06 + rnd() * 0.05, [C.white, C.orange, C.sky][(k + l) % 3], 7);
@@ -613,6 +657,21 @@ add('estanterias', {
           }
           x += bw + 0.03 + rnd() * 0.05;
         }
+      }
+    }
+    // Muros reforzados (almacén I-II): planchas de acero apoyadas y sacos de arena delante.
+    const lvl = fp.level ?? 0;
+    if (lvl >= 1) {
+      const plates = lvl >= 2 ? n * 2 : n;
+      for (let k = 0; k < plates; k++) {
+        const x = -fp.lw / 2 + 0.5 + k * ((fp.lw - 1) / Math.max(1, plates - 1));
+        b.box(x, 0, 0.2, 0.7, 1.15, 0.04, k % 2 ? 0x9aa4ae : 0x8d97a1, { rx: -0.22, ao: 0.08 });
+        b.box(x, 0.85, 0.08, 0.5, 0.06, 0.01, k % 2 ? C.black : C.yellow, { rx: -0.22, oz: 0.03, ao: 0 });
+      }
+      for (let k = 0; k < (lvl >= 2 ? n * 3 : n * 2); k++) {
+        const x = -fp.lw / 2 + 0.35 + k * 0.62;
+        if (x > fp.lw / 2 - 0.3) break;
+        b.sphere(x, 0, 0.36, 0.5, 0.2, 0.26, 0xd9c7a0, 7, { ao: 0.2 });
       }
     }
   },

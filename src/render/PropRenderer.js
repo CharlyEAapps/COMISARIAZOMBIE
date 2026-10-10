@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { withCutaway } from './Cutaway.js';
-import { buildProps } from './props/PropFactory.js';
+import { buildProps, buildRoom, buildFacade } from './props/PropFactory.js';
+import { PropBuilder } from './props/Builder.js';
+import { ROOM_BY_ID } from '../systems/Station.js';
 import { createAtlasTexture } from './props/Atlas.js';
 import { COLOR_LAYERS, UV_LAYERS } from './props/Builder.js';
 import propsData from '../data/props.json';
@@ -9,7 +11,7 @@ import propsData from '../data/props.json';
  * Funde cada capa del PropBuilder en una malla (una por material) y las añade a `target`.
  * @returns {{ meshes: Record<string, THREE.Mesh>, geometries: THREE.BufferGeometry[], triangles: number }}
  */
-export function bakeBuilder(builder, mats, target) {
+export function bakeBuilder(builder, mats, target, culled = false) {
   const meshes = {}, geometries = [];
   let triangles = 0;
   for (const name of [...COLOR_LAYERS, ...UV_LAYERS]) {
@@ -20,7 +22,9 @@ export function bakeBuilder(builder, mats, target) {
     mesh.name = `props-${name}`;
     mesh.castShadow = name !== 'glass';
     mesh.receiveShadow = name === 'solid' || name === 'sign';
-    mesh.frustumCulled = false; // las mallas abarcan todo el mapa
+    // Las mallas comunes abarcan todo el mapa; las de una sala se recortan por su esfera.
+    mesh.frustumCulled = culled;
+    if (culled) geo.computeBoundingSphere();
     target.add(mesh);
     meshes[name] = mesh;
     triangles += geo.attributes.position.count / 3;
@@ -63,12 +67,13 @@ export class PropRenderer {
     this.group = new THREE.Group();
     this.group.name = 'props';
 
-    const { builder, instances } = buildProps(grid, opts.overrides ?? propsData);
+    const { builder, instances, rooms, facade, interacts } = buildProps(grid, opts.overrides ?? propsData);
     this.instances = instances;
     /** @type {{type:string,x:number,y:number,z:number,color:number}[]} */
     this.lightAnchors = builder.lights;
+    /** Puntos de interacción (los de las salas, tomados a nivel 0: no cambian con el nivel). */
     /** @type {{id:string,type:string,label:string,x:number,z:number}[]} */
-    this.interactAnchors = builder.interacts;
+    this.interactAnchors = interacts;
 
     this.atlas = createAtlasTexture();
     this.materials = makePropMaterials(this.atlas);
@@ -80,7 +85,63 @@ export class PropRenderer {
     /** Mallas de las barras de luces de los coches (para parpadear en la fase 2). */
     this.sirenMeshes = [this.meshes.red, this.meshes.blue].filter(Boolean);
     this.drawCalls = Object.keys(this.meshes).length;
+
+    // Salas con nivel y fachada: un grupo cada una, que se rehace al cambiar su nivel.
+    /** @type {Map<string, {group: THREE.Group, geometries: THREE.BufferGeometry[], level: number, global: number, triangles: number}>} */
+    this.rooms = new Map();
+    for (const [id, r] of rooms) this.bakeRoom(id, r.builder, 0, 0);
+    this.bakeRoom('fachada', facade.builder, 0, 0);
+    this.rebuilds = 0;
     scene.add(this.group);
+  }
+
+  /** Funde el builder de una sala en su grupo (frustum culling por sala). */
+  bakeRoom(id, builder, level, global) {
+    let part = this.rooms.get(id);
+    if (!part) {
+      part = { group: new THREE.Group(), geometries: [], level: 0, global: 0, triangles: 0 };
+      part.group.name = `sala-${id}`;
+      this.group.add(part.group);
+      this.rooms.set(id, part);
+    }
+    const baked = bakeBuilder(builder, this.materials, part.group, true);
+    part.geometries = baked.geometries;
+    part.triangles = baked.triangles;
+    part.level = level;
+    part.global = global;
+  }
+
+  /** Libera la geometría de una sala (los materiales son compartidos y no se tocan). */
+  clearRoom(part) {
+    for (const g of part.geometries) g.dispose();
+    part.geometries = [];
+    part.group.clear();
+  }
+
+  /**
+   * Pone una sala (o 'fachada') a su nivel. Solo se reconstruye si cambia (o, en las que
+   * dependen del nivel global, si cambia ese). @returns {boolean} se ha reconstruido
+   */
+  setRoomLevel(id, level, global = 0) {
+    const part = this.rooms.get(id);
+    if (!part) return false;
+    const room = ROOM_BY_ID[id];
+    const usesGlobal = id === 'fachada' || !!room?.globalLevel;
+    if (part.level === level && (!usesGlobal || part.global === global)) return false;
+    this.clearRoom(part);
+    const b = new PropBuilder();
+    if (id === 'fachada') buildFacade(b, this.grid, global);
+    else buildRoom(b, this.grid, room, level, global);
+    this.bakeRoom(id, b, level, global);
+    this.rebuilds++;
+    return true;
+  }
+
+  /** Draw calls totales de los props (común + salas). */
+  get totalDrawCalls() {
+    let n = this.drawCalls;
+    for (const p of this.rooms.values()) n += p.group.children.length;
+    return n;
   }
 
   /**
@@ -103,6 +164,7 @@ export class PropRenderer {
   dispose() {
     this.scene.remove(this.group);
     for (const g of this.geometries) g.dispose();
+    for (const part of this.rooms.values()) this.clearRoom(part);
     for (const m of Object.values(this.materials)) m.dispose();
     this.atlas?.dispose();
     this.geometries.length = 0;

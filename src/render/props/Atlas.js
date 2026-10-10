@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import station from '../../data/station.json';
 
 // Atlas de sprites dibujado por código (Canvas 2D): rótulos, carteles, pantallas, banderas…
 // Un único material con esta textura sirve a todos los rótulos del mapa (1 draw call).
@@ -96,19 +97,11 @@ plate('comisaria', 768, 256, '#1f3260', '#ffffff', ['COMISARÍA', 'DISTRITO 13']
 });
 plate('atencion', 640, 128, '#2f5fa8', '#ffffff', ['ATENCIÓN AL CIUDADANO', '(SOLO VIVOS)'], { fg2: '#f2c14e' });
 plate('denuncias', 640, 128, '#3b7a55', '#ffffff', ['DENUNCIAS', 'SOLO CON CITA PREVIA'], { fg2: '#f2c14e' });
-plate('armeria', 512, 160, '#46201f', '#f2c14e', 'ARMERÍA', {
-  icon: (c, x, y, r) => { c.fillStyle = '#f2c14e'; c.fillRect(x - r, y - r * 0.2, r * 2, r * 0.45); c.fillRect(x - r * 0.1, y, r * 0.5, r * 0.9); c.fillRect(x + r * 0.6, y - r * 0.5, r * 0.4, r * 0.5); },
-});
-plate('enfermeria', 512, 160, '#f4f1ea', '#2f7d55', 'ENFERMERÍA', { icon: (c, x, y, r) => redCross(c, x, y, r) });
-plate('almacen', 640, 160, '#c89c62', '#3a2412', ['ALMACÉN DE', 'PRUEBAS'], { border: 5 });
-plate('calabozos', 512, 160, '#3a3d42', '#f0a04b', 'CALABOZOS');
-plate('oficinas', 512, 160, '#2f5fa8', '#ffffff', 'OFICINAS');
 plate('comisario', 512, 160, '#5e3d26', '#eab43c', 'COMISARIO', { icon: (c, x, y, r) => star(c, x, y, r, '#eab43c') });
 plate('seguridad', 320, 100, '#2f5fa8', '#ffffff', 'SEGURIDAD', { border: 4 });
 plate('solo_policia', 256, 256, '#1f3260', '#ffffff', ['SOLO', 'POLICÍA'], { fg2: '#eab43c' });
 plate('acceso', 512, 128, '#d24a3e', '#ffffff', 'ACCESO RESTRINGIDO');
 plate('policia_lado', 512, 100, '#1f3260', '#ffffff', 'POLICÍA', { radius: 18, border: 4 });
-plate('policia_capo', 256, 90, '#1f3260', '#ffffff', 'POLICÍA', { radius: 12, border: 3 });
 plate('municion', 256, 90, '#2b2b30', '#f2c14e', 'MUNICIÓN', { border: 4 });
 plate('extintor', 96, 96, '#d24a3e', '#ffffff', 'EXT.', { border: 4 });
 // Carteles con humor (negro, de oficina).
@@ -208,12 +201,6 @@ def('mapa', 384, 256, (ctx, w, h) => {
   ctx.fillStyle = '#1f3260'; ctx.fillRect(176, 106, 36, 28);
   star(ctx, 194, 120, 12, '#eab43c');
   [[90, 200, '#d24a3e'], [300, 50, '#d24a3e'], [140, 40, '#2f5fa8'], [330, 210, '#2f5fa8']].forEach(([x, y, c]) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fill(); });
-});
-def('aviso', 160, 200, (ctx, w, h) => {
-  ctx.fillStyle = '#fbf9f1'; ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#d24a3e'; ctx.fillRect(0, 0, w, 36);
-  fitText(ctx, 'AVISO', w / 2, 19, 120, 26, '#fff');
-  ctx.fillStyle = '#556'; for (let i = 0; i < 9; i++) ctx.fillRect(14, 54 + i * 15, i % 3 === 2 ? 80 : 130, 5);
 });
 def('reloj', 128, 128, (ctx, w, h) => {
   ctx.fillStyle = '#fbfaf5'; ctx.beginPath(); ctx.arc(64, 64, 62, 0, 7); ctx.fill();
@@ -329,6 +316,41 @@ def('cafe_panel', 128, 96, (ctx, w, h) => {
   [['#e8b23a', 82, 14], ['#d24a3e', 82, 38], ['#4aa0e8', 82, 62], ['#e9e9e4', 18, 52]].forEach(([c, x, y]) => { ctx.fillStyle = c; ctx.fillRect(x, y, 26, 16); });
 });
 
+// ---------- comisaría por salas (station.json) ----------
+// Cartel de cada sala: nombre arriba y una franja oscura abajo donde van las estrellas de nivel
+// (quads aparte, para no tener un sprite por nivel). Las salas sin nivel llevan su lema.
+for (const r of station.rooms) {
+  def(`sala_${r.id}`, 320, 125, (ctx, w, h) => {
+    rr(ctx, 0, 0, w, h, 12); ctx.fillStyle = r.bg; ctx.fill();
+    ctx.lineWidth = 5; ctx.strokeStyle = r.fg; rr(ctx, 7, 7, w - 14, h - 14, 8); ctx.stroke();
+    fitText(ctx, r.name.toUpperCase(), w / 2, h * 0.36, w - 40, h * 0.34, r.fg);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; rr(ctx, 16, h * 0.62, w - 32, h * 0.3, 6); ctx.fill();
+    if (!(r.upgrades ?? []).length) fitText(ctx, r.sub, w / 2, h * 0.77, w - 50, h * 0.17, '#f4f1ea', 'bold');
+  });
+}
+def('estrella_on', 64, 64, (ctx, w, h) => { star(ctx, w / 2, h / 2 + 2, 30, '#f4c430'); });
+def('estrella_off', 64, 64, (ctx, w, h) => {
+  star(ctx, w / 2, h / 2 + 2, 30, '#6b6f78'); star(ctx, w / 2, h / 2 + 2, 20, '#3a3d44');
+});
+for (let d = 0; d < 10; d++) {
+  def(`dig_${d}`, 40, 60, (ctx, w, h) => { ctx.fillStyle = '#14181f'; ctx.fillRect(0, 0, w, h); fitText(ctx, String(d), w / 2, h / 2 + 3, w - 6, 52, '#ffd24a'); });
+}
+plate('nivel', 192, 72, '#14181f', '#ffd24a', 'NIVEL', { border: 3, radius: 8 });
+def('alta_tension', 160, 200, (ctx, w, h) => {
+  ctx.fillStyle = '#f2c230'; rr(ctx, 0, 0, w, h, 10); ctx.fill();
+  ctx.fillStyle = '#222'; ctx.beginPath(); ctx.moveTo(w / 2, 18); ctx.lineTo(w - 20, 118); ctx.lineTo(20, 118); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#f2c230'; ctx.beginPath(); ctx.moveTo(w / 2 + 6, 44); ctx.lineTo(w / 2 - 14, 84); ctx.lineTo(w / 2, 84); ctx.lineTo(w / 2 - 8, 110); ctx.lineTo(w / 2 + 16, 70); ctx.lineTo(w / 2 + 2, 70); ctx.closePath(); ctx.fill();
+  fitText(ctx, 'ALTA TENSIÓN', w / 2, 146, w - 16, 22, '#222');
+  fitText(ctx, 'NO PISAR (VIVOS)', w / 2, 176, w - 16, 18, '#7a1d16');
+});
+def('calendario', 128, 160, (ctx, w, h) => {
+  ctx.fillStyle = '#fbf9f1'; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#c92f26'; ctx.fillRect(0, 0, w, 34);
+  fitText(ctx, 'AGOSTO 2009', w / 2, 18, w - 12, 18, '#fff');
+  ctx.fillStyle = '#9aa'; for (let r = 0; r < 5; r++) for (let c = 0; c < 6; c++) ctx.fillRect(10 + c * 19, 46 + r * 22, 14, 14);
+  ctx.strokeStyle = '#c92f26'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(10, 46); ctx.lineTo(118, 150); ctx.stroke();
+});
+
 // ---------- API ----------
 const names = Object.keys(SPRITES).sort((a, b) => SPRITES[b].h - SPRITES[a].h);
 {
@@ -338,7 +360,7 @@ const names = Object.keys(SPRITES).sort((a, b) => SPRITES[b].h - SPRITES[a].h);
     if (x + s.w + PAD > ATLAS_SIZE) { x = PAD; y += rowH + PAD; rowH = 0; }
     s.x = x; s.y = y; x += s.w + PAD; rowH = Math.max(rowH, s.h);
   }
-  if (y + rowH + PAD > ATLAS_SIZE) throw new Error('El atlas de props no cabe en 2048×2048');
+  if (y + rowH + PAD > ATLAS_SIZE) throw new Error(`El atlas de props no cabe en 2048×2048 (${y + rowH + PAD} px)`);
 }
 
 export const SPRITE_NAMES = names;

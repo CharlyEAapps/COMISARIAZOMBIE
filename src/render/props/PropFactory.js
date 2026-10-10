@@ -2,41 +2,36 @@ import { PropBuilder, rng } from './Builder.js';
 import { FURNITURE } from './furniture.js';
 import { OUTDOOR } from './outdoor.js';
 import { DECOR } from './decor.js';
+import { ROOM_FURNITURE, ROOM_DECOR } from './rooms.js';
 import { defaultDecor } from './layout.js';
 import { FLOOR_COLORS } from '../MapRenderer.js';
+import { ROOMS_LIST, ROOM_RECTS, roomAt, roomSigns, wallPoint, roomMaxLevel, STATION } from '../../systems/Station.js';
 
-// Fábrica de props: detecta los grupos de celdas del mapa ('o', 'c', 'k', 'L'), decide qué es
-// cada uno (según la sala y la forma, con posibilidad de forzarlo desde props.json), construye
-// su geometría y añade la decoración no bloqueante. Todo se acumula en un PropBuilder (capas).
+// Fábrica de props. El EDIFICIO sale de src/data/station.json: cada sala trae sus muebles
+// (bloqueantes, con huella en celdas), su decoración y sus carteles, y se construye según su
+// nivel (buildRoom). El resto del mapa (exterior) se detecta por grupos de celdas ('o', 'c', 'k',
+// 'L') y se clasifica por forma (con posibilidad de forzarlo desde props.json). Todo se acumula
+// en PropBuilders (capas): uno para lo fijo y uno por cada sala con nivel (se rehace al subirla).
 
-export const TYPES = { ...FURNITURE, ...OUTDOOR, ...DECOR };
+export const TYPES = { ...FURNITURE, ...OUTDOOR, ...DECOR, ...ROOM_FURNITURE, ...ROOM_DECOR };
 
-/** Salas del edificio (coordenadas de celda, inclusivas). */
-export const ROOMS = {
-  calabozos: { x0: 23, y0: 15, x1: 32, y1: 22 },
-  oficinas: { x0: 34, y0: 15, x1: 43, y1: 22 },
-  armeria: { x0: 45, y0: 15, x1: 54, y1: 22 },
-  pasillo: { x0: 23, y0: 24, x1: 54, y1: 27 },
-  enfermeria: { x0: 23, y0: 29, x1: 31, y1: 34 },
-  recepcion: { x0: 33, y0: 29, x1: 44, y1: 34 },
-  almacen: { x0: 46, y0: 29, x1: 54, y1: 34 },
-};
+/** Salas del edificio (coordenadas de celda, inclusivas), sacadas de station.json. */
+export const ROOMS = ROOM_RECTS;
 export function roomOf(i, j) {
-  for (const [name, r] of Object.entries(ROOMS)) if (i >= r.x0 && i <= r.x1 && j >= r.y0 && j <= r.y1) return name;
-  return null;
+  return roomAt(i, j);
 }
 
 const DEG = Math.PI / 180;
 
 // ---------------------------------------------------------------- grupos
 /** Grupos contiguos (4 vecinos) de un carácter. Los no rectangulares se parten en celdas sueltas. */
-export function findGroups(grid, ch) {
+export function findGroups(grid, ch, skip = null) {
   const seen = new Uint8Array(grid.w * grid.h);
   const groups = [];
   for (let j = 0; j < grid.h; j++) {
     for (let i = 0; i < grid.w; i++) {
       const k = grid.index(i, j);
-      if (seen[k] || grid.chars[k] !== ch) continue;
+      if (seen[k] || grid.chars[k] !== ch || skip?.has(k)) continue;
       const cells = [];
       const stack = [[i, j]];
       seen[k] = 1;
@@ -47,7 +42,7 @@ export function findGroups(grid, ch) {
           const ni = ci + di, nj = cj + dj;
           if (!grid.inBounds(ni, nj)) continue;
           const nk = grid.index(ni, nj);
-          if (seen[nk] || grid.chars[nk] !== ch) continue;
+          if (seen[nk] || grid.chars[nk] !== ch || skip?.has(nk)) continue;
           seen[nk] = 1;
           stack.push([ni, nj]);
         }
@@ -86,54 +81,40 @@ export function wallSide(grid, g) {
 }
 const FACE_AWAY = { N: 0, S: 180, W: 90, E: 270 };
 
-// ---------------------------------------------------------------- clasificación
-/** Decide el tipo de mueble de un grupo de 'o' según sala y forma. */
-function classifyO(g, room) {
-  const { w, h } = g;
-  const dims = (a, b) => (w === a && h === b) || (w === b && h === a);
-  switch (room) {
-    case 'calabozos':
-      if (dims(1, 2)) return { type: 'camastro' };
-      if (w === 1 && h === 1) return { type: 'wc' };
-      if (w === 3 && h === 1) return { type: 'banco_madera' };
-      break;
-    case 'oficinas':
-      if (w === 2 && h === 1) return { type: g.j0 === 15 ? 'archivador' : 'escritorio' };
-      if (w === 1 && h === 2) return { type: 'consola_camaras' };
-      if (w === 1 && h === 1) return { type: 'planta' };
-      break;
-    case 'armeria':
-      if (w === 4 && h === 1) return { type: 'armero' };
-      if (w === 3 && h === 1) return { type: 'mostrador_armeria' };
-      if (w === 1 && h === 2) return { type: 'estanteria_municion' };
-      break;
-    case 'pasillo':
-      if (w === 4 && h === 1) return { type: 'taquillas' };
-      if (w === 3 && h === 1) return { type: 'banco_madera' };
-      if (w === 1 && h === 1) return { type: 'planta' };
-      break;
-    case 'enfermeria':
-      if (w === 1 && h === 3) return { type: 'mostrador_enfermeria' };
-      if (w === 4 && h === 1) return { type: 'camillas' };
-      if (w === 2 && h === 1) return { type: 'biombo' };
-      if (w === 1 && h === 2) return { type: 'armario_medicinas' };
-      break;
-    case 'recepcion':
-      if (w === 3 && h === 1) return { type: g.j0 === 31 ? 'mostrador_recepcion' : 'sillas_espera', variant: g.i0 < 38 ? 'atencion' : 'denuncias' };
-      if (w === 1 && h === 2) return { type: 'centralita_radio' };
-      if (w === 1 && h === 1) return { type: 'planta' };
-      break;
-    case 'almacen':
-      if (w === 3 && h === 1) return { type: 'mostrador_pruebas' };
-      if (w === 6 && h === 1) return { type: 'estanterias' };
-      if (w === 1 && h === 1) return { type: 'cajas_apiladas' };
-      break;
-    default: // exterior
-      if (w === 2 && h === 1) return { type: 'generador' };
-      if (w === 3 && h === 1) return { type: 'banco_parque' };
-      if (w === 2 && h === 2) return { type: 'caseta' };
-      if (w === 1 && h === 1) return { type: 'arbol' };
+// ---------------------------------------------------------------- muebles de las salas (station.json)
+/** Grupo (celdas absolutas) de un mueble de sala. */
+export function furnitureGroup(room, f) {
+  const [x0, y0] = room.rect;
+  const i0 = x0 + f.x, j0 = y0 + f.y, w = f.w ?? 1, h = f.h ?? 1;
+  const cells = [];
+  for (let j = j0; j < j0 + h; j++) for (let i = i0; i < i0 + w; i++) cells.push([i, j]);
+  return { ch: 'o', cells, i0, j0, i1: i0 + w - 1, j1: j0 + h - 1, w, h, key: `${i0},${j0}` };
+}
+
+/** Índices de celda ocupados por los muebles de las salas (no se reclasifican como exterior). */
+export function stationCells(grid) {
+  const set = new Set();
+  for (const r of ROOMS_LIST) {
+    if (!r.rect) continue;
+    for (const f of r.furniture ?? []) for (const [i, j] of furnitureGroup(r, f).cells) set.add(grid.index(i, j));
   }
+  return set;
+}
+
+/** Tipo de un mueble de sala con el nivel dado (byLevel = un tipo por nivel). */
+export function furnitureType(f, level) {
+  if (f.byLevel) return f.byLevel[Math.min(level, f.byLevel.length - 1)];
+  return f.type;
+}
+
+// ---------------------------------------------------------------- clasificación (exterior)
+/** Muebles del exterior según su forma. */
+function classifyO(g) {
+  const { w, h } = g;
+  if (w === 2 && h === 1) return { type: 'generador' };
+  if (w === 3 && h === 1) return { type: 'banco_parque' };
+  if (w === 2 && h === 2) return { type: 'caseta' };
+  if (w === 1 && h === 1) return { type: 'arbol' };
   return { type: 'mueble_generico' };
 }
 
@@ -141,22 +122,22 @@ export function classifyGroup(grid, g, overrides = {}) {
   const forced = overrides.groups?.[g.key];
   let res;
   const room = roomOf(g.i0, g.j0);
-  if (g.ch === 'o') res = classifyO(g, room);
+  if (g.ch === 'o') res = room ? { type: 'mueble_generico' } : classifyO(g);
   else if (g.ch === 'c') res = { type: 'patrulla', rot: 0 };
   else if (g.ch === 'k') res = { type: 'contenedor' };
   else res = { type: 'farola' };
   if (forced) res = { ...res, ...forced };
   const def = TYPES[res.type];
   if (!def) throw new Error(`Tipo de prop desconocido: ${res.type} (grupo ${g.key})`);
-  if (res.rot == null) {
-    if (def.fixedRot != null) res.rot = def.fixedRot;
-    else {
-      const side = g.ch === 'o' ? wallSide(grid, g) : null;
-      res.rot = side ? FACE_AWAY[side] : 0;
-    }
-  }
+  if (res.rot == null) res.rot = autoRot(grid, g, def);
   res.room = room;
   return res;
+}
+
+function autoRot(grid, g, def) {
+  if (def.fixedRot != null) return def.fixedRot;
+  const side = g.ch === 'o' ? wallSide(grid, g) : null;
+  return side ? FACE_AWAY[side] : 0;
 }
 
 // ---------------------------------------------------------------- construcción
@@ -187,61 +168,47 @@ function groundColor(grid, g) {
 }
 
 /**
- * Construye todos los props del mapa.
- * @returns {{ builder: PropBuilder, instances: object[] }}
+ * Colocador ligado a un builder: construye un tipo en una posición (celdas) y devuelve sus límites.
+ * meta: { u, v (centro, celdas), y, rot (grados), lw, ld, seed, variant, p, level, global }
  */
-export function buildProps(grid, overrides = {}) {
-  const b = new PropBuilder();
+function makePlacer(b, grid) {
   const cs = grid.cellSize;
   const wx = (u) => grid.originX + u * cs;
   const wz = (v) => grid.originZ + v * cs;
-  const instances = [];
-
-  const place = (type, def, meta) => {
-    // meta: { u, v (centro, celdas), y, rot (grados), lw, ld, seed, variant, p, group }
+  return (type, def, meta) => {
     b.root(wx(meta.u), meta.y ?? 0, wz(meta.v), meta.rot * DEG);
     b.resetBounds();
     const fp = {
       type, lw: meta.lw, ld: meta.ld, rot: meta.rot, seed: meta.seed, variant: meta.variant,
-      rnd: rng(meta.seed), p: meta.p ?? {},
+      rnd: rng(meta.seed), p: meta.p ?? {}, level: meta.level, global: meta.global,
     };
     def.build(b, fp);
-    const bounds = { ...b.bounds };
-    return { fp, bounds };
+    return { fp, bounds: { ...b.bounds } };
   };
+}
 
-  const companionsOf = [];
-  const groupsAll = [];
-  for (const ch of ['o', 'c', 'k', 'L']) groupsAll.push(...findGroups(grid, ch));
-
-  for (const g of groupsAll) {
-    const cls = classifyGroup(grid, g, overrides);
-    const def = TYPES[cls.type];
-    const even = cls.rot % 180 === 0;
-    const lw = even ? g.w : g.h, ld = even ? g.h : g.w;
-    const u = (g.i0 + g.i1 + 1) / 2, v = (g.j0 + g.j1 + 1) / 2;
-    const seed = hash(g.i0, g.j0, g.ch.charCodeAt(0));
-
-    if (g.ch === 'o' && !cls.room) {
-      // Exterior: la baldosa 'o' dibuja suelo interior; se tapa con el color del terreno.
-      b.root(wx(u), 0, wz(v), 0);
-      b.box(0, 0, 0, g.w, 0.012, g.h, groundColor(grid, g), { ao: 0 });
-    }
-    const { fp, bounds } = place(cls.type, def, { u, v, rot: cls.rot, lw, ld, seed, variant: cls.variant, p: cls });
-    instances.push({
-      type: cls.type, ch: g.ch, blocking: true, key: g.key, cells: g.cells, bbox: { i0: g.i0, j0: g.j0, i1: g.i1, j1: g.j1 },
-      rot: cls.rot, room: cls.room, bounds,
-    });
-    if (def.companions) {
-      for (const c of def.companions({ ...fp, variant: cls.variant })) companionsOf.push({ c, u, v, rot: cls.rot, seed });
-    }
+/** Coloca un mueble (grupo de celdas) y apunta sus acompañantes (sillas…) para la decoración. */
+function placeGroup(place, g, cls, extra, instances, companions) {
+  const def = TYPES[cls.type];
+  const even = cls.rot % 180 === 0;
+  const lw = even ? g.w : g.h, ld = even ? g.h : g.w;
+  const u = (g.i0 + g.i1 + 1) / 2, v = (g.j0 + g.j1 + 1) / 2;
+  const seed = hash(g.i0, g.j0, g.ch.charCodeAt(0));
+  const { fp, bounds } = place(cls.type, def, { u, v, rot: cls.rot, lw, ld, seed, variant: cls.variant, p: cls, ...extra });
+  instances.push({
+    type: cls.type, ch: g.ch, blocking: true, key: g.key, cells: g.cells, bbox: { i0: g.i0, j0: g.j0, i1: g.i1, j1: g.j1 },
+    rot: cls.rot, room: cls.room, bounds,
+  });
+  if (def.companions) {
+    for (const c of def.companions({ ...fp, variant: cls.variant })) companions.push({ c, u, v, rot: cls.rot, seed });
   }
+}
 
-  // Decoración: la de layout.js (+ la de props.json) y los acompañantes de los muebles.
-  const decor = [...defaultDecor(), ...(overrides.decor ?? [])];
-  for (const { c, u, v, rot, seed } of companionsOf) {
+/** Convierte los acompañantes en entradas de decoración (posición girada con su mueble). */
+function companionDecor(companions, out) {
+  for (const { c, u, v, rot, seed } of companions) {
     const a = rot * DEG;
-    decor.push({
+    out.push({
       type: c.type,
       x: u + c.lx * Math.cos(a) + c.lz * Math.sin(a),
       z: v - c.lx * Math.sin(a) + c.lz * Math.cos(a),
@@ -250,22 +217,124 @@ export function buildProps(grid, overrides = {}) {
       _seed: seed,
     });
   }
+}
+
+/** Construye una lista de decoración (no bloqueante). */
+function placeDecor(place, decor, instances, extra = {}) {
   decor.forEach((e, n) => {
     const def = TYPES[e.type];
     if (!def) throw new Error(`Tipo de decoración desconocido: ${e.type}`);
     const seed = e._seed != null ? hash(e._seed, n, Math.round(e.x * 10)) : hash(n, Math.round(e.x * 10), Math.round(e.z * 10));
     const { bounds } = place(e.type, def, {
-      u: e.x, v: e.z, y: e.y0 ?? 0, rot: e.rot ?? 0, lw: e.w ?? 1, ld: e.d ?? 1, seed, variant: e.variant, p: e,
+      u: e.x, v: e.z, y: e.y0 ?? 0, rot: e.rot ?? 0, lw: e.w ?? 1, ld: e.d ?? 1, seed, variant: e.variant, p: e, ...extra,
     });
-    instances.push({ type: e.type, ch: null, blocking: false, key: null, cells: [], bounds });
-    if (def.companions) {
-      // (los acompañantes de decoración no se usan por ahora)
-    }
+    instances.push({ type: e.type, ch: null, blocking: false, key: null, cells: [], bounds, room: extra.room ?? null });
   });
+}
 
-  // Ajusta los puntos de interacción a celdas transitables.
-  snapAnchors(grid, b.interacts);
-  return { builder: b, instances };
+const visibleAt = (e, level) => (e.minLevel == null || level >= e.minLevel) && (e.maxLevel == null || level <= e.maxLevel);
+
+/**
+ * Construye una sala de station.json en `b` con su nivel (y el global, para la maqueta).
+ * @returns {object[]} instancias (muebles y decoración)
+ */
+export function buildRoom(b, grid, room, level = 0, global = 0) {
+  const place = makePlacer(b, grid);
+  const instances = [], companions = [], decor = [];
+  const extra = { level, global, room: room.id };
+  if (room.rect) {
+    const [x0, y0] = room.rect;
+    for (const f of room.furniture ?? []) {
+      const g = furnitureGroup(room, f);
+      const type = furnitureType(f, level);
+      const def = TYPES[type];
+      if (!def) throw new Error(`Tipo de mueble desconocido: ${type} (sala ${room.id})`);
+      const cls = { type, variant: f.variant, rot: f.rot ?? autoRot(grid, g, def), room: room.id };
+      placeGroup(place, g, cls, extra, instances, companions);
+    }
+    companionDecor(companions, decor);
+    for (const e of room.decor ?? []) {
+      if (!visibleAt(e, level)) continue;
+      if (e.wall) {
+        const w = wallPoint(room.rect, e.wall, e.at);
+        decor.push({ ...e, x: w.x, z: w.z, rot: e.rot ?? w.rot });
+      } else decor.push({ ...e, x: x0 + e.x, z: y0 + e.z });
+    }
+  }
+  const max = roomMaxLevel(room);
+  for (const s of roomSigns(room)) {
+    decor.push({ type: 'cartel_sala', x: s.x, z: s.z, rot: s.rot, y: s.y, room: room.id, stars: level, max, hang: s.hang, post: s.post, ladder: s.ladder });
+  }
+  placeDecor(place, decor, instances, extra);
+  return instances;
+}
+
+/** Fachada sur con el nivel global de la comisaría. */
+export function buildFacade(b, grid, global = 0) {
+  const place = makePlacer(b, grid);
+  const instances = [];
+  placeDecor(place, [{ type: 'fachada', x: 0, z: STATION.facade.z, ox: 0 }], instances, { level: global, global, room: 'fachada' });
+  return instances;
+}
+
+/** Salas que se reconstruyen por separado: las que tienen nivel (mejoras) o dependen del global. */
+export const LEVEL_ROOMS = ROOMS_LIST.filter((r) => (r.upgrades ?? []).length || r.globalLevel).map((r) => r.id);
+
+/**
+ * Construye todos los props del mapa a nivel 0.
+ * @returns {{ builder, instances, rooms: Map<string, {builder, instances}>, facade: {builder, instances}, interacts }}
+ *   builder = lo fijo (exterior y salas sin nivel); rooms = un builder por sala con nivel.
+ */
+export function buildProps(grid, overrides = {}) {
+  const b = new PropBuilder();
+  const place = makePlacer(b, grid);
+  const cs = grid.cellSize;
+  const wx = (u) => grid.originX + u * cs;
+  const wz = (v) => grid.originZ + v * cs;
+  const instances = [];
+  const companions = [];
+  const claimed = stationCells(grid);
+
+  const groupsAll = [];
+  for (const ch of ['o', 'c', 'k', 'L']) groupsAll.push(...findGroups(grid, ch, claimed));
+  for (const g of groupsAll) {
+    const cls = classifyGroup(grid, g, overrides);
+    if (g.ch === 'o' && !cls.room) {
+      // Exterior: la baldosa 'o' dibuja suelo interior; se tapa con el color del terreno.
+      b.root(wx((g.i0 + g.i1 + 1) / 2), 0, wz((g.j0 + g.j1 + 1) / 2), 0);
+      b.box(0, 0, 0, g.w, 0.012, g.h, groundColor(grid, g), { ao: 0 });
+    }
+    placeGroup(place, g, cls, {}, instances, companions);
+  }
+  // Decoración exterior (layout.js + props.json) y acompañantes de los muebles.
+  const decor = [...defaultDecor(), ...(overrides.decor ?? [])];
+  companionDecor(companions, decor);
+  placeDecor(place, decor, instances);
+
+  // Salas: las de nivel fijo van al builder común; las demás, cada una al suyo.
+  const rooms = new Map();
+  const anchors = [b.interacts];
+  for (const room of ROOMS_LIST) {
+    if (LEVEL_ROOMS.includes(room.id)) {
+      const rb = new PropBuilder();
+      const inst = buildRoom(rb, grid, room, 0, 0);
+      rooms.set(room.id, { builder: rb, instances: inst });
+      instances.push(...inst);
+      b.lights.push(...rb.lights);
+      anchors.push(rb.interacts);
+    } else {
+      instances.push(...buildRoom(b, grid, room, 0, 0));
+    }
+  }
+  const fb = new PropBuilder();
+  const facade = { builder: fb, instances: buildFacade(fb, grid, 0) };
+  instances.push(...facade.instances);
+
+  // Puntos de interacción de todo (ajustados a celdas transitables, ids únicos por tipo).
+  const interacts = [];
+  for (const list of anchors) interacts.push(...list);
+  snapAnchors(grid, interacts);
+  return { builder: b, instances, rooms, facade, interacts };
 }
 
 function snapAnchors(grid, anchors) {
@@ -296,6 +365,8 @@ export const GALLERY_SIZES = {
   camastro: [2, 1], wc: [1, 1], estanterias: [6, 1], cajas_apiladas: [1, 1], mueble_generico: [1, 1],
   patrulla: [4, 2], civil: [4, 2], furgoneta: [4, 2], contenedor: [3, 2], farola: [1, 1], arbol: [1, 1], mastil: [1, 1],
   caseta: [2, 2], generador: [2, 1],
+  estanteria_archivo: [3, 1], servidor: [1, 1], mesa_comedor: [2, 2], sofa: [3, 1], maqueta: [2, 1], trastos: [3, 1],
+  banco_trabajo: [2, 1], duchas: [4, 1], banco_vestuario: [3, 1], lavabos: [3, 1],
 };
 /** Parámetros de ejemplo para la decoración en la galería. */
 export const GALLERY_DECOR = {
@@ -306,6 +377,8 @@ export const GALLERY_DECOR = {
   botiquin_pared: { y: 1.0 }, cuadro_electrico: { y: 1.0 }, alarma: { y: 1.0 }, medicion_pared: {}, detector_metales: {},
   bandera_stand: {}, bandera_mastil: { y: 1.2 }, cono: {}, barrera: { raise: 0.2 }, senal: { sprite: 'stop', w: 0.6, top: 2.2 },
   arbusto: {}, planta_deco: {},
+  fluorescente: { y: 1.4 }, gotera: {}, monitores_pared: {}, puerta_acorazada: {}, cruz_luminosa: { y: 1.3 },
+  perchero_chalecos: {}, calendario: { y: 1.2 }, silla_rota: {}, cajas_suelo: {},
 };
 
 /** Todos los tipos en filas de ancho limitado (muebles y luego decoración), cada uno con su nombre. */

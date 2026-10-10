@@ -13,6 +13,7 @@ import { PHASE } from '../src/systems/DayNight.js';
 import {
   Despacho, UPGRADE_IDS, exteriorDoorGroups, nextPrice, maxLevel, sanitizeLevels, transformerMaxHp, sideOf, levelValue,
 } from '../src/systems/Despacho.js';
+import { roomOfUpgrade, ROOMS_LIST } from '../src/systems/Station.js';
 
 const U = despachoData.upgrades;
 
@@ -52,15 +53,15 @@ const nightfall = (g) => { g.dayNight.phase = PHASE.NIGHT; g.bus.emit('phase:noc
 const dawn = (g) => { g.dayNight.phase = PHASE.DAWN; g.bus.emit('phase:amanecer', { night: g.dayNight.night }); };
 
 describe('Despacho: funciones puras', () => {
-  it('los datos tienen precio, descripción por nivel y sección conocida', () => {
-    const sections = despachoData.sections.map((s) => s.id);
+  it('los datos tienen precio, descripción por nivel y una sala (y solo una)', () => {
     for (const id of UPGRADE_IDS) {
       const u = U[id];
-      expect(sections).toContain(u.section);
+      expect(roomOfUpgrade(id), id).toBeTruthy();
+      expect(ROOMS_LIST.filter((r) => (r.upgrades ?? []).includes(id))).toHaveLength(1);
       expect(u.prices.length).toBeGreaterThan(0);
       expect(u.desc.length).toBe(u.prices.length);
       expect(u.flavor).toBeTruthy();
-      for (const p of u.prices) expect(p).toBeGreaterThanOrEqual(300);
+      for (const p of u.prices) { expect(p).toBeGreaterThanOrEqual(300); expect(p).toBeLessThanOrEqual(1500); }
     }
   });
 
@@ -68,12 +69,12 @@ describe('Despacho: funciones puras', () => {
     expect(nextPrice('persianas', 0)).toBe(U.persianas.prices[0]);
     expect(nextPrice('persianas', 2)).toBe(U.persianas.prices[2]);
     expect(nextPrice('persianas', maxLevel('persianas'))).toBe(0);
-    expect(nextPrice('radar', 1)).toBe(0);
+    expect(nextPrice('focos', 1)).toBe(0);
     expect(nextPrice('no_existe', 0)).toBe(0);
   });
 
   it('sanitizeLevels: descarta ids desconocidos y limita los niveles', () => {
-    expect(sanitizeLevels({ persianas: 9, muros: 1.7, radar: -2, foo: 3, camaras: 'x' })).toEqual({ persianas: 3, muros: 1 });
+    expect(sanitizeLevels({ persianas: 9, muros: 1.7, archivo: -2, foo: 3, radar: 1, camaras: 'x' })).toEqual({ persianas: 3, muros: 1 });
     expect(sanitizeLevels(null)).toEqual({});
   });
 
@@ -99,13 +100,14 @@ describe('Despacho: funciones puras', () => {
     expect(pieceMaxHp(P.pinchos, 0, 1, 1.5)).toBe(P.pinchos.levels[0].hp);
   });
 
-  it('exteriorDoorGroups: los 3 accesos exteriores del edificio', () => {
+  it('exteriorDoorGroups: los 4 accesos exteriores del edificio, de 2 celdas', () => {
     const grid = new NavGrid(map.rows, tiles, 1);
     const groups = exteriorDoorGroups(grid).map((g) => g.map((k) => [k % grid.w, (k / grid.w) | 0]));
-    expect(groups).toHaveLength(3);
-    expect(groups).toContainEqual([[38, 14], [39, 14]]);
-    expect(groups).toContainEqual([[38, 35], [39, 35]]);
-    expect(groups).toContainEqual([[55, 25], [55, 26]]);
+    expect(groups).toHaveLength(4);
+    expect(groups).toContainEqual([[39, 14], [40, 14]]); // norte (sala de descanso → patio)
+    expect(groups).toContainEqual([[33, 37], [34, 37]]); // sur (recepción)
+    expect(groups).toContainEqual([[15, 24], [15, 25]]); // oeste (pasillo)
+    expect(groups).toContainEqual([[63, 24], [63, 25]]); // este (pasillo)
   });
 });
 
@@ -119,8 +121,10 @@ describe('Despacho: mejoras en partida', () => {
     g.player.position = { x: g.grid.centerX(30), z: g.grid.centerZ(27) };
     expect(b.place('barricada', k)).toBe(true);
     const s = b.structures.get(k);
-    g.despacho.setState(JSON.parse(JSON.stringify({ muros: 2, radar: 1 })));
-    expect(g.despacho.getState()).toEqual({ muros: 2, radar: 1 });
+    g.despacho.setState(JSON.parse(JSON.stringify({ muros: 2, archivo: 1 })));
+    expect(g.despacho.getState()).toEqual({ muros: 2, archivo: 1 });
+    expect(g.despacho.roomLevel('almacen')).toBe(2);
+    expect(g.despacho.globalLevel).toBe(3);
     expect(s.maxHp).toBe(Math.round(buildData.pieces.barricada.levels[0].hp * U.muros.hpMul[1]));
     g.despacho.reset();
     expect(g.despacho.getState()).toEqual({});
@@ -156,7 +160,7 @@ describe('Despacho: mejoras en partida', () => {
 
     g.despacho.buy('persianas');
     nightfall(g);
-    expect(g.despacho.shutters).toHaveLength(2);
+    expect(g.despacho.shutters).toHaveLength(3);
     for (const s of g.despacho.shutters) {
       expect(s.auto).toBe(true);
       expect(s.type).toBe('puerta');
@@ -190,7 +194,7 @@ describe('Despacho: mejoras en partida', () => {
     g.player.position = { x: g.grid.centerX(k % g.grid.w), z: g.grid.centerZ((k / g.grid.w) | 0) };
     g.dayNight.phase = PHASE.NIGHT;
     g.despacho.buy('persianas');
-    expect(g.despacho.shutters).toHaveLength(3);
+    expect(g.despacho.shutters).toHaveLength(4);
     const blocked = g.build.structures.get(k);
     expect(blocked.open).toBe(true);
   });
@@ -247,16 +251,20 @@ describe('Despacho: mejoras en partida', () => {
     med.usedCycle = 1;
     nightfall(g);
     expect(med.usedCycle).toBe(1);
-    g.despacho.buy('botiquines');
+    g.despacho.buy('enfermeria');
     nightfall(g);
     expect(med.usedCycle).toBe(0);
   });
 
-  it('radar y cámaras', () => {
+  it('archivo (radar) y cámaras', () => {
     expect(g.despacho.has('camaras')).toBe(false);
+    expect(g.despacho.threatMul(true)).toBe(1);
     g.despacho.buy('camaras');
     expect(g.despacho.has('camaras')).toBe(true);
-    g.despacho.buy('radar');
+    expect(g.despacho.threatMul(false)).toBe(U.camaras.rangeMul[0]);
+    g.despacho.buy('camaras');
+    expect(g.despacho.threatMul(true)).toBe(U.camaras.specialRangeMul[1]);
+    g.despacho.buy('archivo');
     nightfall(g);
     expect(g.toasts.some((t) => t.includes('norte'))).toBe(true);
   });
@@ -264,9 +272,12 @@ describe('Despacho: mejoras en partida', () => {
   it('tienda: catálogo por bloques, recargo nocturno y compra con puntos', () => {
     const items = g.shop.catalog('despacho');
     expect(items).toHaveLength(UPGRADE_IDS.length);
-    const order = despachoData.sections.map((s) => s.name);
-    const idx = items.map((i) => order.indexOf(i.section));
+    // Agrupadas por sala, en el orden de station.json, con el nivel de la sala en la sección.
+    const order = ROOMS_LIST.filter((r) => (r.upgrades ?? []).length).map((r) => r.name);
+    const idx = items.map((i) => order.findIndex((n) => i.section.startsWith(n)));
+    expect(idx.every((n) => n >= 0)).toBe(true);
     expect(idx).toEqual([...idx].sort((a, b) => a - b));
+    expect(items.find((i) => i.id === 'despacho:muros').section).toContain('nivel 0/2');
     const pers = items.find((i) => i.id === 'despacho:persianas');
     expect(pers.price).toBe(U.persianas.prices[0]);
     expect(pers.name).toContain('☆☆☆');
@@ -276,9 +287,10 @@ describe('Despacho: mejoras en partida', () => {
     g.dayNight.phase = PHASE.DAY;
     g.shop.open = 'despacho';
     const before = g.run.points;
-    expect(g.shop.buy('despacho:radar')).toBeTruthy();
-    expect(g.run.points).toBe(before - U.radar.prices[0]);
-    expect(g.despacho.level('radar')).toBe(1);
-    expect(g.shop.whyNot('despacho:radar')).toBeTruthy(); // ya lo tienes
+    expect(g.shop.buy('despacho:focos')).toBeTruthy();
+    expect(g.run.points).toBe(before - U.focos.prices[0]);
+    expect(g.despacho.level('focos')).toBe(1);
+    expect(g.shop.whyNot('despacho:focos')).toBeTruthy(); // ya lo tienes
+    expect(g.shop.catalog('despacho').find((i) => i.id === 'despacho:focos').section).toContain('nivel 1/');
   });
 });

@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import * as Models from './StructureModels.js';
 import { withCutaway } from './Cutaway.js';
 import { PropBuilder, rng } from './props/Builder.js';
-import { TYPES } from './props/PropFactory.js';
+import { TYPES, LEVEL_ROOMS } from './props/PropFactory.js';
+import { ROOM_BY_ID } from '../systems/Station.js';
 import { bakeBuilder } from './PropRenderer.js';
 import { UPGRADES } from '../systems/Despacho.js';
 
@@ -13,8 +14,10 @@ const STEEL = 0x8d97a1, STEEL_D = 0x4f5862, IRON = 0x30353b, YEL = 0xf2c230, BLK
 const CONC = 0xbab8ae, CONC_D = 0x9e9c93, SAND = 0xd9c7a0;
 const LED_ON = new THREE.Color(1.6, 0.15, 0.1);
 
-// Modelos visibles de las mejoras del despacho del comisario. Lo estático (jaula del
-// transformador, mástil del radar, cámaras, balizas, botiquines, plataforma de la torreta…) se
+// Lo que se ve de las reformas del despacho del jefe. Las SALAS (muebles, carteles con estrellas,
+// fachada con el nivel global) las reconstruye PropRenderer.setRoomLevel cuando cambia su nivel;
+// aquí se sincronizan y se dibuja lo de fuera y del tejado. Lo estático (jaula del
+// transformador, mástil del radar, cámaras, balizas, persianas enrolladas, plataforma de la torreta…) se
 // hornea con PropBuilder en las mallas por capa de los props (mismos materiales) y solo se
 // rehace al cambiar las mejoras. Lo que se mueve o brilla va aparte: cabeza de la torreta,
 // plato del radar, focos con sus cristales, pilotos de las cámaras y el generador.
@@ -79,7 +82,7 @@ export class DespachoRenderer {
     }
 
     // Plato del radar (gira) sobre su mástil.
-    const RD = UPGRADES.radar;
+    const RD = UPGRADES.archivo;
     const dish = new PropBuilder();
     dish.root(0, 0, 0);
     dish.box(0, 0, 0, 0.12, 0.1, 0.12, IRON);
@@ -139,8 +142,28 @@ export class DespachoRenderer {
       }
     }
 
-    if (d.has('radar')) {
-      const RD = UPGRADES.radar;
+    if (d.has('persianas')) {
+      // Cajón de la persiana enrollada sobre cada acceso exterior (de noche baja sola).
+      const P = UPGRADES.persianas.roll, g = game.grid;
+      for (const cells of d.doorGroups) {
+        let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+        for (const k of cells) {
+          const i = k % g.w, j = (k / g.w) | 0;
+          x0 = Math.min(x0, i); x1 = Math.max(x1, i + 1); z0 = Math.min(z0, j); z1 = Math.max(z1, j + 1);
+        }
+        const alongX = x1 - x0 >= z1 - z0;
+        const len = alongX ? x1 - x0 : z1 - z0;
+        b.root(d.wx((x0 + x1) / 2), P.y, d.wz((z0 + z1) / 2), alongX ? 0 : Math.PI / 2);
+        b.box(0, 0, 0, len + 0.1, P.h, P.d, STEEL_D, { ao: 0.1 });
+        for (let k = 0; k < 4; k++) b.box(0, -0.03 - k * 0.035, 0, len, 0.03, 0.06, k % 2 ? STEEL : 0x6f7882, { ao: 0 });
+        for (const s of [-1, 1]) b.box(s * (len / 2 + 0.02), -2.2 + P.h, 0, 0.06, 2.2, 0.1, IRON, { ao: 0 }); // guías
+        b.box(0, P.h, 0, len + 0.12, 0.04, P.d + 0.04, YEL, { ao: 0 });
+      }
+      any = true;
+    }
+
+    if (d.has('archivo')) {
+      const RD = UPGRADES.archivo;
       b.root(d.wx(RD.x), RD.y, d.wz(RD.z), 0);
       b.box(0, 0, 0, 0.5, 0.25, 0.5, STEEL_D);
       b.cyl(0, 0.25, 0, 0.06, 0.08, RD.mastH - 0.25, STEEL, 8);
@@ -177,16 +200,6 @@ export class DespachoRenderer {
         b.cyl(0, 0.1, 0, r * 0.5, r * 0.55, r * 0.8, 0xd24a3e, 10, { layer: 'red', ao: 0 }); // parpadea con las sirenas
         b.sphere(0, 0.1 + r * 0.8, 0, r, r * 0.6, r, 0xff6a5a, 8, { layer: 'red', ao: 0 });
         b.box(0, 0.1 + r * 0.8, 0, r * 1.2, 0.03, 0.05, IRON, { ao: 0 });
-      }
-      any = true;
-    }
-
-    if (d.has('botiquines')) {
-      for (const c of UPGRADES.botiquines.cabinets) {
-        place('botiquin_pared', c.x, c.z, 0, { y: c.y });
-        // Rótulo verde "24 h" encima del armario nuevo.
-        b.root(d.wx(c.x), 0, d.wz(c.z), 0);
-        b.box(0, c.y + 0.26, 0.01, 0.34, 0.1, 0.02, 0x2f7d55, { layer: 'glow', ao: 0 });
       }
       any = true;
     }
@@ -247,12 +260,25 @@ export class DespachoRenderer {
     b.box((x0 + x1) / 2, H * 0.55 + 0.08, z1 + 0.052, 0.1, 0.14, 0.01, BLK, { ao: 0 });
   }
 
+  /** Pone cada sala y la fachada a su nivel (solo se reconstruye la que cambia) y pinta las rejas. */
+  syncRooms() {
+    const { game } = this;
+    const d = game.despacho, props = game.props;
+    const g = d.globalLevel;
+    for (const id of LEVEL_ROOMS) props.setRoomLevel(id, d.roomLevel(id), g);
+    props.setRoomLevel('fachada', g, g);
+    const bars = ROOM_BY_ID.calabozos?.barColors;
+    const mat = game.mapRenderer?.barMaterial;
+    if (bars && mat) mat.color.set(bars[Math.min(d.roomLevel('calabozos'), bars.length - 1)]);
+  }
+
   update() {
     const { game } = this;
     const d = game.despacho;
     if (d.version !== this._version) {
       this._version = d.version;
       this.rebuildStatic();
+      this.syncRooms();
     }
     const tl = d.level('torreta_tejado');
     for (let l = 0; l < 2; l++) {
@@ -265,8 +291,8 @@ export class DespachoRenderer {
     const focos = d.has('focos');
     this.focos.visible = this.lenses.visible = focos;
     if (focos) this.lensMaterial.color.copy(game.structureRenderer.lensMaterial.color);
-    this.dish.visible = d.has('radar');
-    if (this.dish.visible) this.dish.rotation.y = game.time * UPGRADES.radar.spin;
+    this.dish.visible = d.has('archivo');
+    if (this.dish.visible) this.dish.rotation.y = game.time * UPGRADES.archivo.spin;
     this.leds.visible = d.has('camaras') && Math.sin(game.time * Math.PI * 2 * UPGRADES.camaras.blinkHz) > 0;
   }
 

@@ -5,7 +5,8 @@ import { PHASE } from '../systems/DayNight.js';
 // cada día desde el 2) y se borra al caer o abandonar. Va aparte del guardado permanente
 // (medallas, mejoras, récords) y, como él, en el localStorage del propio dispositivo.
 
-export const RUN_SAVE_VERSION = 1;
+// v2: comisaría nueva por salas (las construcciones de la v1 no encajan en el mapa nuevo).
+export const RUN_SAVE_VERSION = 2;
 
 const num = (v, def = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : def);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -111,8 +112,8 @@ export function restoreRun(game, d) {
   for (const u of d.shop?.unlocked ?? []) if (typeof u === 'string') shop.unlocked.add(u);
   shop.bought = { ...(d.shop?.bought ?? {}) };
 
-  // Primero las mejoras del despacho (pueden cambiar vidas máximas); después lo construido,
-  // que ya trae guardada su vida.
+  // Primero el nivel de las salas (despacho del jefe: puede cambiar vidas máximas y reforma las
+  // salas a la vista); después lo construido, que ya trae guardada su vida.
   if (d.despacho && game.despacho?.setState) game.despacho.setState(d.despacho);
   build.freeBarricades = Math.max(0, num(d.build?.freeBarricades));
   for (const r of d.build?.structures ?? []) restoreStructure(build, r);

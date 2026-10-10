@@ -13,7 +13,7 @@ const LISTED = ['generador', 'torreta', 'valla', 'foco', 'barril'];
 /** Radio del zombi más grande (para buscar a los que tocan una valla). */
 const MAX_ZOMBIE_RADIUS = Math.max(...Object.entries(zombieData).filter(([k]) => !k.startsWith('_')).map(([, d]) => d.radius * d.scale * 1.1));
 const SELECT_ACTIONS = Array.from({ length: 9 }, (_, n) => `weapon${n + 1}`);
-const NO_BUILD_CHARS = new Set(['S', 'A', 'M', 'W']);
+const NO_BUILD_CHARS = new Set(['S', 'A', 'M', 'W', 'J']);
 const MAX_DOOR_WIDTH = 6;
 
 /**

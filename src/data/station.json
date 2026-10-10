@@ -1,0 +1,269 @@
+{
+  "_comment": "Comisaría por salas (edificio modular). Coordenadas en CELDAS del mapa (x = columna, y = fila; el norte es y = 0). rect = interior de la sala [x0, y0, x1, y1] inclusivo; los muros van alrededor. doors: hueco de 2 celdas en un muro (wall N/S/W/E; at = desplazamiento desde x0 en N/S o desde y0 en W/E); la primera puerta es la principal (cartel junto a ella). furniture: muebles BLOQUEANTES con huella en celdas relativas al rect (x, y, w, h); byLevel = tipo distinto según el nivel de la sala. tiles: baldosas especiales (A/M/W/J = tiendas, P = inicio, | = rejas). decor: piezas no bloqueantes; con wall + at van pegadas a la cara interior del muro (at en metros desde x0 o y0); si no, x/z en metros relativos al rect. minLevel/maxLevel: nivel de la sala con el que se ven. upgrades: mejoras del despacho (despacho.json) que suben el nivel de la sala (nivel = suma de sus niveles). Tras cambiar salas o puertas: node tools/genmap.cjs",
+  "building": [15, 14, 63, 37],
+  "signs": { "w": 1.5, "y": 2.2, "hangZ": 0.4, "hangY": 2.05, "star": 0.15, "starGap": 0.03 },
+  "facade": {
+    "z": 37.65,
+    "thresholds": { "pintura": 3, "rotulo": 9, "placas": 18 },
+    "sign": { "x": 39.6, "y": 1.95, "w": 3.2 },
+    "level": { "x": 39.6, "y": 1.25, "w": 1.2 },
+    "x0": 15.0, "x1": 64.0,
+    "doorGaps": [[33, 35]],
+    "colors": { "pintura": "#2f5fa8", "zocalo": "#1f3260", "placas": "#8d97a1", "remaches": "#4f5862" }
+  },
+  "rooms": [
+    {
+      "id": "calabozos", "name": "Calabozos", "sub": "Reservado el derecho de admisión", "bg": "#3a3d42", "fg": "#f0a04b",
+      "rect": [16, 15, 25, 21], "floor": "hormigon", "signAt": 5.0,
+      "doors": [{ "wall": "S", "at": 4 }],
+      "upgrades": ["calabozos"],
+      "barColors": ["#8a5232", "#2f5fa8", "#c9a227"],
+      "tiles": [{ "ch": "|", "x": 3, "y": 0, "h": 3 }, { "ch": "|", "x": 6, "y": 0, "h": 3 }],
+      "furniture": [
+        { "type": "camastro", "x": 0, "y": 0, "w": 1, "h": 2 },
+        { "type": "wc", "x": 2, "y": 0 },
+        { "type": "camastro", "x": 4, "y": 0, "w": 1, "h": 2 },
+        { "type": "wc", "x": 5, "y": 0 },
+        { "type": "wc", "x": 7, "y": 0 },
+        { "type": "camastro", "x": 9, "y": 0, "w": 1, "h": 2 },
+        { "type": "banco_madera", "x": 9, "y": 4, "w": 1, "h": 3 }
+      ],
+      "decor": [
+        { "type": "medicion_pared", "wall": "W", "at": 4.6 },
+        { "type": "camara_seguridad", "wall": "N", "at": 9.6, "y": 2.3 },
+        { "type": "fluorescente", "wall": "W", "at": 2.0 },
+        { "type": "papeles_suelo", "x": 2.2, "z": 5.2, "n": 3, "maxLevel": 0 },
+        { "type": "gotera", "x": 1.2, "z": 5.6, "maxLevel": 0 },
+        { "type": "suelo_electrico", "x": 5.0, "z": 5.1, "w": 9.4, "d": 3.4, "minLevel": 1 },
+        { "type": "cartel", "wall": "N", "at": 1.5, "sprite": "alta_tension", "w": 0.7, "y": 2.15, "minLevel": 1 },
+        { "type": "cartel", "wall": "N", "at": 8.4, "sprite": "alta_tension", "w": 0.7, "y": 2.15, "minLevel": 1 },
+        { "type": "chispas", "x": 5.0, "z": 5.1, "w": 9.0, "d": 3.0, "minLevel": 2 }
+      ]
+    },
+    {
+      "id": "archivos", "name": "Archivo", "sub": "Lo que no está aquí no ha pasado", "bg": "#5e3d26", "fg": "#f4d77a",
+      "rect": [27, 15, 34, 21], "floor": "moqueta", "signAt": 5.6,
+      "doors": [{ "wall": "S", "at": 3 }],
+      "upgrades": ["archivo"],
+      "furniture": [
+        { "type": "archivador", "x": 0, "y": 0, "w": 2, "h": 1 },
+        { "type": "estanteria_archivo", "x": 5, "y": 0, "w": 3, "h": 1 },
+        { "type": "escritorio", "x": 0, "y": 3, "w": 1, "h": 2, "rot": 90 },
+        { "type": "cajas_apiladas", "x": 7, "y": 1, "byLevel": ["cajas_apiladas", "cajas_apiladas", "servidor"] },
+        { "type": "fotocopiadora", "x": 7, "y": 4 }
+      ],
+      "decor": [
+        { "type": "pizarra_casos", "wall": "N", "at": 2.9, "w": 2.2, "y": 1.45 },
+        { "type": "fluorescente", "wall": "W", "at": 1.4 },
+        { "type": "papeles_suelo", "x": 3.0, "z": 4.2, "n": 5, "maxLevel": 0 },
+        { "type": "papeles_suelo", "x": 5.4, "z": 2.4, "n": 4, "maxLevel": 0 },
+        { "type": "papeles_suelo", "x": 2.4, "z": 6.0, "n": 3, "maxLevel": 0 },
+        { "type": "cajas_suelo", "x": 6.2, "z": 5.5, "maxLevel": 0 },
+        { "type": "planta_deco", "x": 0.45, "z": 6.5, "s": 0.9, "minLevel": 1 },
+        { "type": "alfombra", "x": 3.8, "z": 4.4, "w": 2.6, "d": 1.6, "color": 6983864, "minLevel": 1 }
+      ]
+    },
+    {
+      "id": "descanso", "name": "Sala de descanso", "sub": "Prohibido descansar en paz", "bg": "#3b7a55", "fg": "#ffffff",
+      "rect": [36, 15, 43, 21], "floor": "linoleo", "signAt": 6.2,
+      "doors": [{ "wall": "S", "at": 3 }, { "wall": "N", "at": 3 }],
+      "upgrades": [],
+      "furniture": [
+        { "type": "cafetera", "x": 0, "y": 0 },
+        { "type": "fuente", "x": 1, "y": 0 },
+        { "type": "vending", "x": 7, "y": 0 },
+        { "type": "mesa_comedor", "x": 1, "y": 3, "w": 2, "h": 2, "rot": 0 },
+        { "type": "sofa", "x": 7, "y": 2, "w": 1, "h": 3 }
+      ],
+      "decor": [
+        { "type": "cartel", "wall": "N", "at": 0.9, "sprite": "dias_sin_incidentes", "w": 0.8, "y": 2.05 },
+        { "type": "cartel", "wall": "W", "at": 2.5, "sprite": "no_morder", "w": 1.3, "y": 1.75 },
+        { "type": "salida", "wall": "N", "at": 4.0, "y": 2.32, "w": 0.5 },
+        { "type": "cuadro_electrico", "wall": "W", "at": 4.5, "y": 1.3 },
+        { "type": "reloj", "wall": "W", "at": 5.8, "y": 2.1, "w": 0.36 },
+        { "type": "fluorescente", "wall": "E", "at": 5.6 }
+      ]
+    },
+    {
+      "id": "despacho", "name": "Despacho del jefe", "sub": "Llamar antes de entrar (o de morder)", "bg": "#5e3d26", "fg": "#eab43c",
+      "rect": [45, 15, 52, 21], "floor": "madera", "signAt": 7.0,
+      "doors": [{ "wall": "S", "at": 3 }],
+      "upgrades": ["camaras"],
+      "globalLevel": true,
+      "tiles": [{ "ch": "J", "x": 3, "y": 3 }],
+      "furniture": [
+        { "type": "escritorio", "variant": "comisario", "x": 2, "y": 2, "w": 3, "h": 1, "rot": 0 },
+        { "type": "consola_camaras", "x": 6, "y": 0, "w": 2, "h": 1 },
+        { "type": "maqueta", "x": 0, "y": 4, "w": 1, "h": 2, "rot": 90 },
+        { "type": "planta", "x": 0, "y": 0 }
+      ],
+      "decor": [
+        { "type": "monitores_pared", "wall": "N", "at": 3.8 },
+        { "type": "calendario", "wall": "N", "at": 1.6, "maxLevel": 0 },
+        { "type": "escudo_pared", "wall": "N", "at": 1.6, "y": 1.55, "minLevel": 1 },
+        { "type": "fluorescente", "wall": "E", "at": 3.5 },
+        { "type": "alfombra", "x": 3.5, "z": 3.4, "w": 3.6, "d": 2.4, "color": 11680819, "minLevel": 1 },
+        { "type": "papeles_suelo", "x": 5.6, "z": 4.6, "n": 3, "maxLevel": 0 }
+      ]
+    },
+    {
+      "id": "armeria", "name": "Armería", "sub": "Una bala, un problema menos", "bg": "#46201f", "fg": "#f2c14e",
+      "rect": [54, 15, 62, 21], "floor": "chapa", "signAt": 5.0,
+      "doors": [{ "wall": "S", "at": 4 }],
+      "upgrades": ["armeria"],
+      "tiles": [{ "ch": "A", "x": 4, "y": 4 }],
+      "furniture": [
+        { "type": "armero", "x": 0, "y": 0, "w": 4, "h": 1 },
+        { "type": "trastos", "x": 6, "y": 0, "w": 3, "h": 1, "byLevel": ["trastos", "armero", "armero", "armero"] },
+        { "type": "mostrador_armeria", "x": 3, "y": 3, "w": 3, "h": 1, "rot": 0 },
+        { "type": "estanteria_municion", "x": 8, "y": 2, "w": 1, "h": 2 },
+        { "type": "banco_trabajo", "x": 0, "y": 4, "w": 1, "h": 2, "rot": 90 }
+      ],
+      "decor": [
+        { "type": "cartel", "wall": "N", "at": 5.0, "sprite": "acceso", "w": 1.3, "y": 1.5, "maxLevel": 2 },
+        { "type": "puerta_acorazada", "wall": "N", "at": 5.0, "minLevel": 3 },
+        { "type": "extintor", "wall": "W", "at": 2.6 },
+        { "type": "fluorescente", "wall": "E", "at": 5.5 },
+        { "type": "camara_seguridad", "wall": "N", "at": 8.6, "y": 2.38 },
+        { "type": "cajas_suelo", "x": 7.6, "z": 5.6, "maxLevel": 0 }
+      ]
+    },
+    {
+      "id": "pasillo", "name": "Pasillo central", "sub": "No correr (salvo que le persigan)", "bg": "#2f5fa8", "fg": "#ffffff",
+      "rect": [16, 23, 62, 26], "floor": "damero",
+      "doors": [{ "wall": "W", "at": 1 }, { "wall": "E", "at": 1 }],
+      "upgrades": [],
+      "noSign": true,
+      "decor": [
+        { "type": "tablon_se_busca", "wall": "N", "at": 2.0, "w": 1.5, "y": 1.3 },
+        { "type": "reloj", "wall": "N", "at": 8.6, "y": 2.2, "w": 0.38 },
+        { "type": "cuadro_electrico", "wall": "N", "at": 11.0, "y": 1.3 },
+        { "type": "escudo_pared", "wall": "N", "at": 20.5, "y": 1.5 },
+        { "type": "extintor", "wall": "N", "at": 27.8 },
+        { "type": "botiquin_pared", "wall": "N", "at": 29.6, "y": 1.3 },
+        { "type": "mapa_pared", "wall": "N", "at": 38.6, "w": 1.2, "y": 1.6 },
+        { "type": "camara_seguridad", "wall": "N", "at": 0.4, "y": 2.38 },
+        { "type": "camara_seguridad", "wall": "N", "at": 46.6, "y": 2.38 },
+        { "type": "salida", "wall": "E", "at": 0.4, "y": 2.15 },
+        { "type": "salida", "wall": "W", "at": 3.6, "y": 2.15 },
+        { "type": "alfombra", "x": 23.5, "z": 2.0, "w": 42, "d": 1.0, "color": 5208240 },
+        { "type": "fluorescente", "wall": "N", "at": 18.2 },
+        { "type": "fluorescente", "wall": "N", "at": 36.6 }
+      ]
+    },
+    {
+      "id": "enfermeria", "name": "Enfermería", "sub": "Tiritas y fe", "bg": "#f4f1ea", "fg": "#2f7d55",
+      "rect": [16, 28, 25, 36], "floor": "baldosa_blanca",
+      "doors": [{ "wall": "N", "at": 4 }],
+      "upgrades": ["enfermeria"],
+      "tiles": [{ "ch": "M", "x": 3, "y": 3 }],
+      "furniture": [
+        { "type": "armario_medicinas", "x": 0, "y": 0, "w": 2, "h": 1 },
+        { "type": "mostrador_enfermeria", "x": 2, "y": 2, "w": 1, "h": 3 },
+        { "type": "camillas", "x": 9, "y": 1, "w": 1, "h": 4 },
+        { "type": "trastos", "x": 9, "y": 5, "w": 1, "h": 4, "byLevel": ["trastos", "camillas", "camillas", "camillas"] }
+      ],
+      "decor": [
+        { "type": "botiquin_pared", "wall": "N", "at": 3.0, "y": 1.3 },
+        { "type": "cruz_roja", "wall": "N", "at": 8.6, "w": 0.8, "y": 1.55, "maxLevel": 2 },
+        { "type": "cruz_luminosa", "wall": "N", "at": 8.6, "minLevel": 3 },
+        { "type": "fluorescente", "wall": "W", "at": 6.0 },
+        { "type": "silla_ruedas", "x": 5.6, "z": 6.8, "rot": 200, "maxLevel": 0 },
+        { "type": "gotera", "x": 1.0, "z": 7.4, "maxLevel": 0 },
+        { "type": "silla_ruedas", "x": 1.0, "z": 7.6, "rot": 30, "minLevel": 1 },
+        { "type": "alfombra", "x": 7.4, "z": 4.5, "w": 1.4, "d": 6.0, "color": 7913658, "minLevel": 1 }
+      ]
+    },
+    {
+      "id": "recepcion", "name": "Recepción", "sub": "Coja número y rece", "bg": "#1f3260", "fg": "#ffffff",
+      "rect": [27, 28, 41, 36], "floor": "terrazo",
+      "doors": [{ "wall": "N", "at": 6 }, { "wall": "S", "at": 6 }],
+      "upgrades": ["persianas"],
+      "tiles": [{ "ch": "P", "x": 7, "y": 5 }],
+      "furniture": [
+        { "type": "mostrador_recepcion", "variant": "atencion", "x": 1, "y": 2, "w": 3, "h": 1, "rot": 0 },
+        { "type": "mostrador_recepcion", "variant": "denuncias", "x": 10, "y": 2, "w": 3, "h": 1, "rot": 0 },
+        { "type": "sillas_espera", "x": 1, "y": 6, "w": 3, "h": 1, "rot": 180 },
+        { "type": "sillas_espera", "x": 10, "y": 6, "w": 3, "h": 1, "rot": 180 },
+        { "type": "centralita_radio", "x": 0, "y": 4, "w": 1, "h": 2 },
+        { "type": "planta", "x": 0, "y": 0 },
+        { "type": "planta", "x": 14, "y": 0 }
+      ],
+      "decor": [
+        { "type": "cartel", "wall": "N", "at": 3.4, "sprite": "comisaria", "w": 2.0, "y": 2.0 },
+        { "type": "reloj", "wall": "N", "at": 5.2, "y": 2.15, "w": 0.36 },
+        { "type": "alarma", "wall": "N", "at": 10.6, "y": 1.35 },
+        { "type": "tablon_se_busca", "wall": "N", "at": 12.6, "w": 1.3, "y": 1.55 },
+        { "type": "camara_seguridad", "wall": "N", "at": 14.6, "y": 2.38 },
+        { "type": "fluorescente", "wall": "N", "at": 1.4, "flicker": true, "maxLevel": 0 },
+        { "type": "fluorescente", "wall": "N", "at": 1.4, "minLevel": 1 },
+        { "type": "fluorescente", "wall": "E", "at": 4.5 },
+        { "type": "detector_metales", "x": 7.0, "z": 8.45, "w": 2.0 },
+        { "type": "alfombra", "x": 7.0, "z": 7.4, "w": 3.0, "d": 1.5, "color": 11680819 },
+        { "type": "bandera_stand", "x": 5.6, "z": 8.6, "sprite": "bandera_pol" },
+        { "type": "bandera_stand", "x": 8.4, "z": 8.6, "sprite": "bandera_es" },
+        { "type": "papeles_suelo", "x": 4.6, "z": 4.4, "n": 3, "maxLevel": 0 },
+        { "type": "silla_rota", "x": 12.6, "z": 7.4, "rot": 70, "maxLevel": 0 },
+        { "type": "gotera", "x": 13.4, "z": 4.5, "maxLevel": 1 },
+        { "type": "planta_deco", "x": 5.3, "z": 0.5, "s": 0.8, "minLevel": 2 },
+        { "type": "planta_deco", "x": 8.7, "z": 0.5, "s": 0.8, "minLevel": 2 }
+      ]
+    },
+    {
+      "id": "almacen", "name": "Almacén de pruebas", "sub": "Todo lo incautado (y alguna merienda)", "bg": "#c89c62", "fg": "#3a2412",
+      "rect": [43, 28, 52, 36], "floor": "hormigon_lineas",
+      "doors": [{ "wall": "N", "at": 4 }],
+      "upgrades": ["muros"],
+      "tiles": [{ "ch": "W", "x": 4, "y": 2 }],
+      "furniture": [
+        { "type": "mostrador_pruebas", "x": 3, "y": 3, "w": 3, "h": 1, "rot": 180 },
+        { "type": "estanterias", "x": 0, "y": 4, "w": 1, "h": 4 },
+        { "type": "estanterias", "x": 9, "y": 4, "w": 1, "h": 4 },
+        { "type": "cajas_apiladas", "x": 0, "y": 0 },
+        { "type": "cajas_apiladas", "x": 9, "y": 0 }
+      ],
+      "decor": [
+        { "type": "extintor", "wall": "N", "at": 7.6 },
+        { "type": "camara_seguridad", "wall": "N", "at": 9.6, "y": 2.38 },
+        { "type": "fluorescente", "wall": "W", "at": 5.0 },
+        { "type": "bolsas_suelo", "x": 6.2, "z": 6.0, "n": 3, "maxLevel": 0 },
+        { "type": "papeles_suelo", "x": 2.0, "z": 5.4, "n": 2, "maxLevel": 0 },
+        { "type": "cajas_suelo", "x": 8.3, "z": 5.2, "maxLevel": 0 },
+        { "type": "linea", "x": 5.0, "z": 7.0, "w": 7.0, "d": 0.12, "color": 15382844, "minLevel": 1 }
+      ]
+    },
+    {
+      "id": "vestuarios", "name": "Vestuarios", "sub": "Dúchese antes de volver a la calle", "bg": "#2f6b8a", "fg": "#ffffff",
+      "rect": [54, 28, 62, 36], "floor": "baldosa_azul",
+      "doors": [{ "wall": "N", "at": 4 }],
+      "upgrades": ["vestuarios"],
+      "furniture": [
+        { "type": "taquillas", "x": 0, "y": 0, "w": 3, "h": 1 },
+        { "type": "taquillas", "x": 7, "y": 0, "w": 2, "h": 1 },
+        { "type": "duchas", "x": 0, "y": 3, "w": 1, "h": 4 },
+        { "type": "banco_vestuario", "x": 3, "y": 4, "w": 3, "h": 1, "rot": 0 },
+        { "type": "lavabos", "x": 8, "y": 3, "w": 1, "h": 3 }
+      ],
+      "decor": [
+        { "type": "perchero_chalecos", "wall": "N", "at": 3.5, "minLevel": 1 },
+        { "type": "fluorescente", "wall": "W", "at": 5.0 },
+        { "type": "gotera", "x": 2.6, "z": 7.6, "maxLevel": 0 },
+        { "type": "gotera", "x": 7.0, "z": 7.4, "maxLevel": 1 },
+        { "type": "toallas_suelo", "x": 5.6, "z": 6.6, "maxLevel": 0 },
+        { "type": "alfombra", "x": 4.5, "z": 6.6, "w": 2.4, "d": 1.0, "color": 7913658, "minLevel": 2 }
+      ]
+    },
+    {
+      "id": "patio", "name": "Sala de máquinas", "sub": "Alta tensión, baja paciencia", "bg": "#2b2b30", "fg": "#f2c230",
+      "kind": "exterior",
+      "upgrades": ["transformador", "generador_emergencia", "focos"],
+      "sign": { "x": 46.4, "z": 11.6, "rot": 0, "post": true }
+    },
+    {
+      "id": "azotea", "name": "Azotea", "sub": "Vistas privilegiadas a la horda", "bg": "#46201f", "fg": "#ffffff",
+      "kind": "exterior",
+      "upgrades": ["torreta_tejado", "alarma"],
+      "sign": { "x": 60.6, "z": 37.65, "rot": 0, "ladder": true }
+    }
+  ]
+}

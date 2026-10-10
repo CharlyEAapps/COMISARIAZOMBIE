@@ -115,18 +115,21 @@ describe('Clasificación de grupos', () => {
     for (const o of Object.values(propsData.groups)) expect(TYPES[o.type], o.type).toBeTruthy();
   });
 
-  it('reconoce los muebles de las salas por su forma', () => {
-    const types = {};
-    for (const ch of ['o']) for (const g of findGroups(grid, ch)) types[g.key] = classifyGroup(grid, g, propsData).type;
-    expect(types['36,17']).toBe('escritorio');
-    expect(types['51,17']).toBe('mostrador_armeria');
-    expect(types['35,31']).toBe('mostrador_recepcion');
-    expect(types['34,34']).toBe('sillas_espera');
-    expect(types['25,30']).toBe('mostrador_enfermeria');
-    expect(types['28,34']).toBe('camillas');
-    expect(types['48,34']).toBe('estanterias');
-    expect(types['50,31']).toBe('mostrador_pruebas');
-    expect(types['30,24']).toBe('taquillas');
+  it('los muebles de las salas salen de station.json y el exterior se reconoce por su forma', () => {
+    const at = (key) => props.instances.find((x) => x.blocking && x.key === key)?.type;
+    expect(at('47,17')).toBe('escritorio');          // mesa del jefe (despacho)
+    expect(at('57,18')).toBe('mostrador_armeria');
+    expect(at('28,30')).toBe('mostrador_recepcion');
+    expect(at('28,34')).toBe('sillas_espera');
+    expect(at('18,30')).toBe('mostrador_enfermeria');
+    expect(at('25,29')).toBe('camillas');
+    expect(at('43,32')).toBe('estanterias');
+    expect(at('46,31')).toBe('mostrador_pruebas');
+    expect(at('54,28')).toBe('taquillas');
+    expect(at('43,10')).toBe('generador');             // transformador del patio
+    const ext = {};
+    for (const g of findGroups(grid, 'o')) ext[g.key] = classifyGroup(grid, g, propsData).type;
+    expect(ext['31,39']).toBe('mastil');
   });
 });
 

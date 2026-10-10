@@ -250,9 +250,9 @@ export class ThreatIndicators {
     const pp = g.player.position;
     const px = pp.x, pz = pp.z;
     const S = T.sectors;
-    // Las cámaras del despacho alargan el alcance de los avisos.
-    const mul = g.despacho?.has?.('camaras') ? T.camerasRangeMul : 1;
-    const rs = T.specialRange * mul, rn = T.normalRange * mul;
+    // Las cámaras del despacho alargan el alcance de los avisos (nivel II: especiales en todo el mapa).
+    const d = g.despacho;
+    const rs = T.specialRange * (d?.threatMul?.(true) ?? 1), rn = T.normalRange * (d?.threatMul?.(false) ?? 1);
     const rs2 = rs * rs, rn2 = rn * rn;
     const v = this._v;
     this.nc = 0;

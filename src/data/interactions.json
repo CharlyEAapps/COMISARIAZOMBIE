@@ -241,6 +241,7 @@
   },
   "tienda_armeria": {
     "label": "Abrir la armería",
+    "marker": true,
     "hold": 0.15,
     "cooldown": 0.3,
     "radius": 1.7,
@@ -250,6 +251,7 @@
   },
   "tienda_enfermeria": {
     "label": "Abrir la enfermería",
+    "marker": true,
     "hold": 0.15,
     "cooldown": 0.3,
     "radius": 1.7,
@@ -259,6 +261,7 @@
   },
   "tienda_almacen": {
     "label": "Abrir el almacén",
+    "marker": true,
     "hold": 0.15,
     "cooldown": 0.3,
     "radius": 1.7,
@@ -267,7 +270,8 @@
     }
   },
   "tienda_despacho": {
-    "label": "Abrir el despacho del comisario",
+    "label": "Reformar la comisaría (despacho del jefe)",
+    "marker": true,
     "hold": 0.15,
     "cooldown": 0.3,
     "radius": 1.7,

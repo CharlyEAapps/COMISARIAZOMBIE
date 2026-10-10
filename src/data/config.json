@@ -410,7 +410,6 @@
     "offscreenNdc": 0.92,
     "specialRange": 26,
     "normalRange": 14,
-    "camerasRangeMul": 1.6,
     "maxArrows": 8,
     "maxGeneric": 3,
     "groupMin": 2,

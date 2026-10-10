@@ -1,12 +1,8 @@
 {
+  "_comment": "Tipos forzados para grupos del EXTERIOR (clave = celda superior izquierda 'x,y'). Los muebles de dentro del edificio se definen por sala en station.json.",
   "groups": {
-    "43,16": { "type": "fuente" },
-    "43,19": { "type": "fotocopiadora" },
-    "40,17": { "type": "escritorio", "variant": "comisario" },
-    "35,29": { "type": "cafetera" },
-    "44,29": { "type": "vending" },
-    "36,37": { "type": "mastil", "variant": "es" },
-    "41,37": { "type": "mastil", "variant": "pol" },
+    "31,39": { "type": "mastil", "variant": "es" },
+    "37,39": { "type": "mastil", "variant": "pol" },
     "14,42": { "type": "patrulla", "rot": 0 },
     "20,42": { "type": "patrulla", "rot": 180, "variant": "azul" },
     "52,42": { "type": "furgoneta", "rot": 180 },

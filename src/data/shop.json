@@ -19,9 +19,9 @@
       "subtitle": "Material de construcción y trampas"
     },
     "despacho": {
-      "name": "Despacho del comisario",
+      "name": "Despacho del jefe",
       "icon": "🗄️",
-      "subtitle": "Mejoras de la comisaría (solo durante este turno)"
+      "subtitle": "Reforma la comisaría sala a sala (solo durante este turno)"
     }
   },
   "enfermeria": [

@@ -68,7 +68,9 @@ export class Score {
     const list = this.cfg.objectives;
     const o = list[(Math.random() * list.length) | 0];
     const n = Math.max(o.min ?? -Infinity, o.base + o.perNight * (night - 1));
-    this.objective = { id: o.id, n, reward: o.reward, text: o.text.replace('{n}', n), night };
+    // Archivo ordenado (despacho del jefe): los casos pagan más.
+    const reward = Math.round(o.reward * (this.game.despacho?.caseRewardMul ?? 1));
+    this.objective = { id: o.id, n, reward, text: o.text.replace('{n}', n), night };
     return this.objective;
   }
 

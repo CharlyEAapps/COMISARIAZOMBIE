@@ -228,6 +228,11 @@ Tono ácido sin gore. Todo el texto en `src/data/humor.json` (más frases en tie
 - **Continuar turno** (`save/RunSave.js`): guardado al amanecer desde el día 2, incluido el despacho; se borra al caer.
 - **Iniciales de recreativa** en los récords (3 letras, guardadas por dispositivo).
 - **Indicadores de amenaza** (`ui/ThreatIndicators.js`): flechas en el borde y destello de daño direccional; las cámaras alargan su alcance.
+- **Comisaría por salas con nivel** (`docs/REDISENO_COMISARIA.md`):
+  - Edificio nuevo de 49×24 (x 15–63, z 14–37) definido en `data/station.json` (salas, puertas, muebles, piezas por nivel y suelo); `tools/genmap.cjs` estampa el edificio en `map.json`.
+  - 10 salas con cartel y estrellas (dentro y en el pasillo) y suelo propio, más pasillo central de 4 celdas y 4 accesos exteriores de 2 celdas.
+  - Cada sala se reforma al subir de nivel (PropRenderer reconstruye solo esa sala y libera su geometría). La fachada muestra el nivel global (pintura, rótulo luminoso, placas de acero).
+  - El despacho del jefe (mesa con «!» y marcador morado) vende 13 mejoras agrupadas por sala. «Continuar turno» pasa a la versión 2.
 
 ## Placeholders pendientes de sustituir
 - Arte: todo procedural en el estilo de la referencia (decisión de Carlos). Los packs CC0 solo se usarán para sonido y música (fase 6).

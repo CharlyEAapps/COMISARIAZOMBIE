@@ -612,3 +612,11 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
 .touch .build-card .name { font-size: 10px; }
 .touch .build-info { font-size: 11px; padding: 5px 10px; }
 .touch .build-tab { padding: 3px 9px; font-size: 11px; }
+
+/* Tienda: artículo marcado para comprar (doble toque en el móvil) */
+.shop-row.armed { border-color: var(--accent); background: rgba(232, 178, 58, 0.18); }
+.shop-row .confirm { margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--accent); }
+.touch .shop-list { touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+
+.menus { touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.btn.armed { background: #f4d27a; box-shadow: 0 0 0 3px rgba(232, 178, 58, 0.35); }

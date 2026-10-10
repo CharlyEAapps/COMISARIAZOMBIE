@@ -1,3 +1,6 @@
+const TAP_SLOP = 10; // px que se puede mover el dedo y seguir contando como toque
+const ARM_TIME = 4;  // s para confirmar la compra con el segundo toque
+
 // Panel de tienda (DOM). Se abre al interactuar con un mostrador; se compra con clic o con
 // las teclas 1-9; E, Esc o alejarse lo cierran. No pausa el juego: de noche, cuidado.
 export class ShopPanel {
@@ -19,11 +22,31 @@ export class ShopPanel {
     this.k = {};
     el.querySelectorAll('[data-k]').forEach((e) => { this.k[e.dataset.k] = e; });
     el.addEventListener('mousedown', (e) => e.stopPropagation());
-    // pointerdown (no click): si la lista se re-renderiza entre pulsar y soltar, la compra no se pierde.
+    // Comprar = TOCAR (pulsar y soltar casi sin moverse): deslizar la lista no compra nada.
+    // El id se toma al pulsar, así que aunque la lista se re-renderice entre medias no se pierde.
+    // En táctil hace falta doble toque: el primero marca el artículo y el segundo lo compra.
+    this.armed = null;
+    this.armedUntil = 0;
+    this._press = null;
     this.k.list.addEventListener('pointerdown', (e) => {
       const row = e.target.closest('[data-id]');
-      if (row) { e.preventDefault(); this.buy(row.dataset.id); }
+      this._press = row ? { id: row.dataset.id, x: e.clientX, y: e.clientY, touch: e.pointerType !== 'mouse' } : null;
     });
+    this.k.list.addEventListener('pointerup', (e) => {
+      const p = this._press;
+      this._press = null;
+      if (!p || Math.hypot(e.clientX - p.x, e.clientY - p.y) > TAP_SLOP) return;
+      if (p.touch && !(this.armed === p.id && performance.now() < this.armedUntil)) {
+        this.armed = p.id;
+        this.armedUntil = performance.now() + ARM_TIME * 1000;
+        this.render(true);
+        this.game.audio?.play('ui_click');
+        return;
+      }
+      this.armed = null;
+      this.buy(p.id);
+    });
+    this.k.list.addEventListener('pointercancel', () => { this._press = null; });
     this.k.close.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); game.shop.close(); });
     this.items = [];
     this.signature = '';
@@ -65,6 +88,7 @@ export class ShopPanel {
     this.k.points.textContent = String(run.points);
     // Solo se reconstruye la lista si cambia algo (los puntos ya se reflejan en el estado poor/ok).
     const sig = `${shop.open}|${items.map((i) => i.id + i.state + i.price + i.name + i.desc).join(',')}`;
+    if (this.armed && performance.now() >= this.armedUntil) { this.armed = null; force = true; }
     if (!force && sig === this.signature) return;
     this.signature = sig;
     this.items = items;
@@ -84,7 +108,9 @@ export class ShopPanel {
         none: '<span class="tag">Nada que reparar</span>',
       }[it.state];
       const key = n < 9 ? `<span class="key">${n + 1}</span>` : '<span class="key blank"></span>';
-      html += `<div class="shop-row ${it.state}" data-id="${it.id}">${key}<div class="shop-text"><div class="name">${it.name}</div><div class="desc">${it.desc}</div>${it.flavor ? `<div class="flavor">«${it.flavor}»</div>` : ''}</div>${tag}</div>`;
+      const armed = this.armed === it.id && performance.now() < this.armedUntil;
+      const confirm = armed ? '<div class="confirm">👆 Toca otra vez para comprar</div>' : '';
+      html += `<div class="shop-row ${it.state}${armed ? ' armed' : ''}" data-id="${it.id}">${key}<div class="shop-text"><div class="name">${it.name}</div><div class="desc">${it.desc}</div>${it.flavor ? `<div class="flavor">«${it.flavor}»</div>` : ''}${confirm}</div>${tag}</div>`;
     });
     this.k.list.innerHTML = html;
   }

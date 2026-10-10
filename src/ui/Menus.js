@@ -63,6 +63,7 @@ export class Menus {
     this.current = name;
     this.resetArmed = false;
     this.abandonArmed = false;
+    this.buyArmed = null;
     this.render();
     this.root.classList.add('show');
     // El HUD se oculta en el menú principal y en el fin de turno (en la pausa se ve detrás).
@@ -132,7 +133,7 @@ export class Menus {
     const cards = list.map((u) => {
       const stars = `${'★'.repeat(u.level)}${'☆'.repeat(Math.max(0, u.maxLevel - u.level))}`;
       const btn = u.nextCost
-        ? `<button class="btn small" data-buy="${u.id}" ${u.canBuy ? '' : 'disabled'}>Mejorar · 🎖️ ${u.nextCost}</button>`
+        ? `<button class="btn small${this.buyArmed === u.id ? ' armed' : ''}" data-buy="${u.id}" ${u.canBuy ? '' : 'disabled'}>${this.buyArmed === u.id ? '👆 Toca otra vez para mejorar' : `Mejorar · 🎖️ ${u.nextCost}`}</button>`
         : '<span class="maxed">Al máximo</span>';
       return `<div class="upgrade-card panel ${u.level ? 'owned' : ''}">
         <div class="up-head"><span class="up-icon">${u.icon}</span><span class="up-name">${esc(u.name)}</span><span class="up-stars">${stars}</span></div>
@@ -244,6 +245,15 @@ export class Menus {
     const g = this.game;
     if (el.dataset.go) { this.show(el.dataset.go); return; }
     if (el.dataset.buy) {
+      // En el móvil, doble toque: el primero pide confirmación (las medallas no se recuperan).
+      const touch = g.input.lastDevice === 'touch';
+      if (touch && this.buyArmed !== el.dataset.buy) {
+        this.buyArmed = el.dataset.buy;
+        g.audio?.play('ui_click');
+        this.render();
+        return;
+      }
+      this.buyArmed = null;
       if (g.meta.buyUpgrade(el.dataset.buy)) g.audio?.play('ui_buy');
       else g.audio?.play('ui_error');
       this.render();

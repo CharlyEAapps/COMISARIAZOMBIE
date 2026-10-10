@@ -405,7 +405,7 @@
     }
   },
   "touch": {
-    "leftZone": 0.45,
+    "leftZone": 0.5,
     "stickRadius": 58,
     "deadZone": 0.15,
     "followFactor": 1.0,
@@ -414,7 +414,9 @@
     "aimDistance": 8,
     "assistAngleDeg": 14,
     "assistRange": 12,
-    "cameraDistance": 19
+    "cameraDistance": 19,
+    "fireStickInset": 95,
+    "fireGrab": 1.9
   },
   "gamepad": {
     "deadZone": 0.18,

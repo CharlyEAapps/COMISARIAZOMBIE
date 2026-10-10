@@ -463,57 +463,115 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
 .btn.ghost.danger-text { color: #ff8a7a; }
 
 /* ---------------------------------------------------------------- Controles táctiles (fase 8) */
-.touch-layer { position: absolute; inset: 0; display: none; pointer-events: auto; touch-action: none; -webkit-touch-callout: none; }
+/* Diseñado para móvil en horizontal: pulgares en las esquinas inferiores, información arriba. */
+.touch-layer {
+  position: absolute; inset: 0; display: none; pointer-events: auto; touch-action: none; -webkit-touch-callout: none;
+  --sr: env(safe-area-inset-right, 0px); --sl: env(safe-area-inset-left, 0px);
+  --sb: env(safe-area-inset-bottom, 0px); --st: env(safe-area-inset-top, 0px);
+}
 .touch .touch-layer { display: block; }
 .in-menu .touch-layer { display: none; }
+/* En táctil, el HUD de escritorio se sustituye por la franja superior. */
+.touch .panel-status, .touch .panel-weapon, .touch .panel-case, .touch .hint, .touch [data-k="ready"] { display: none !important; }
+
+/* Joysticks */
 .stick {
   position: absolute; width: 116px; height: 116px; margin: -58px 0 0 -58px; border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.28); background: rgba(10, 12, 16, 0.18); opacity: 0.45; pointer-events: none;
+  border: 2px solid rgba(255, 255, 255, 0.28); background: rgba(10, 12, 16, 0.18); opacity: 0.4; pointer-events: none;
 }
 .stick.on { opacity: 1; }
-.stick-left { left: calc(env(safe-area-inset-left, 0px) + 110px); top: calc(100% - 100px); }
-.stick-right { left: calc(100% - 250px); top: calc(100% - 100px); }
+.stick-left { left: calc(var(--sl) + 100px); top: calc(100% - var(--sb) - 92px); }
+.stick-right.fixed { left: auto; top: auto; margin: 0; right: calc(var(--sr) + 37px); bottom: calc(var(--sb) + 37px); opacity: 0.6; }
+.stick-right.fixed.on { opacity: 1; }
 .stick-knob {
   position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
   background: rgba(242, 239, 230, 0.55); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
-.stick-right .stick-knob { background: rgba(232, 178, 58, 0.7); }
+.stick-right .stick-knob { background: rgba(232, 178, 58, 0.75); }
+
+/* Botones */
 .touch-buttons { position: absolute; inset: 0; pointer-events: none; }
 .tbtn {
   position: absolute; width: 54px; height: 54px; border-radius: 50%; pointer-events: auto; touch-action: none;
-  border: 2px solid rgba(255, 255, 255, 0.22); background: rgba(16, 18, 24, 0.66); color: var(--hud-fg);
-  font: 700 20px var(--font); display: flex; align-items: center; justify-content: center; padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.22); background: rgba(16, 18, 24, 0.68); color: var(--hud-fg);
+  font: 700 21px var(--font); display: flex; align-items: center; justify-content: center; padding: 0;
   -webkit-tap-highlight-color: transparent; user-select: none;
 }
-.tbtn.down { background: rgba(232, 178, 58, 0.75); color: #16181e; }
-.tbtn.big { width: 66px; height: 66px; font-size: 26px; }
-/* Racimo de botones abajo a la derecha, junto al pulgar derecho (todo anclado abajo: no se
-   solapan aunque la pantalla sea baja). --sr/--sb = márgenes seguros del iPhone. */
-.touch-buttons { --sr: env(safe-area-inset-right, 0px); --sb: env(safe-area-inset-bottom, 0px); --sl: env(safe-area-inset-left, 0px); }
-.tb-pause { top: calc(env(safe-area-inset-top, 0px) + 8px); right: calc(var(--sr) + 10px); width: 42px; height: 42px; font-size: 16px; }
-.tb-use { right: calc(var(--sr) + 12px); bottom: calc(var(--sb) + 12px); }
-.tb-reload { right: calc(var(--sr) + 90px); bottom: calc(var(--sb) + 18px); }
-.tb-medkit { right: calc(var(--sr) + 18px); bottom: calc(var(--sb) + 90px); }
-.tb-grenade { right: calc(var(--sr) + 82px); bottom: calc(var(--sb) + 82px); }
-.tb-weapon { right: calc(var(--sr) + 18px); bottom: calc(var(--sb) + 154px); }
-.tb-sell { right: calc(var(--sr) + 12px); bottom: calc(var(--sb) + 90px); display: none; }
-/* Abajo a la izquierda, sobre el pulgar izquierdo */
-.tb-build { left: calc(var(--sl) + 12px); bottom: calc(var(--sb) + 12px); width: 46px; height: 46px; font-size: 18px; }
-.tb-night { left: calc(var(--sl) + 12px); bottom: calc(var(--sb) + 66px); width: 46px; height: 46px; font-size: 18px; display: none; }
-.stick-right { left: calc(100% - 270px); }
-@media (max-height: 340px) {
-  .tbtn { width: 48px; height: 48px; font-size: 18px; }
-  .tbtn.big { width: 58px; height: 58px; }
-  .tb-weapon { bottom: calc(var(--sb) + 138px); }
+.tbtn.down { background: rgba(232, 178, 58, 0.8); color: #16181e; }
+.tbtn i {
+  position: absolute; top: -4px; right: -4px; min-width: 18px; padding: 0 4px; border-radius: 9px;
+  background: var(--accent); color: #16181e; font: 800 11px/18px var(--font); font-style: normal;
 }
+/* Arco alrededor del joystick de disparo (centro a 95 px de la esquina, botones a ~108 px). */
+.tb-reload { right: calc(var(--sr) + 176px); bottom: calc(var(--sb) + 68px); }
+.tb-grenade { right: calc(var(--sr) + 148px); bottom: calc(var(--sb) + 140px); }
+.tb-medkit { right: calc(var(--sr) + 87px); bottom: calc(var(--sb) + 174px); }
+.tb-use { right: calc(var(--sr) + 14px); bottom: calc(var(--sb) + 160px); width: 60px; height: 60px; font-size: 26px; opacity: 0.55; }
+.touch-layer.can-use .tb-use { opacity: 1; background: rgba(232, 178, 58, 0.85); color: #16181e; animation: use-pulse 1.2s ease-in-out infinite; }
+@keyframes use-pulse { 50% { box-shadow: 0 0 0 7px rgba(232, 178, 58, 0.25); } }
+.tb-sell { right: calc(var(--sr) + 68px); bottom: calc(var(--sb) + 68px); display: none; }
+/* Arriba: pausa a la derecha; construir y noche bajo el estado, a la izquierda */
+.tb-pause { top: calc(var(--st) + 6px); right: calc(var(--sr) + 8px); width: 40px; height: 40px; font-size: 15px; }
+.tb-build { left: calc(var(--sl) + 8px); top: calc(var(--st) + 80px); width: 44px; height: 44px; font-size: 18px; }
+.tb-night { left: calc(var(--sl) + 58px); top: calc(var(--st) + 80px); width: 44px; height: 44px; font-size: 18px; display: none; }
 .touch-layer.day .tb-night { display: flex; }
-.touch-layer.building .tb-sell { display: flex; }
-.touch-layer.building .tb-weapon, .touch-layer.building .tb-grenade, .touch-layer.building .tb-reload,
-.touch-layer.building .tb-medkit, .touch-layer.building .tb-use, .touch-layer.building .stick-right,
-.touch-layer.building .tb-night { display: none; }
 .touch-layer.no-grenade .tb-grenade, .touch-layer.no-medkit .tb-medkit { opacity: 0.35; }
-.touch-layer.shop-open .stick-right, .touch-layer.shop-open .tb-weapon, .touch-layer.shop-open .tb-grenade,
-.touch-layer.shop-open .tb-reload, .touch-layer.shop-open .tb-medkit, .touch-layer.shop-open .tb-build { display: none; }
+/* Modo construcción: fuera los controles de combate, vender en la esquina */
+.touch-layer.building .tb-sell { display: flex; }
+.touch-layer.building .tb-reload, .touch-layer.building .tb-grenade, .touch-layer.building .tb-medkit,
+.touch-layer.building .tb-use, .touch-layer.building .stick-right, .touch-layer.building .tb-night { display: none; }
+/* Tienda abierta: solo moverse y cerrar */
+.touch-layer.shop-open .stick-right, .touch-layer.shop-open .tbtn:not(.tb-pause), .touch-layer.shop-open .m-weapon { display: none; }
+
+/* Franja superior: estado | puntos y horda | arma */
+.m-top {
+  position: absolute; top: calc(var(--st) + 6px); left: calc(var(--sl) + 8px); right: calc(var(--sr) + 56px);
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; pointer-events: none;
+}
+.m-status, .m-center, .m-weapon {
+  background: rgba(16, 18, 24, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 9px; color: var(--hud-fg);
+}
+.m-status { width: 168px; padding: 5px 8px 6px; display: flex; flex-direction: column; gap: 4px; }
+.m-clock { display: flex; align-items: baseline; gap: 6px; font-size: 11px; color: var(--hud-dim); }
+.m-clock b { font: 800 15px ui-monospace, Consolas, monospace; color: var(--hud-fg); }
+.m-power { display: none; color: #ff8a7a; font-weight: 700; }
+.m-power.show { display: inline; }
+.m-bar { position: relative; height: 9px; border-radius: 5px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.m-bar.thin { height: 4px; }
+.m-bar .fill { height: 100%; transition: width 0.15s linear; }
+.m-bar.armor { display: none; }
+.m-bar.armor.show { display: block; }
+.m-num { position: absolute; right: 4px; top: -1px; font: 700 9px/11px ui-monospace, Consolas, monospace; color: #fff; text-shadow: 0 1px 2px #000; }
+.m-center { display: flex; gap: 12px; padding: 5px 12px; font-size: 14px; align-items: center; }
+.m-points b { font: 800 16px ui-monospace, Consolas, monospace; color: var(--accent); }
+.m-rem { display: none; }
+.m-rem.show { display: inline; }
+.m-rem b { color: #ff8a7a; font: 800 16px ui-monospace, Consolas, monospace; }
+.m-weapon {
+  pointer-events: auto; position: relative; display: flex; align-items: center; gap: 6px; padding: 5px 10px 7px;
+  font: inherit; touch-action: none; overflow: hidden;
+}
+.m-weapon.down { background: rgba(232, 178, 58, 0.3); }
+.m-wicon { font-size: 18px; }
+.m-ammo b { font: 800 18px ui-monospace, Consolas, monospace; }
+.m-ammo small { font: 600 11px ui-monospace, Consolas, monospace; color: var(--hud-dim); margin-left: 1px; }
+.m-swap { color: var(--hud-dim); font-size: 13px; }
+.m-reload { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; }
+.m-reload .fill { height: 100%; width: 0; }
+
+/* Resto del HUD en táctil */
+.touch .toasts { top: calc(env(safe-area-inset-top, 0px) + 54px); left: 28%; right: 28%; width: auto; transform: none; }
+.touch .hud.boss-on .toasts { top: calc(env(safe-area-inset-top, 0px) + 92px); }
+.touch .toast { font-size: 11px; padding: 5px 9px; }
+.touch .boss-bar { top: calc(env(safe-area-inset-top, 0px) + 52px); bottom: auto; left: 30%; right: 30%; width: auto; transform: none; padding: 4px 8px 6px; }
+.touch .boss-name { font-size: 10px; margin-bottom: 3px; }
+.touch .prompt-wrap { bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); }
+.touch .prompt { font-size: 12px; padding: 6px 10px 6px 8px; }
+.touch .banner { top: 42%; }
+.touch .banner-title { font-size: 28px; }
+.touch .banner-sub { font-size: 12px; }
+.touch .combo { top: calc(env(safe-area-inset-top, 0px) + 56px); right: auto; left: 64%; transform: scale(0.6); transform-origin: top left; }
+
 .rotate-hint {
   position: fixed; inset: 0; display: none; z-index: 60; flex-direction: column; align-items: center; justify-content: center;
   gap: 10px; text-align: center; padding: 24px; border-radius: 0; font-size: 16px; pointer-events: auto;
@@ -522,25 +580,13 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
 @media (orientation: portrait) {
   .touch .rotate-hint { display: flex; }
 }
-/* HUD compacto en móvil horizontal */
-.touch .hint, .touch [data-k="ready"] { display: none !important; }
-.touch .panel-status {
-  transform: scale(0.6); transform-origin: top left;
-  top: calc(env(safe-area-inset-top, 0px) + 6px); left: calc(env(safe-area-inset-left, 0px) + 6px);
+/* Pantallas muy bajas (iPhone SE): todo un poco más pequeño */
+@media (max-height: 340px) {
+  .tbtn { width: 48px; height: 48px; font-size: 18px; }
+  .tb-use { width: 54px; height: 54px; }
+  .stick { width: 104px; height: 104px; margin: -52px 0 0 -52px; }
+  .stick-right.fixed { margin: 0; right: calc(var(--sr) + 43px); bottom: calc(var(--sb) + 43px); }
 }
-.touch .panel-weapon {
-  transform: scale(0.62); transform-origin: top right;
-  top: calc(env(safe-area-inset-top, 0px) + 6px); right: calc(env(safe-area-inset-right, 0px) + 58px); bottom: auto;
-}
-.touch .panel-case { display: none; }
-.touch .toasts { top: calc(env(safe-area-inset-top, 0px) + 6px); left: 34%; right: 34%; width: auto; transform: none; }
-.touch .toast { font-size: 11px; padding: 5px 9px; }
-.touch .prompt-wrap { bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); }
-.touch .boss-bar { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); left: 30%; right: 30%; width: auto; transform: none; }
-.touch .banner { top: 40%; }
-.touch .banner-title { font-size: 28px; }
-.touch .build-bar { bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); transform: translateX(-50%) scale(0.8); transform-origin: bottom center; }
-.touch .combo { transform: scale(0.75); }
 
 /* Tienda en el móvil: panel lateral a toda altura (en horizontal no cabe abajo) */
 .shop-close { display: none; margin-left: 8px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2);
@@ -559,7 +605,7 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
 .touch .touch-layer.shop-open .tb-use { display: none; }
 
 /* Barra de construcción en el móvil: una fila que se desliza */
-.touch .build-bar { transform: translateX(-50%); max-width: calc(100vw - 150px); gap: 4px; }
+.touch .build-bar { transform: translateX(-50%); max-width: calc(100vw - 280px); gap: 4px; }
 .touch .build-cards { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; max-width: 100%; padding-bottom: 2px; scrollbar-width: none; }
 .touch .build-card { flex: none; padding: 3px 7px; }
 .touch .build-card .key, .touch .build-tab-hint { display: none; }

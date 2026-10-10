@@ -29,6 +29,8 @@ export class Input {
     this.pointer = { x: 0, y: 0, ndcX: 0, ndcY: 0, inside: false };
     this.wheel = 0;
     this.move = { x: 0, y: 0 };
+    this.stick = { x: 0, y: 0 };            // movimiento analógico (táctil o mando)
+    this.aim = { active: false, x: 0, y: 1 }; // dirección de apuntado analógica (pantalla: x derecha, y abajo)
     this.captureTab = true; // Tab cambia de página de construcción (en los menús, no)
     this.lastDevice = 'kbm';
 
@@ -48,7 +50,11 @@ export class Input {
       const a = KEYMAP[e.code];
       if (a) this.held.delete(a);
     };
+    // Los navegadores móviles generan ratón "de compatibilidad" tras los toques: se ignora.
+    const fromTouch = () => performance.now() - this.lastTouchAt < 800;
+    this.lastTouchAt = -1e9;
     this._onMouseDown = (e) => {
+      if (fromTouch()) return;
       const a = e.button === 0 ? 'fire' : e.button === 2 ? 'alt' : null;
       if (!a) return;
       if (!this.held.has(a)) this.pressed.add(a);
@@ -60,6 +66,7 @@ export class Input {
       if (e.button === 2) this.held.delete('alt');
     };
     this._onMouseMove = (e) => {
+      if (fromTouch()) return;
       const r = canvas.getBoundingClientRect();
       this.pointer.x = e.clientX - r.left;
       this.pointer.y = e.clientY - r.top;
@@ -88,6 +95,12 @@ export class Input {
 
   /** Recalcula los ejes; se llama una vez por frame antes de los pasos lógicos. */
   sample() {
+    // Joystick (táctil o mando) si se está usando; si no, teclado.
+    if (this.stick.x || this.stick.y) {
+      this.move.x = this.stick.x;
+      this.move.y = this.stick.y;
+      return;
+    }
     let x = 0, y = 0;
     if (this.held.has('left')) x -= 1;
     if (this.held.has('right')) x += 1;
@@ -99,6 +112,25 @@ export class Input {
   }
 
   isHeld(action) { return this.held.has(action); }
+
+  /** Pulsación desde un control en pantalla o mando (flanco + mantenida hasta release). */
+  press(action) {
+    this.pressed.add(action);
+    this.held.add(action);
+  }
+
+  /** Mantener: solo genera flanco si no estaba ya mantenida. */
+  hold(action) {
+    if (!this.held.has(action)) this.pressed.add(action);
+    this.held.add(action);
+  }
+
+  release(action) {
+    this.held.delete(action);
+  }
+
+  /** ¿Se está jugando con controles analógicos (táctil o mando)? */
+  get analog() { return this.lastDevice === 'touch' || this.lastDevice === 'pad'; }
 
   /** Devuelve true una sola vez por pulsación. */
   consume(action) {

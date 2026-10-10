@@ -461,3 +461,99 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
 
 .gameover h1.danger, .menu-box h1.danger { color: var(--danger); }
 .btn.ghost.danger-text { color: #ff8a7a; }
+
+/* ---------------------------------------------------------------- Controles táctiles (fase 8) */
+.touch-layer { position: absolute; inset: 0; display: none; pointer-events: auto; touch-action: none; -webkit-touch-callout: none; }
+.touch .touch-layer { display: block; }
+.in-menu .touch-layer { display: none; }
+.stick {
+  position: absolute; width: 116px; height: 116px; margin: -58px 0 0 -58px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.28); background: rgba(10, 12, 16, 0.18); opacity: 0.45; pointer-events: none;
+}
+.stick.on { opacity: 1; }
+.stick-left { left: calc(env(safe-area-inset-left, 0px) + 110px); top: calc(100% - 100px); }
+.stick-right { left: calc(100% - 250px); top: calc(100% - 100px); }
+.stick-knob {
+  position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
+  background: rgba(242, 239, 230, 0.55); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.stick-right .stick-knob { background: rgba(232, 178, 58, 0.7); }
+.touch-buttons { position: absolute; inset: 0; pointer-events: none; }
+.tbtn {
+  position: absolute; width: 54px; height: 54px; border-radius: 50%; pointer-events: auto; touch-action: none;
+  border: 2px solid rgba(255, 255, 255, 0.22); background: rgba(16, 18, 24, 0.66); color: var(--hud-fg);
+  font: 700 20px var(--font); display: flex; align-items: center; justify-content: center; padding: 0;
+  -webkit-tap-highlight-color: transparent; user-select: none;
+}
+.tbtn.down { background: rgba(232, 178, 58, 0.75); color: #16181e; }
+.tbtn.big { width: 66px; height: 66px; font-size: 26px; }
+/* Columna derecha, junto al pulgar derecho */
+.tb-pause { top: calc(env(safe-area-inset-top, 0px) + 8px); right: calc(env(safe-area-inset-right, 0px) + 10px); width: 42px; height: 42px; font-size: 16px; }
+.tb-weapon { right: calc(env(safe-area-inset-right, 0px) + 12px); top: 30%; }
+.tb-grenade { right: calc(env(safe-area-inset-right, 0px) + 12px); top: calc(30% + 64px); }
+.tb-reload { right: calc(env(safe-area-inset-right, 0px) + 76px); bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); }
+.tb-use { right: calc(env(safe-area-inset-right, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 82px); }
+.tb-medkit { right: calc(env(safe-area-inset-right, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
+/* Abajo a la izquierda, sobre el pulgar izquierdo */
+.tb-build { left: calc(env(safe-area-inset-left, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); width: 46px; height: 46px; font-size: 18px; }
+.tb-night { left: calc(env(safe-area-inset-left, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 66px); width: 46px; height: 46px; font-size: 18px; display: none; }
+.tb-sell { right: calc(env(safe-area-inset-right, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); display: none; }
+.touch-layer.day .tb-night { display: flex; }
+.touch-layer.building .tb-sell { display: flex; }
+.touch-layer.building .tb-weapon, .touch-layer.building .tb-grenade, .touch-layer.building .tb-reload,
+.touch-layer.building .tb-medkit, .touch-layer.building .tb-use, .touch-layer.building .stick-right { display: none; }
+.touch-layer.no-grenade .tb-grenade, .touch-layer.no-medkit .tb-medkit { opacity: 0.35; }
+.touch-layer.shop-open .stick-right, .touch-layer.shop-open .tb-weapon, .touch-layer.shop-open .tb-grenade,
+.touch-layer.shop-open .tb-reload, .touch-layer.shop-open .tb-medkit, .touch-layer.shop-open .tb-build { display: none; }
+.rotate-hint {
+  position: fixed; inset: 0; display: none; z-index: 60; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; text-align: center; padding: 24px; border-radius: 0; font-size: 16px; pointer-events: auto;
+}
+.rotate-hint div { font-size: 54px; }
+@media (orientation: portrait) {
+  .touch .rotate-hint { display: flex; }
+}
+/* HUD compacto en móvil horizontal */
+.touch .hint, .touch [data-k="ready"] { display: none !important; }
+.touch .panel-status {
+  transform: scale(0.66); transform-origin: top left;
+  top: calc(env(safe-area-inset-top, 0px) + 6px); left: calc(env(safe-area-inset-left, 0px) + 6px);
+}
+.touch .panel-weapon {
+  transform: scale(0.62); transform-origin: top right;
+  top: calc(env(safe-area-inset-top, 0px) + 6px); right: calc(env(safe-area-inset-right, 0px) + 58px); bottom: auto;
+}
+.touch .panel-case { display: none; }
+.touch .toasts { top: calc(env(safe-area-inset-top, 0px) + 6px); left: 34%; right: 34%; width: auto; transform: none; }
+.touch .toast { font-size: 11px; padding: 5px 9px; }
+.touch .prompt-wrap { bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); }
+.touch .boss-bar { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); left: 30%; right: 30%; width: auto; transform: none; }
+.touch .banner { top: 40%; }
+.touch .banner-title { font-size: 28px; }
+.touch .build-bar { bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); transform: translateX(-50%) scale(0.8); transform-origin: bottom center; }
+.touch .combo { transform: scale(0.75); }
+
+/* Tienda en el móvil: panel lateral a toda altura (en horizontal no cabe abajo) */
+.shop-close { display: none; margin-left: 8px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.08); color: var(--hud-fg); font-size: 16px; cursor: pointer; flex: none; }
+.touch-only { display: none; }
+.touch .touch-only { display: inline; }
+.touch .kbd-only { display: none; }
+.touch .shop-close { display: block; }
+.touch .shop {
+  top: calc(env(safe-area-inset-top, 0px) + 6px); bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
+  left: auto; right: calc(env(safe-area-inset-right, 0px) + 6px); width: min(440px, 62vw); max-height: none; padding: 10px 10px 6px;
+}
+.touch .shop-title { font-size: 17px; }
+.touch .shop-row { padding-top: 7px; padding-bottom: 7px; }
+.touch .shop-row .key { display: none; }
+.touch .touch-layer.shop-open .tb-use { display: none; }
+
+/* Barra de construcción en el móvil: una fila que se desliza */
+.touch .build-bar { transform: translateX(-50%); max-width: calc(100vw - 150px); gap: 4px; }
+.touch .build-cards { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; max-width: 100%; padding-bottom: 2px; scrollbar-width: none; }
+.touch .build-card { flex: none; padding: 3px 7px; }
+.touch .build-card .key, .touch .build-tab-hint { display: none; }
+.touch .build-card .name { font-size: 10px; }
+.touch .build-info { font-size: 11px; padding: 5px 10px; }
+.touch .build-tab { padding: 3px 9px; font-size: 11px; }

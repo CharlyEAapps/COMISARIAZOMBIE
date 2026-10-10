@@ -35,6 +35,8 @@ import { Humor } from '../systems/Humor.js';
 import { AudioSystem } from '../audio/AudioSystem.js';
 import { Meta } from '../systems/Meta.js';
 import { Menus } from '../ui/Menus.js';
+import { TouchControls } from '../input/TouchControls.js';
+import { GamepadInput } from '../input/GamepadInput.js';
 import zombieData from '../data/zombies.json';
 import { ShopPanel } from '../ui/ShopPanel.js';
 import { WEAPON_IDS } from '../systems/WeaponSystem.js';
@@ -93,6 +95,8 @@ export class Game {
     this.audio = new AudioSystem(this);
     this.meta = new Meta(this);
     this.menus = new Menus(this);
+    this.touch = new TouchControls(this);
+    this.gamepad = new GamepadInput(this);
 
     this.aimPoint = new THREE.Vector3();
     this._raycaster = new THREE.Raycaster();
@@ -201,6 +205,7 @@ export class Game {
     this.humor.dispose();
     this.meta.dispose();
     this.menus.dispose();
+    this.touch.dispose();
     this.lighting.dispose();
     this.debug.gui.destroy();
     this.renderer.renderer.dispose();
@@ -259,6 +264,7 @@ export class Game {
     if (this.state !== STATE.PLAYING) return;
     this.state = STATE.PAUSED;
     this.menus.show('pause', true);
+    this.touch.reset();
   }
 
   resume() {
@@ -292,11 +298,46 @@ export class Game {
 
   updateAimPoint() {
     const p = this.input.pointer;
-    if (!p.inside) return;
-    this._ndc.set(p.ndcX, p.ndcY);
-    this._raycaster.setFromCamera(this._ndc, this.cameraRig.camera);
-    this._raycaster.ray.intersectPlane(this._aimPlane, this.aimPoint);
-    this._raycaster.ray.intersectPlane(this._groundPlane, this.groundPoint);
+    const analog = this.input.analog;
+    if (p.inside) {
+      this._ndc.set(p.ndcX, p.ndcY);
+      this._raycaster.setFromCamera(this._ndc, this.cameraRig.camera);
+      this._raycaster.ray.intersectPlane(this._groundPlane, this.groundPoint);
+      if (!analog) this._raycaster.ray.intersectPlane(this._aimPlane, this.aimPoint);
+    }
+    if (analog) this.updateAnalogAim();
+  }
+
+  /**
+   * Apuntado con joystick (táctil o mando): la dirección del joystick derecho, con ayuda hacia
+   * el zombi más alineado; sin apuntar, el policía mira hacia donde camina. La cámara mira al
+   * norte sin girar, así que pantalla derecha = +X y pantalla abajo = +Z.
+   */
+  updateAnalogAim() {
+    const { input, player } = this;
+    const T = config.touch;
+    let dx, dz;
+    if (input.aim.active) { dx = input.aim.x; dz = input.aim.y; } else if (input.move.x || input.move.y) { dx = input.move.x; dz = input.move.y; } else return;
+    const px = player.position.x, pz = player.position.z;
+    if (input.aim.active) {
+      const cosMax = Math.cos(THREE.MathUtils.degToRad(T.assistAngleDeg));
+      let best = null, bestCos = cosMax;
+      for (const z of this.zombies.active) {
+        if (z.state !== 0) continue;
+        const zx = z.pos.x - px, zz = z.pos.z - pz;
+        const d = Math.hypot(zx, zz);
+        if (d > T.assistRange || d < 1e-3) continue;
+        const c = (zx * dx + zz * dz) / d;
+        if (c > bestCos) { bestCos = c; best = z; }
+      }
+      if (best) {
+        const d = Math.hypot(best.pos.x - px, best.pos.z - pz);
+        dx = (best.pos.x - px) / d; dz = (best.pos.z - pz) / d;
+      }
+    }
+    this.aimPoint.set(px + dx * T.aimDistance, AIM_HEIGHT, pz + dz * T.aimDistance);
+    // Con mando no hay puntero: se construye en la celda de delante del policía.
+    if (input.lastDevice === 'pad') this.groundPoint.set(px + dx * config.gamepad.buildDistance, 0, pz + dz * config.gamepad.buildDistance);
   }
 
   frame(now) {
@@ -317,6 +358,7 @@ export class Game {
 
   tick(dt) {
     const { input } = this;
+    this.gamepad.poll();
     input.sample();
     // Acciones a nivel de frame (deben funcionar aunque la lógica esté en pausa).
     if (input.consume('debug')) this.debug.toggle();
@@ -355,7 +397,8 @@ export class Game {
     if (this.debug.flags.showFlowField) this.flowViz.update(this.zombies.flow, visualDt);
 
     const pp = this.player.position;
-    this.cameraRig.update(dt, pp, this.input.pointer.inside && this.player.alive ? this.aimPoint : null);
+    const aiming = this.input.pointer.inside || this.input.analog;
+    this.cameraRig.update(dt, pp, aiming && this.player.alive ? this.aimPoint : null);
     this.cameraRig.camera.position.add(this.effects.shakeOffset);
     this._cutTarget.set(pp.x, 1.0, pp.z);
     updateCutaway(this.cameraRig.camera.position, this._cutTarget);
@@ -364,6 +407,7 @@ export class Game {
     this.renderer.render(this.cameraRig.camera);
 
     this.hud.update(dt);
+    this.touch.update();
     this.shopPanel.update(visualDt);
     this.floating.update(visualDt);
     this.debug.frame(dt, this.debug.visible ? [

@@ -9,10 +9,11 @@ export class ShopPanel {
       <div class="shop-head">
         <div><div class="shop-title" data-k="title"></div><div class="shop-sub" data-k="sub"></div></div>
         <div class="shop-points"><span class="label">Puntos</span><span class="val big" data-k="points">0</span></div>
+        <button class="shop-close" data-k="close" aria-label="Cerrar">✕</button>
       </div>
       <div class="shop-night" data-k="night">🌙 De noche los precios suben un 50 %</div>
       <div class="shop-list" data-k="list"></div>
-      <div class="shop-foot"><span class="key">1-9</span> comprar <span class="key">E</span>/<span class="key">Esc</span> cerrar</div>`;
+      <div class="shop-foot"><span class="kbd-only"><span class="key">1-9</span> comprar <span class="key">E</span>/<span class="key">Esc</span> cerrar</span><span class="touch-only">Toca un artículo para comprarlo</span></div>`;
     game.uiRoot.appendChild(el);
     this.el = el;
     this.k = {};
@@ -23,6 +24,7 @@ export class ShopPanel {
       const row = e.target.closest('[data-id]');
       if (row) { e.preventDefault(); this.buy(row.dataset.id); }
     });
+    this.k.close.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); game.shop.close(); });
     this.items = [];
     this.signature = '';
     this.refreshTimer = 0;

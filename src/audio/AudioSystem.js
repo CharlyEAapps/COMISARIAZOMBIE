@@ -19,6 +19,30 @@ export function structureMaterial(type, level) {
   return 'metal';
 }
 
+/**
+ * ¿Hay que usar MP3 en lugar de OGG? Safari/iOS no decodifica bien OGG Vorbis con
+ * decodeAudioData, así que se usa MP3 si el navegador no declara soporte de Vorbis o es Safari.
+ * @param {string} canPlayOgg resultado de `new Audio().canPlayType('audio/ogg; codecs="vorbis"')`
+ * @param {string} userAgent
+ */
+export function preferMp3(canPlayOgg, userAgent = '') {
+  if (!canPlayOgg) return true;
+  const safari = /safari/i.test(userAgent) && !/chrome|chromium|crios|fxios|edg|android/i.test(userAgent);
+  const iosWebkit = /iphone|ipad|ipod/i.test(userAgent);
+  return safari || iosWebkit;
+}
+
+/** Cambia la extensión de audio de una URL (`audio/x.ogg` → `audio/x.mp3`). */
+export function withAudioExt(url, ext) {
+  return url.replace(/\.(ogg|mp3)$/i, '.' + ext);
+}
+
+function detectMp3() {
+  try {
+    return preferMp3(new Audio().canPlayType('audio/ogg; codecs="vorbis"'), navigator.userAgent);
+  } catch { return true; }
+}
+
 /** Escala el buffer para que su pico sea `peak` (iguala sonidos sintetizados y grabados). */
 export function normalize(buffer, peak) {
   let max = 0;
@@ -93,10 +117,13 @@ export class AudioSystem {
     this.unlocked = false;
     this._unlock = () => {
       this.unlocked = true;
-      if (ctx.state === 'suspended' && !document.hidden) ctx.resume().catch(() => {});
+      if (ctx.state !== 'running' && ctx.state !== 'closed' && !document.hidden) ctx.resume().catch(() => {});
     };
     window.addEventListener('pointerdown', this._unlock);
     window.addEventListener('keydown', this._unlock);
+    // iOS solo desbloquea el AudioContext con touchend/click (pointerdown no basta).
+    window.addEventListener('touchend', this._unlock);
+    window.addEventListener('click', this._unlock);
     // Con la pestaña oculta no suena nada (ni la música de fondo).
     this._visibility = () => {
       if (ctx.state === 'closed') return;
@@ -120,10 +147,21 @@ export class AudioSystem {
       try { this.buffers.set(name, normalize(await renderRecipe(name), cfg.normalizePeak)); } catch (e) { console.warn('Audio: receta', name, e); }
     }));
     this.ready = true;
-    const fetchBuf = async (url) => {
-      const res = await fetch(BASE + url);
-      if (!res.ok) throw new Error(`${res.status} ${url}`);
+    // Formato: MP3 si el navegador no lee OGG (Safari/iOS); si el OGG falla al decodificar, se reintenta con MP3.
+    let mp3 = this.useMp3 = detectMp3();
+    const fetchExt = async (url, ext) => {
+      const u = withAudioExt(url, ext);
+      const res = await fetch(BASE + u);
+      if (!res.ok) throw new Error(`${res.status} ${u}`);
       return this.ctx.decodeAudioData(await res.arrayBuffer());
+    };
+    const fetchBuf = async (url) => {
+      if (mp3) return fetchExt(url, 'mp3');
+      try { return await fetchExt(url, 'ogg'); } catch {
+        const buf = await fetchExt(url, 'mp3');
+        mp3 = this.useMp3 = true; // el resto de archivos ya van directos en MP3
+        return buf;
+      }
     };
     await Promise.all(Object.entries(cfg.files).map(async ([name, url]) => {
       try { this.buffers.set(name, normalize(await fetchBuf(url), cfg.normalizePeak)); } catch (e) { console.warn('Audio: archivo', url, e.message); }
@@ -344,6 +382,8 @@ export class AudioSystem {
     if (!this.enabled) return;
     window.removeEventListener('pointerdown', this._unlock);
     window.removeEventListener('keydown', this._unlock);
+    window.removeEventListener('touchend', this._unlock);
+    window.removeEventListener('click', this._unlock);
     document.removeEventListener('visibilitychange', this._visibility);
     for (const off of this._unsub) off();
     this.music.dispose();

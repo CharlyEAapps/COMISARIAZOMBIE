@@ -180,7 +180,8 @@ export class WeaponSystem {
     if (pressed) cur.buffer = FIRE_BUFFER;
     // Automáticas: disparan mientras se mantiene el botón, y un clic rápido (pulsar y soltar
     // dentro del mismo paso) también cuenta gracias al búfer.
-    const wantsFire = cur.data.auto ? input.isHeld('fire') || cur.buffer > 0 : cur.buffer > 0;
+    // Con joystick (táctil o mando) mantener dispara también las semiautomáticas a su cadencia.
+    const wantsFire = cur.data.auto || input.analog ? input.isHeld('fire') || cur.buffer > 0 : cur.buffer > 0;
     if (!wantsFire || cur.cooldown > 0 || cur.reloading > 0) return;
 
     if (cur.data.melee) {

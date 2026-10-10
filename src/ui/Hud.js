@@ -312,6 +312,15 @@ export class Hud {
       const what = width > 1 ? `${def.name.toLowerCase()} de ${width} celdas (${b.placeCost(b.selected, b.hoverCell)})` : def.name.toLowerCase();
       info = `<span class="key">Clic</span> Construir ${what}${drag} · <span class="key">Clic dcho</span> Salir${b.isNight ? ` · <i>De noche +${surcharge} %</i>` : ''}${warn}`;
     }
+    // En el móvil: "toca" en vez de "clic", y vender/salir con los botones de la pantalla.
+    if (this.game.input.lastDevice === 'touch') {
+      info = info.replaceAll('<span class="key">Clic dcho otra vez', '<span class="key">💲 otra vez')
+        .replaceAll('Clic dcho otra vez', '💲 otra vez')
+        .replaceAll('<span class="key">Clic dcho</span> Vender', '<span class="key">💲</span> Vender')
+        .replaceAll('<span class="key">Clic dcho</span> Salir', '<span class="key">🔨</span> Salir')
+        .replaceAll('<span class="key">Clic</span>', '<span class="key">Toca</span>')
+        .replaceAll(' (arrastra para hacer una fila)', ' (desliza para una fila)');
+    }
     this.set('buildInfo', info, 'innerHTML');
   }
 

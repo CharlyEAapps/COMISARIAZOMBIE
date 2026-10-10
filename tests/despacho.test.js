@@ -196,6 +196,19 @@ describe('Despacho: mejoras en partida', () => {
     expect([...b.all].filter((s) => s.type === 'puerta' && !s.auto)).toHaveLength(1); // la del jugador sigue
   });
 
+  it('portones del recinto: cierran los 3 huecos de la valla de noche y se abren de día', () => {
+    g.despacho.buy('portones');
+    const gates = g.despacho.shutters.filter((s) => s.upgrade === 'portones');
+    expect(gates).toHaveLength(3);
+    for (const s of gates) { expect(s.open).toBe(true); expect(s.n).toBe(4); expect(s.auto).toBe(true); }
+    nightfall(g);
+    for (const s of gates) expect(s.open).toBe(false);
+    dawn(g);
+    for (const s of gates) expect(s.open).toBe(true);
+    // Las persianas del edificio son aparte.
+    expect(g.despacho.shutters.filter((s) => s.upgrade === 'persianas')).toHaveLength(0);
+  });
+
   it('persianas compradas de día se instalan al momento, subidas', () => {
     g.despacho.buy('persianas');
     expect(g.despacho.shutters).toHaveLength(4);

@@ -1310,6 +1310,7 @@
       "fg": "#f2c230",
       "kind": "exterior",
       "upgrades": [
+        "portones",
         "transformador",
         "generador_emergencia",
         "focos",

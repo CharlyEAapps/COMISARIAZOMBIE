@@ -10,7 +10,7 @@
         1500
       ],
       "desc": [
-        "Puertas blindadas en los 4 accesos exteriores desde que las compras: se suben solas al amanecer y se bajan al anochecer. Si las rompen, se reponen al anochecer.",
+        "Puertas blindadas en las 4 puertas del edificio desde que las compras: se suben solas al amanecer y se bajan al anochecer. Si las rompen, se reponen al anochecer.",
         "Persianas con +50 % de vida.",
         "Persianas con el doble de vida."
       ],
@@ -30,6 +30,49 @@
       "msgOpen": "🛡️ Persianas bajadas en {n} accesos (alguna se ha quedado abierta: había alguien en medio).",
       "msgDay": "🛡️ Persianas blindadas instaladas en {n} accesos. De día están subidas; al anochecer bajan solas (ábrelas con {key}).",
       "msgUp": "🛡️ Amanece: persianas subidas."
+    },
+    "portones": {
+      "icon": "🚧",
+      "name": "Portones del recinto",
+      "prices": [
+        900,
+        1200,
+        1500
+      ],
+      "desc": [
+        "Portones metálicos en los 3 accesos de la valla del parking (oeste, este y sur). Abiertos de día, se cierran solos al anochecer: los zombis tendrán que romperlos para entrar. Si los rompen, se reponen al anochecer.",
+        "Portones con +50 % de vida.",
+        "Portones con el doble de vida."
+      ],
+      "flavor": "Comprados en la subasta de un desguace. Incluyen el perro. El perro no.",
+      "doorLevel": 1,
+      "hpMul": [
+        0.4,
+        0.6,
+        0.8
+      ],
+      "gates": [
+        [
+          8,
+          10,
+          8,
+          13
+        ],
+        [
+          71,
+          24,
+          71,
+          27
+        ],
+        [
+          30,
+          64,
+          33,
+          64
+        ]
+      ],
+      "msg": "🚧 Portones del recinto cerrados en {n} accesos. Ábrelos con {key} si quieres salir.",
+      "msgDay": "🚧 Portones del recinto instalados en los {n} accesos de la valla. De día están abiertos; al anochecer se cierran solos."
     },
     "camaras": {
       "icon": "📹",

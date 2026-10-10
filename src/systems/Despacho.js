@@ -87,6 +87,9 @@ export function exteriorDoorGroups(grid) {
   return groups;
 }
 
+/** Mejoras que ponen puertas automáticas (persianas del edificio y portones de la valla). */
+const AUTO_DOORS = ['persianas', 'portones'];
+
 export class Despacho {
   constructor(game) {
     this.game = game;
@@ -101,6 +104,12 @@ export class Despacho {
     this.wz = (v) => grid.originZ + v * cs;
 
     this.doorGroups = exteriorDoorGroups(grid);
+    // Portones del recinto: huecos de la valla del parking (celdas de despacho.json).
+    this.gateGroups = UPGRADES.portones.gates.map(([x0, y0, x1, y1]) => {
+      const cells = [];
+      for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) cells.push(grid.index(i, j));
+      return cells;
+    });
     this.shutters = [];
     this.emergencyTimer = 0;
     this.emergencyUsed = false;
@@ -204,7 +213,7 @@ export class Despacho {
   setState(levels) {
     this.levels = sanitizeLevels(levels);
     this.apply();
-    if (this.has('persianas')) this.placeShutters(this.game.dayNight.phase !== PHASE.NIGHT, false);
+    if (this.has('persianas') || this.has('portones')) this.placeShutters(this.game.dayNight.phase !== PHASE.NIGHT, false);
   }
 
   reset() {
@@ -229,8 +238,7 @@ export class Despacho {
     this.global = globalLevel(this.levels);
     build.setHpMul(levelValue(UPGRADES.muros.hpMul, this.level('muros'), 1));
     // Persianas que ya estén puestas: su vida sigue el nivel.
-    const shutterMul = levelValue(UPGRADES.persianas.hpMul, this.level('persianas'), 1);
-    for (const s of this.shutters) s.hpBonus = shutterMul;
+    for (const s of this.shutters) s.hpBonus = levelValue(UPGRADES[s.upgrade].hpMul, this.level(s.upgrade), 1);
     build.refreshMaxHp();
     // Transformador: conserva la proporción de vida.
     const t = build.transformer;
@@ -269,7 +277,7 @@ export class Despacho {
     this.levels[id] = lvl + 1;
     this.apply();
     const { game } = this;
-    if (id === 'persianas') this.placeShutters(game.dayNight.phase !== PHASE.NIGHT);
+    if (id === 'persianas' || id === 'portones') this.placeShutters(game.dayNight.phase !== PHASE.NIGHT, true, id);
     if (id === 'generador_emergencia') this.onTransformerDown();
     return `🗄️ ${u.icon} ${u.name}${u.prices.length > 1 ? ` (nivel ${lvl + 1})` : ''}: ¡obra terminada! Comisaría nivel ${this.global}.`;
   }
@@ -284,7 +292,7 @@ export class Despacho {
   onNightfall(night) {
     const { game } = this;
     this.alarmUses = 0;
-    if (this.has('persianas')) this.placeShutters(false);
+    if (this.has('persianas') || this.has('portones')) this.placeShutters(false);
     // Botiquines de pared: se reponen también al anochecer (uno de día y otro de noche).
     if (this.level('enfermeria') >= UPGRADES.enfermeria.nightRefillFromLevel) for (const it of this.medkitItems) it.usedCycle = 0;
     if (this.has('archivo')) {
@@ -349,37 +357,44 @@ export class Despacho {
 
   // ------------------------------------------------------------------ persianas
   /**
-   * Pone las persianas que falten en los accesos exteriores (las rotas se reponen) con la vida
-   * al máximo. `up` = subidas (de día); si no, bajadas salvo que haya alguien en el hueco.
+   * Pone las puertas automáticas que falten (persianas del edificio y portones de la valla; las
+   * rotas se reponen) con la vida al máximo. `up` = abiertas (de día); si no, cerradas salvo que
+   * haya alguien en el hueco. `announce` = mensaje de la mejora `only` (o de las persianas).
    */
-  placeShutters(up, announce = true) {
+  placeShutters(up, announce = true, only = null) {
     const { build, bus } = this.game;
-    const P = UPGRADES.persianas;
-    const mul = levelValue(P.hpMul, this.level('persianas'), 1);
     for (let k = this.shutters.length - 1; k >= 0; k--) if (!build.all.has(this.shutters[k])) this.shutters.splice(k, 1);
-    let placed = 0, open = 0;
-    for (const cells of this.doorGroups) {
-      let s = this.shutters.find((x) => x.cells[0] === cells[0]);
-      if (!s) {
-        s = build.placeAuto('puerta', cells, P.doorLevel, mul);
-        if (!s) continue;
-        this.shutters.push(s);
-      }
-      s.hp = s.maxHp;
-      placed++;
-      const wantOpen = up || build.doorBlocked(s);
-      if (!up && wantOpen) open++;
-      if (s.open !== wantOpen) {
-        s.open = wantOpen;
-        build.applyGrid(s);
-        bus.emit('door:toggle', { open: wantOpen, x: s.cx, z: s.cz });
+    let shown = 0, open = 0;
+    for (const id of AUTO_DOORS) {
+      if (!this.has(id)) continue;
+      const P = UPGRADES[id];
+      const mul = levelValue(P.hpMul, this.level(id), 1);
+      const groups = id === 'portones' ? this.gateGroups : this.doorGroups;
+      for (const cells of groups) {
+        let s = this.shutters.find((x) => x.cells[0] === cells[0]);
+        if (!s) {
+          s = build.placeAuto('puerta', cells, P.doorLevel, mul);
+          if (!s) continue;
+          s.upgrade = id;
+          this.shutters.push(s);
+        }
+        s.hp = s.maxHp;
+        if (id === (only ?? 'persianas')) shown++;
+        const wantOpen = up || build.doorBlocked(s);
+        if (!up && wantOpen) open++;
+        if (s.open !== wantOpen) {
+          s.open = wantOpen;
+          build.applyGrid(s);
+          bus.emit('door:toggle', { open: wantOpen, x: s.cx, z: s.cz });
+        }
       }
     }
-    if (placed) build.changed(true);
-    if (!placed || !announce) return;
+    if (this.shutters.length) build.changed(true);
+    if (!shown || !announce) return;
+    const P = UPGRADES[only ?? 'persianas'];
     const key = this.game.useKey ?? 'E';
-    const msg = up ? P.msgDay : open ? P.msgOpen : P.msg;
-    this.game.hud?.toast(msg.replace('{n}', placed).replace('{key}', key), 4);
+    const msg = up ? P.msgDay : open && P.msgOpen ? P.msgOpen : P.msg;
+    this.game.hud?.toast(msg.replace('{n}', shown).replace('{key}', key), 4);
   }
 
   /** Amanecer: sube las persianas que sigan en pie. */

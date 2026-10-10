@@ -179,6 +179,47 @@ add('mastil', {
   companions: (fp) => [{ type: 'bandera_mastil', lx: 0, lz: 0, rel: 0, p: { y: 4.3, sprite: fp.variant === 'pol' ? 'bandera_pol' : 'bandera_es' } }],
 });
 
+// ---------------------------------------------------------------- torre de vigilancia
+/**
+ * Torre del patio sur: patas de acero, escalera y plataforma con sacos terreros. La torreta de
+ * la mejora "Torre de vigilancia" (despacho.json → torreta_tejado.roofY) se monta encima.
+ */
+add('torre_vigilancia', {
+  ground: true,
+  build(b, fp) {
+    const w = fp.lw - 0.3, H = 3.1, h = w / 2 - 0.1;
+    b.box(0, 0, 0, w, 0.12, w, C.concrete);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(sx * h, 0.12, sz * h, 0.16, H - 0.12, 0.16, C.steelD);
+    // Riostras en cruz en los cuatro lados.
+    const diag = Math.hypot(2 * h, H * 0.45), ang = Math.atan2(H * 0.45, 2 * h);
+    for (const y of [0.35 + H * 0.225, 0.35 + H * 0.675]) {
+      for (const s of [-1, 1]) {
+        for (const a of [ang, -ang]) {
+          b.box(0, y, s * h, diag, 0.06, 0.06, C.iron, { rz: a, oy: -0.03, ao: 0 });
+          b.box(s * h, y, 0, 0.06, 0.06, diag, C.iron, { rx: a, oy: -0.03, ao: 0 });
+        }
+      }
+    }
+    // Plataforma y barandilla con sacos terreros (el frente, +Z, mira al edificio).
+    b.box(0, H, 0, w + 0.2, 0.2, w + 0.2, C.concrete);
+    b.box(0, H - 0.04, 0, w + 0.22, 0.06, w + 0.22, C.yellow, { ao: 0 });
+    for (const s of [-1, 1]) {
+      b.box(0, H + 0.2, s * (w / 2 + 0.08), w + 0.2, 0.06, 0.06, C.steelL, { oy: 0.8, ao: 0 });
+      b.box(s * (w / 2 + 0.08), H + 0.2, 0, 0.06, 0.06, w + 0.2, C.steelL, { oy: 0.8, ao: 0 });
+      for (let k = 0; k < 4; k++) {
+        const t = -w / 2 + 0.25 + k * ((w - 0.5) / 3);
+        b.box(t, H + 0.2, -s * (w / 2 - 0.05), 0.42, 0.22, 0.28, 0xd9c7a0, { ao: 0.2 });
+        if (s < 0) b.box(-s * (w / 2 - 0.05) * (k % 2 ? 1 : -1), H + 0.2, t, 0.28, 0.22, 0.42, 0xd9c7a0, { ao: 0.2 });
+      }
+    }
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(sx * (w / 2 + 0.08), H + 0.2, sz * (w / 2 + 0.08), 0.08, 0.86, 0.08, C.steelL);
+    // Escalera de mano en el frente.
+    for (const sx of [-0.22, 0.22]) b.box(sx, 0.12, h + 0.2, 0.05, H, 0.05, C.steelL);
+    for (let y = 0.4; y < H; y += 0.32) b.box(0, y, h + 0.2, 0.44, 0.035, 0.035, C.steelL, { ao: 0 });
+    b.sprite('seguridad', 0, H + 0.1, w / 2 + 0.1, 0.95, 0.297);
+  },
+});
+
 // ---------------------------------------------------------------- caseta de vigilancia
 add('caseta', {
   ground: true,

@@ -4,48 +4,110 @@
     "persianas": {
       "icon": "🛡️",
       "name": "Persianas blindadas",
-      "prices": [900, 1200, 1500],
+      "prices": [
+        900,
+        1200,
+        1500
+      ],
       "desc": [
-        "Al anochecer se bajan solas puertas blindadas en los 4 accesos exteriores (si el hueco está libre). Se retiran al amanecer.",
+        "Puertas blindadas en los 4 accesos exteriores desde que las compras: se suben solas al amanecer y se bajan al anochecer. Si las rompen, se reponen al anochecer.",
         "Persianas con +50 % de vida.",
         "Persianas con el doble de vida."
       ],
       "flavor": "Las mismas que tiene el banco de enfrente. El banco ya no está, las persianas sí.",
       "doorLevel": 1,
-      "hpMul": [1, 1.5, 2],
-      "roll": { "h": 0.32, "d": 0.34, "y": 2.2 },
+      "hpMul": [
+        1,
+        1.5,
+        2
+      ],
+      "roll": {
+        "h": 0.32,
+        "d": 0.34,
+        "y": 2.2
+      },
       "msg": "🛡️ Persianas blindadas bajadas en {n} accesos. Ábrelas con {key} si quieres salir.",
-      "msgOpen": "🛡️ Persianas bajadas en {n} accesos (alguna se ha quedado abierta: había alguien en medio)."
+      "msgOpen": "🛡️ Persianas bajadas en {n} accesos (alguna se ha quedado abierta: había alguien en medio).",
+      "msgDay": "🛡️ Persianas blindadas instaladas en {n} accesos. De día están subidas; al anochecer bajan solas (ábrelas con {key}).",
+      "msgUp": "🛡️ Amanece: persianas subidas."
     },
     "camaras": {
       "icon": "📹",
       "name": "Cámaras de seguridad",
-      "prices": [350, 900],
+      "prices": [
+        350,
+        900
+      ],
       "desc": [
         "Cámaras en la fachada: los avisos de amenaza llegan más lejos.",
         "Sala de monitores: los zombis especiales y el jefe aparecen en los avisos estén donde estén."
       ],
       "flavor": "Graban en 4K. Lo que graban no se lo recomendamos.",
-      "rangeMul": [1.6, 1.6],
-      "specialRangeMul": [1.6, 4.0],
+      "rangeMul": [
+        1.6,
+        1.6
+      ],
+      "specialRangeMul": [
+        1.6,
+        4.0
+      ],
       "y": 2.35,
       "blinkHz": 1.2,
       "mounts": [
-        { "x": 20.5, "z": 14.35, "rot": 180 },
-        { "x": 57.5, "z": 14.35, "rot": 180 },
-        { "x": 63.65, "z": 18.5, "rot": 90 },
-        { "x": 63.65, "z": 31.5, "rot": 90 },
-        { "x": 15.35, "z": 18.5, "rot": 270 },
-        { "x": 15.35, "z": 31.5, "rot": 270 },
-        { "x": 23.5, "z": 37.65, "rot": 0 },
-        { "x": 54.5, "z": 37.65, "rot": 0 }
+        {
+          "x": 20.5,
+          "z": 14.35,
+          "rot": 180
+        },
+        {
+          "x": 57.5,
+          "z": 14.35,
+          "rot": 180
+        },
+        {
+          "x": 63.65,
+          "z": 18.5,
+          "rot": 90
+        },
+        {
+          "x": 63.65,
+          "z": 31.5,
+          "rot": 90
+        },
+        {
+          "x": 15.35,
+          "z": 18.5,
+          "rot": 270
+        },
+        {
+          "x": 15.35,
+          "z": 31.5,
+          "rot": 270
+        },
+        {
+          "x": 23.5,
+          "z": 37.65,
+          "rot": 0
+        },
+        {
+          "x": 54.5,
+          "z": 37.65,
+          "rot": 0
+        }
       ],
-      "led": [0.05, 0.08, 0.22]
+      "led": [
+        0.05,
+        0.08,
+        0.22
+      ]
     },
     "archivo": {
       "icon": "🗂️",
       "name": "Archivo ordenado",
-      "prices": [300, 800],
+      "prices": [
+        300,
+        800
+      ],
       "desc": [
         "Radar de la centralita: al empezar cada noche avisa de por dónde llega la horda y, si hay jefe, de por dónde entra.",
         "Expedientes al día: los casos de la pizarra dan +50 % de puntos."
@@ -54,8 +116,14 @@
       "toastSeconds": 6,
       "nightMsg": "📡 Radar: la horda llega sobre todo por el {side}.",
       "bossMsg": "📡 Radar: ¡el jefe entra por el {side}!",
-      "caseRewardMul": [1, 1.5],
-      "center": [39.5, 25.5],
+      "caseRewardMul": [
+        1,
+        1.5
+      ],
+      "center": [
+        39.5,
+        25.5
+      ],
       "x": 30.5,
       "z": 18.0,
       "y": 2.6,
@@ -65,21 +133,33 @@
     "armeria": {
       "icon": "🔫",
       "name": "Reforma de la armería",
-      "prices": [500, 900, 1400],
+      "prices": [
+        500,
+        900,
+        1400
+      ],
       "desc": [
         "Armeros llenos: −10 % en munición y granadas.",
         "Banco de trabajo: −20 % en munición y granadas.",
         "Cámara acorazada: −30 % en munición y, al amanecer, munición gratis para todas tus armas."
       ],
       "flavor": "Inventario completo por primera vez desde 1987. Faltan dos pistolas, pero eso es tradición.",
-      "ammoDiscount": [0.1, 0.2, 0.3],
+      "ammoDiscount": [
+        0.1,
+        0.2,
+        0.3
+      ],
       "refillFromLevel": 3,
       "refillMsg": "🔫 La cámara acorazada ha repuesto la munición. Alguien ha firmado el albarán con sangre. Mejor no preguntar."
     },
     "enfermeria": {
       "icon": "🩹",
       "name": "Reforma de la enfermería",
-      "prices": [350, 700, 1100],
+      "prices": [
+        350,
+        700,
+        1100
+      ],
       "desc": [
         "Los botiquines de pared se reponen también al anochecer: uno de día y otro de noche.",
         "Estar dentro de la enfermería cura poco a poco (3 de vida por segundo).",
@@ -93,24 +173,50 @@
       "dawnMedkitMsg": "🩹 Enfermería: un botiquín recién salido del almacén. Huele a nuevo y a desesperación."
     },
     "calabozos": {
-      "icon": "⚡",
-      "name": "Suelo electrificado",
-      "prices": [600, 1200],
+      "icon": "🔒",
+      "name": "Calabozos reforzados",
+      "prices": [
+        400,
+        800
+      ],
       "desc": [
-        "El suelo de los calabozos da calambre: los zombis que entran reciben daño cada segundo. Atráelos ahí.",
-        "Más voltaje: más daño y además los deja aturdidos a ratos."
+        "Rejas nuevas y cerrojos: dentro de los calabozos recibes un 25 % menos de daño.",
+        "Rejas de acero templado: dentro recibes un 50 % menos de daño."
+      ],
+      "flavor": "Por fin una celda de la que no quiere salir nadie. Usted.",
+      "damageTakenMul": [
+        0.75,
+        0.5
+      ]
+    },
+    "suelo_electrico": {
+      "icon": "⚡",
+      "name": "Pasillo electrificado",
+      "prices": [
+        600,
+        1100
+      ],
+      "desc": [
+        "El suelo del pasillo central da calambre: los zombis que lo pisan pierden 4 de vida por segundo.",
+        "Más voltaje: 8 de vida por segundo y además caminan un 30 % más lentos."
       ],
       "flavor": "Homologado por el Ministerio. Del Interior, no de Sanidad.",
-      "dps": [10, 20],
-      "stunFromLevel": 2,
-      "stunEvery": 1.5,
-      "stunSeconds": 0.6,
+      "dps": [
+        4,
+        8
+      ],
+      "slowFromLevel": 2,
+      "slowMul": 0.7,
+      "sparkEvery": 0.7,
       "sparkColor": "#8fd8ff"
     },
     "vestuarios": {
       "icon": "🦺",
       "name": "Reforma de los vestuarios",
-      "prices": [450, 950],
+      "prices": [
+        450,
+        950
+      ],
       "desc": [
         "Al amanecer recibes un chaleco parcial gratis (40 de armadura si tienes menos).",
         "Taquillas nuevas con mejor botín y más aguante: el esprint gasta un 30 % menos."
@@ -119,43 +225,89 @@
       "vestArmor": 40,
       "vestMsg": "🦺 Vestuarios: chaleco remendado listo ({a} de armadura). El agujero de la espalda es decorativo.",
       "betterLootFromLevel": 2,
-      "staminaDrainMul": [1, 0.7],
+      "staminaDrainMul": [
+        1,
+        0.7
+      ],
       "lockerLoot": [
-        { "w": 4, "medkit": 1, "msg": "🩹 Has encontrado un botiquín" },
-        { "w": 4, "points": 70, "msg": "💰 Un sobre con dinero: +70" },
-        { "w": 3, "points": 140, "msg": "💰 La quiniela del sargento (premiada): +140" },
-        { "w": 1, "msg": "🧦 Calcetines limpios. Un lujo, pero no da puntos" }
+        {
+          "w": 4,
+          "medkit": 1,
+          "msg": "🩹 Has encontrado un botiquín"
+        },
+        {
+          "w": 4,
+          "points": 70,
+          "msg": "💰 Un sobre con dinero: +70"
+        },
+        {
+          "w": 3,
+          "points": 140,
+          "msg": "💰 La quiniela del sargento (premiada): +140"
+        },
+        {
+          "w": 1,
+          "msg": "🧦 Calcetines limpios. Un lujo, pero no da puntos"
+        }
       ]
     },
     "muros": {
       "icon": "🔩",
       "name": "Muros reforzados",
-      "prices": [500, 850],
+      "prices": [
+        500,
+        850
+      ],
       "desc": [
         "+25 % de vida máxima a todas tus construcciones (también a las que ya tienes).",
         "+50 % de vida máxima a todas tus construcciones."
       ],
       "flavor": "Chapa, remaches y un presupuesto que nadie va a auditar.",
-      "hpMul": [1.25, 1.5]
+      "hpMul": [
+        1.25,
+        1.5
+      ]
     },
     "transformador": {
       "icon": "🔌",
       "name": "Transformador reforzado",
-      "prices": [350, 600, 900],
+      "prices": [
+        350,
+        600,
+        900
+      ],
       "desc": [
         "+50 % de vida al transformador y se repara solo de día (2 por segundo) si sigue en pie.",
         "+100 % de vida y se repara solo de día (4 por segundo).",
         "+150 % de vida y se repara solo de día (6 por segundo)."
       ],
       "flavor": "Jaula homologada contra vándalos. Contra vándalos vivos, se entiende.",
-      "hpBonus": [0.5, 1.0, 1.5],
-      "dayRepair": [2, 4, 6],
-      "cage": { "margin": 0.35, "postEvery": 0.7, "height": [0.9, 1.5, 2.0] }
+      "hpBonus": [
+        0.5,
+        1.0,
+        1.5
+      ],
+      "dayRepair": [
+        2,
+        4,
+        6
+      ],
+      "cage": {
+        "margin": 0.35,
+        "postEvery": 0.7,
+        "height": [
+          0.9,
+          1.5,
+          2.0
+        ]
+      }
     },
     "generador_emergencia": {
       "icon": "🔋",
       "name": "Generador de emergencia",
-      "prices": [450],
+      "prices": [
+        450
+      ],
       "desc": [
         "Si cae el transformador, mantiene la luz y la corriente de las vallas 60 s. Se recarga al repararlo."
       ],
@@ -170,49 +322,99 @@
     "focos": {
       "icon": "💡",
       "name": "Focos del patio",
-      "prices": [300],
+      "prices": [
+        300
+      ],
       "desc": [
         "4 focos fijos en las esquinas del edificio que se encienden de noche."
       ],
       "flavor": "Ahora los ves venir. Ellos a ti también, pero eso ya lo hacían.",
-      "positions": [[13.6, 12.6], [64.4, 12.6], [13.6, 38.4], [64.4, 38.4]],
-      "aimAt": [39.5, 25.5]
+      "positions": [
+        [
+          13.6,
+          12.6
+        ],
+        [
+          64.4,
+          12.6
+        ],
+        [
+          13.6,
+          38.4
+        ],
+        [
+          64.4,
+          38.4
+        ]
+      ],
+      "aimAt": [
+        39.5,
+        25.5
+      ]
     },
     "torreta_tejado": {
       "icon": "🎯",
-      "name": "Torreta del tejado",
-      "prices": [1200, 1500],
+      "name": "Torre de vigilancia",
+      "prices": [
+        1200,
+        1500
+      ],
       "desc": [
-        "Torreta fija sobre la entrada sur: munición infinita y no se puede destruir.",
+        "Torreta en lo alto de la torre del patio sur: munición infinita, no se puede destruir y solo dispara fuera del edificio.",
         "Torreta pesada: más daño y cadencia."
       ],
       "flavor": "Licencia de obra pendiente desde 2009. Ya no hay a quién pedirla.",
-      "x": 34.0,
-      "z": 37.5,
-      "roofY": 2.62,
-      "range": 12,
+      "x": 39.0,
+      "z": 48.0,
+      "roofY": 3.3,
+      "range": 16,
       "spreadDeg": 2.5,
       "levels": [
-        { "damage": 16, "fireRate": 3.5 },
-        { "damage": 26, "fireRate": 5 }
+        {
+          "damage": 16,
+          "fireRate": 3.5
+        },
+        {
+          "damage": 26,
+          "fireRate": 5
+        }
       ],
-      "hitY": 1.0,
-      "platform": { "w": 3.2, "d": 0.9, "h": 0.12 }
+      "hitY": 1.0
     },
     "alarma": {
       "icon": "🚨",
-      "name": "Alarma mejorada",
-      "prices": [400],
-      "desc": [
-        "La alarma se puede usar 2 veces por noche y dura 10 s más."
+      "name": "Sirena de 140 dB",
+      "prices": [
+        400
       ],
-      "flavor": "Ahora con sirena de 140 dB. Los vecinos ya no se quejan; ya no hay vecinos.",
+      "desc": [
+        "Al activar la alarma, la sirena deja aturdidos 3 s a todos los zombis. Además se puede usar 2 veces por noche y dura 10 s más."
+      ],
+      "flavor": "Los vecinos ya no se quejan; ya no hay vecinos.",
       "usesPerNight": 2,
       "extraSeconds": 10,
-      "msg": "🚨 Alarma mejorada: luces de emergencia y zombis frenados (−25 % velocidad) {s} s",
-      "beacons": [[31.5, 37.5], [36.5, 37.5], [37.5, 14.5], [42.5, 14.5]],
+      "msg": "🚨 Sirena de 140 dB: zombis aturdidos {t} s y frenados (−25 % velocidad) {s} s",
+      "beacons": [
+        [
+          31.5,
+          37.5
+        ],
+        [
+          36.5,
+          37.5
+        ],
+        [
+          37.5,
+          14.5
+        ],
+        [
+          42.5,
+          14.5
+        ]
+      ],
       "beaconY": 2.6,
-      "beaconSize": 0.34
+      "beaconSize": 0.34,
+      "stunSeconds": 3
     }
   }
 }

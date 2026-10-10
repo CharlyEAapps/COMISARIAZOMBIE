@@ -84,9 +84,22 @@ export class MapRenderer {
     const { grid } = this;
     const tw = grid.w * TEX_RES, th = grid.h * TEX_RES;
     const data = new Uint8Array(tw * th * 4);
+    const tileAt = (i, j) => grid.tiles[grid.chars[grid.index(i, j)]];
+    // Celda "costura": interior que no pertenece a ninguna sala (muros, puertas, esquinas).
+    const isSeam = (i, j) => grid.inBounds(i, j) && tileAt(i, j).floor === 'interior' && !roomAt(i, j);
+    const seamSource = (i, j, west, north) => {
+      const hi = west ? i - 1 : i + 1, vj = north ? j - 1 : j + 1;
+      if (grid.inBounds(hi, j) && !isSeam(hi, j)) return [hi, j];
+      if (grid.inBounds(i, vj) && !isSeam(i, vj)) return [i, vj];
+      if (grid.inBounds(hi, vj) && !isSeam(hi, vj)) return [hi, vj];
+      return [i, j];
+    };
     for (let y = 0; y < th; y++) {
       for (let x = 0; x < tw; x++) {
-        const i = (x / TEX_RES) | 0, j = (y / TEX_RES) | 0;
+        let i = (x / TEX_RES) | 0, j = (y / TEX_RES) | 0;
+        // Muros y puertas son barras finas centradas en su celda: cada mitad de la celda lleva
+        // el suelo del lado al que da (sala, pasillo o calle) para que no queden franjas sueltas.
+        if (isSeam(i, j)) [i, j] = seamSource(i, j, (x % TEX_RES) < TEX_RES / 2, (y % TEX_RES) < TEX_RES / 2);
         const t = grid.tiles[grid.chars[grid.index(i, j)]];
         const palette = FLOOR_COLORS[t.floor] ?? FLOOR_COLORS.hierba;
         const room = t.floor === 'interior' ? roomAt(i, j) : null;

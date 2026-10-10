@@ -1,14 +1,43 @@
 {
   "_comment": "Tipos forzados para grupos del EXTERIOR (clave = celda superior izquierda 'x,y'). Los muebles de dentro del edificio se definen por sala en station.json.",
   "groups": {
-    "31,39": { "type": "mastil", "variant": "es" },
-    "37,39": { "type": "mastil", "variant": "pol" },
-    "14,42": { "type": "patrulla", "rot": 0 },
-    "20,42": { "type": "patrulla", "rot": 180, "variant": "azul" },
-    "52,42": { "type": "furgoneta", "rot": 180 },
-    "14,50": { "type": "civil", "rot": 0 },
-    "20,50": { "type": "patrulla", "rot": 180 },
-    "58,50": { "type": "patrulla", "rot": 0, "variant": "azul" }
+    "31,39": {
+      "type": "mastil",
+      "variant": "es"
+    },
+    "37,39": {
+      "type": "mastil",
+      "variant": "pol"
+    },
+    "14,42": {
+      "type": "patrulla",
+      "rot": 0
+    },
+    "20,42": {
+      "type": "patrulla",
+      "rot": 180,
+      "variant": "azul"
+    },
+    "52,42": {
+      "type": "furgoneta",
+      "rot": 180
+    },
+    "14,50": {
+      "type": "civil",
+      "rot": 0
+    },
+    "20,50": {
+      "type": "patrulla",
+      "rot": 180
+    },
+    "58,50": {
+      "type": "patrulla",
+      "rot": 0,
+      "variant": "azul"
+    },
+    "38,47": {
+      "type": "torre_vigilancia"
+    }
   },
   "decor": []
 }

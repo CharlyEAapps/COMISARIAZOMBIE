@@ -53,6 +53,7 @@ rect(64, 23, 70, 26, '_');
 // ---------------------------------------------------------------- mobiliario exterior ('o')
 rect(43, 10, 44, 10, 'o');           // transformador (patio norte)
 rect(35, 61, 36, 62, 'o');           // caseta del portón
+rect(38, 47, 39, 48, 'o');           // torre de vigilancia del patio sur
 set(31, 39, 'o'); set(37, 39, 'o');  // mástiles de bandera junto a la entrada
 rect(66, 19, 68, 19, 'o'); rect(66, 33, 68, 33, 'o'); rect(10, 31, 12, 31, 'o'); // bancos
 for (const [x, y] of [[11, 18], [12, 28], [67, 16], [69, 21], [66, 30], [69, 35], [10, 35]]) set(x, y, 'o'); // árboles

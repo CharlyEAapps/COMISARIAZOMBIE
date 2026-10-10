@@ -105,9 +105,9 @@ export class Despacho {
     this.emergencyTimer = 0;
     this.emergencyUsed = false;
     this.alarmUses = 0;
-    this.shockTimer = 0;
     this._regenAcc = 0;
-    this._spark = parseInt(UPGRADES.calabozos.sparkColor.slice(1), 16);
+    this.sparkTimer = 0;
+    this._spark = parseInt(UPGRADES.suelo_electrico.sparkColor.slice(1), 16);
 
     // Focos del patio: posiciones fijas (en metros) que Lighting suma a los focos construidos.
     this._yard = UPGRADES.focos.positions.map(([x, z]) => ({ cx: this.wx(x), cz: this.wz(z) }));
@@ -136,7 +136,7 @@ export class Despacho {
       bus.on('phase:amanecer', () => this.onDawn()),
       bus.on('boss:spawned', () => this.onBoss()),
       bus.on('transformer:destroyed', () => this.onTransformerDown()),
-      bus.on('interact', ({ type }) => { if (type === 'alarma') this.alarmUses++; }),
+      bus.on('interact', ({ type }) => { if (type === 'alarma') this.onAlarm(); }),
     ];
     this.reset();
   }
@@ -179,6 +179,15 @@ export class Despacho {
     return levelValue(UPGRADES.archivo.caseRewardMul, this.level('archivo'), 1);
   }
 
+  /** Multiplicador del daño que recibe el jugador (calabozos reforzados, si está dentro). */
+  damageTakenMul() {
+    const l = this.level('calabozos');
+    if (!l) return 1;
+    const { player, grid } = this.game;
+    if (!inRoom('calabozos', grid.cellX(player.position.x), grid.cellZ(player.position.z))) return 1;
+    return levelValue(UPGRADES.calabozos.damageTakenMul, l, 1);
+  }
+
   /** Alcance extra de los avisos de amenaza (cámaras): `special` = especiales y jefe. */
   threatMul(special) {
     const C = UPGRADES.camaras, l = this.level('camaras');
@@ -195,7 +204,7 @@ export class Despacho {
   setState(levels) {
     this.levels = sanitizeLevels(levels);
     this.apply();
-    if (this.has('persianas') && this.game.dayNight.phase === PHASE.NIGHT) this.placeShutters();
+    if (this.has('persianas')) this.placeShutters(this.game.dayNight.phase !== PHASE.NIGHT, false);
   }
 
   reset() {
@@ -204,7 +213,7 @@ export class Despacho {
     this.emergencyTimer = 0;
     this.emergencyUsed = false;
     this.alarmUses = 0;
-    this.shockTimer = 0;
+    this.sparkTimer = 0;
     this._regenAcc = 0;
     const r = this.roofTurret;
     r.yaw = 0; r.cooldown = 0; r.target = null; r.retarget = 0;
@@ -238,7 +247,7 @@ export class Despacho {
       const base = this._alarmBase.get(it);
       if (!this.has('alarma')) { it.def = base; continue; }
       const secs = base.effect.alarm + A.extraSeconds;
-      it.def = { ...base, effect: { ...base.effect, alarm: secs }, msg: A.msg.replace('{s}', secs) };
+      it.def = { ...base, effect: { ...base.effect, alarm: secs }, msg: A.msg.replace('{s}', secs).replace('{t}', A.stunSeconds) };
     }
     // Vestuarios II: taquillas con mejor botín y más aguante.
     const V = UPGRADES.vestuarios, vl = this.level('vestuarios');
@@ -260,7 +269,7 @@ export class Despacho {
     this.levels[id] = lvl + 1;
     this.apply();
     const { game } = this;
-    if (id === 'persianas' && game.dayNight.phase === PHASE.NIGHT) this.placeShutters();
+    if (id === 'persianas') this.placeShutters(game.dayNight.phase !== PHASE.NIGHT);
     if (id === 'generador_emergencia') this.onTransformerDown();
     return `🗄️ ${u.icon} ${u.name}${u.prices.length > 1 ? ` (nivel ${lvl + 1})` : ''}: ¡obra terminada! Comisaría nivel ${this.global}.`;
   }
@@ -275,7 +284,7 @@ export class Despacho {
   onNightfall(night) {
     const { game } = this;
     this.alarmUses = 0;
-    if (this.has('persianas')) this.placeShutters();
+    if (this.has('persianas')) this.placeShutters(false);
     // Botiquines de pared: se reponen también al anochecer (uno de día y otro de noche).
     if (this.level('enfermeria') >= UPGRADES.enfermeria.nightRefillFromLevel) for (const it of this.medkitItems) it.usedCycle = 0;
     if (this.has('archivo')) {
@@ -284,9 +293,9 @@ export class Despacho {
     }
   }
 
-  /** Amanecer: se retiran las persianas y llegan los regalos de las salas reformadas. */
+  /** Amanecer: se suben las persianas y llegan los regalos de las salas reformadas. */
   onDawn() {
-    this.removeShutters();
+    this.raiseShutters();
     const { game } = this;
     const p = game.player;
     if (!p?.alive) return;
@@ -312,6 +321,15 @@ export class Despacho {
     }
   }
 
+  /** Alarma activada: con la sirena mejorada, todos los zombis quedan aturdidos un momento. */
+  onAlarm() {
+    this.alarmUses++;
+    if (!this.has('alarma')) return;
+    const { zombies } = this.game;
+    const t = UPGRADES.alarma.stunSeconds;
+    for (const z of zombies.active) if (z.state === 0) zombies.stun(z, t);
+  }
+
   onBoss() {
     const zb = this.game.zombies.boss;
     if (!zb || !this.has('archivo')) return;
@@ -330,25 +348,55 @@ export class Despacho {
   }
 
   // ------------------------------------------------------------------ persianas
-  /** Baja las persianas en los accesos exteriores libres (abiertas si hay alguien en medio). */
-  placeShutters() {
+  /**
+   * Pone las persianas que falten en los accesos exteriores (las rotas se reponen) con la vida
+   * al máximo. `up` = subidas (de día); si no, bajadas salvo que haya alguien en el hueco.
+   */
+  placeShutters(up, announce = true) {
     const { build, bus } = this.game;
     const P = UPGRADES.persianas;
     const mul = levelValue(P.hpMul, this.level('persianas'), 1);
+    for (let k = this.shutters.length - 1; k >= 0; k--) if (!build.all.has(this.shutters[k])) this.shutters.splice(k, 1);
     let placed = 0, open = 0;
     for (const cells of this.doorGroups) {
-      const s = build.placeAuto('puerta', cells, P.doorLevel, mul);
-      if (!s) continue;
-      this.shutters.push(s);
+      let s = this.shutters.find((x) => x.cells[0] === cells[0]);
+      if (!s) {
+        s = build.placeAuto('puerta', cells, P.doorLevel, mul);
+        if (!s) continue;
+        this.shutters.push(s);
+      }
+      s.hp = s.maxHp;
       placed++;
-      if (build.doorBlocked(s)) {
-        s.open = true;
+      const wantOpen = up || build.doorBlocked(s);
+      if (!up && wantOpen) open++;
+      if (s.open !== wantOpen) {
+        s.open = wantOpen;
         build.applyGrid(s);
-        open++;
-      } else bus.emit('door:toggle', { open: false, x: s.cx, z: s.cz });
+        bus.emit('door:toggle', { open: wantOpen, x: s.cx, z: s.cz });
+      }
     }
     if (placed) build.changed(true);
-    if (placed) this.game.hud?.toast((open ? P.msgOpen : P.msg).replace('{n}', placed).replace('{key}', this.game.useKey ?? 'E'), 4);
+    if (!placed || !announce) return;
+    const key = this.game.useKey ?? 'E';
+    const msg = up ? P.msgDay : open ? P.msgOpen : P.msg;
+    this.game.hud?.toast(msg.replace('{n}', placed).replace('{key}', key), 4);
+  }
+
+  /** Amanecer: sube las persianas que sigan en pie. */
+  raiseShutters() {
+    const { build, bus } = this.game;
+    let any = false;
+    for (const s of this.shutters) {
+      if (!build.all.has(s) || s.open) continue;
+      s.open = true;
+      build.applyGrid(s);
+      bus.emit('door:toggle', { open: true, x: s.cx, z: s.cz });
+      any = true;
+    }
+    if (any) {
+      build.changed(true);
+      this.game.hud?.toast(UPGRADES.persianas.msgUp, 3);
+    }
   }
 
   /** Retira las persianas que sigan en pie (sin reembolso). */
@@ -385,7 +433,7 @@ export class Despacho {
       for (const it of this.alarmItems) if (it.usedCycle === game.dayNight.night) it.usedCycle = 0;
     }
     this.updateInfirmary(dt);
-    this.updateCells(dt);
+    this.updateCorridor(dt);
   }
 
   /** Enfermería II: dentro se cura poco a poco (el número flotante sale cada punto entero). */
@@ -404,25 +452,25 @@ export class Despacho {
     }
   }
 
-  /** Calabozos: el suelo electrificado daña (y en el nivel II aturde a ratos) a los zombis dentro. */
-  updateCells(dt) {
-    const l = this.level('calabozos');
+  /**
+   * Pasillo electrificado: los zombis que pisan el pasillo central pierden vida poco a poco
+   * (nunca de golpe) y en el nivel II además caminan más lentos. Chispas de vez en cuando.
+   */
+  updateCorridor(dt) {
+    const l = this.level('suelo_electrico');
     if (!l) return;
-    const K = UPGRADES.calabozos;
+    const K = UPGRADES.suelo_electrico;
     const { zombies, grid, effects } = this.game;
     const dmg = levelValue(K.dps, l, 0) * dt;
-    let pulse = false;
-    if (l >= K.stunFromLevel) {
-      this.shockTimer -= dt;
-      if (this.shockTimer <= 0) { this.shockTimer = K.stunEvery; pulse = true; }
-    }
+    const slow = l >= K.slowFromLevel ? K.slowMul : 1;
+    this.sparkTimer -= dt;
+    const spark = this.sparkTimer <= 0;
+    if (spark) this.sparkTimer = K.sparkEvery;
     for (const z of zombies.active) {
       if (z.state !== 0) continue;
-      if (!inRoom('calabozos', grid.cellX(z.pos.x), grid.cellZ(z.pos.z))) continue;
-      if (pulse) {
-        zombies.stun?.(z, K.stunSeconds);
-        effects?.burst?.(z.pos.x, 0.3, z.pos.z, 6, this._spark, { speed: 2, up: 2.5, size: 0.05, life: 0.35 });
-      }
+      if (!inRoom('pasillo', grid.cellX(z.pos.x), grid.cellZ(z.pos.z))) continue;
+      if (slow < z.slowMul) z.slowMul = slow;
+      if (spark) effects?.burst?.(z.pos.x, 0.3, z.pos.z, 5, this._spark, { speed: 2, up: 2.5, size: 0.05, life: 0.35 });
       zombies.damage(z, dmg, 0, 0, 0, true);
     }
   }

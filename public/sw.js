@@ -9,7 +9,7 @@
  * - Todas las rutas son relativas al scope del SW, así que vale en la raíz o en una subruta.
  * - Subir CACHE (tdn-v2…) fuerza a limpiar las cachés antiguas en activate.
  */
-const CACHE = 'tdn-v4';
+const CACHE = 'tdn-v5';
 const PRECACHE = /*PRECACHE_LIST*/{ core: ['./', './index.html', './manifest.webmanifest'], audio: [] }/*END_PRECACHE_LIST*/;
 const NAV_TIMEOUT_MS = 4000;
 

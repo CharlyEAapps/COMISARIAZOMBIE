@@ -178,19 +178,6 @@ export class DespachoRenderer {
       any = true;
     }
 
-    if (d.has('torreta_tejado')) {
-      // Plataforma de hormigón con sacos sobre los muros de la entrada sur.
-      const T = UPGRADES.torreta_tejado, P = T.platform;
-      b.root(d.wx(T.x), T.roofY - P.h, d.wz(T.z), 0);
-      b.box(0, 0, 0, P.w, P.h, P.d, CONC);
-      b.box(0, -0.05, 0, P.w - 0.1, 0.05, P.d - 0.1, CONC_D, { ao: 0 });
-      for (const sx of [-1, 1]) {
-        for (let k = 0; k < 2; k++) b.box(sx * (P.w / 2 - 0.35 - k * 0.42), P.h, P.d / 2 - 0.16, 0.4, 0.2, 0.26, SAND, { ao: 0.2 });
-      }
-      for (let k = 0; k < 6; k++) b.box(-P.w / 2 + 0.27 + k * 0.53, P.h - 0.002, P.d / 2 + 0.003, 0.26, 0.05, 0.01, k % 2 ? BLK : YEL, { ao: 0 });
-      any = true;
-    }
-
     if (d.has('alarma')) {
       const A = UPGRADES.alarma;
       const r = A.beaconSize;

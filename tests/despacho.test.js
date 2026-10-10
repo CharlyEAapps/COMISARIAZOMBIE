@@ -29,7 +29,7 @@ function makeGame() {
     power: { generator: true, lightsOn: true },
     dayNight: { phase: PHASE.DAY, night: 1 },
     player: { position: { x: 0, z: 0 }, radius: 0.35, alive: true },
-    zombies: { active: [], flowDirty: false, damage: noop, boss: null },
+    zombies: { active: [], flowDirty: false, damage: noop, stun: (z, t) => { z.stunTimer = t; }, boss: null },
     effects: { burst: noop, shake: noop },
     hud: { toast: (t) => toasts.push(t) },
     floating: { spawn: noop },
@@ -182,10 +182,24 @@ describe('Despacho: mejoras en partida', () => {
     // Nivel II: más vida a las que ya están puestas.
     g.despacho.buy('persianas');
     expect(s0.maxHp).toBe(pieceMaxHp(buildData.pieces.puerta, U.persianas.doorLevel, s0.n, 1, U.persianas.hpMul[1]));
+    // Al amanecer se suben (siguen puestas, abiertas).
     dawn(g);
-    expect(g.despacho.shutters).toHaveLength(0);
-    expect(b.all.has(s0)).toBe(false);
-    expect([...b.all].filter((s) => s.type === 'puerta')).toHaveLength(1); // la del jugador sigue
+    expect(g.despacho.shutters).toHaveLength(3);
+    for (const s of g.despacho.shutters) expect(s.open).toBe(true);
+    expect(b.all.has(s0)).toBe(true);
+    // Si rompen una, se repone al anochecer con la vida al máximo.
+    b.remove(s0);
+    g.player.position = { x: 0, z: 0 };
+    nightfall(g);
+    expect(g.despacho.shutters).toHaveLength(3);
+    for (const s of g.despacho.shutters) { expect(s.open).toBe(false); expect(s.hp).toBe(s.maxHp); }
+    expect([...b.all].filter((s) => s.type === 'puerta' && !s.auto)).toHaveLength(1); // la del jugador sigue
+  });
+
+  it('persianas compradas de día se instalan al momento, subidas', () => {
+    g.despacho.buy('persianas');
+    expect(g.despacho.shutters).toHaveLength(4);
+    for (const s of g.despacho.shutters) { expect(g.build.all.has(s)).toBe(true); expect(s.open).toBe(true); }
   });
 
   it('persianas compradas de noche se ponen al momento; con alguien en medio quedan abiertas', () => {
@@ -230,8 +244,13 @@ describe('Despacho: mejoras en partida', () => {
     g.despacho.buy('alarma');
     expect(it0.def.effect.alarm).toBe(base + U.alarma.extraSeconds);
     nightfall(g);
+    const z = { state: 0, stunTimer: 0 }, dead = { state: 2, stunTimer: 0 };
+    g.zombies.active.push(z, dead);
     it0.usedCycle = g.dayNight.night;
     g.bus.emit('interact', { type: 'alarma' });
+    expect(z.stunTimer).toBe(U.alarma.stunSeconds); // la sirena los deja aturdidos
+    expect(dead.stunTimer).toBe(0);
+    g.zombies.active.length = 0;
     g.lighting.alarmTimer = 5;
     g.despacho.update(1 / 60);
     expect(it0.usedCycle).toBe(g.dayNight.night); // sigue sonando

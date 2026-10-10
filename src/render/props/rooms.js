@@ -336,7 +336,7 @@ addD('suelo_electrico', {
 addD('chispas', {
   build(b, fp) {
     const w = fp.p.w ?? 4, d = fp.p.d ?? 3, rnd = fp.rnd;
-    for (let k = 0; k < 14; k++) {
+    for (let k = 0, n = fp.p.n ?? 14; k < n; k++) {
       const x = (rnd() - 0.5) * w, z = (rnd() - 0.5) * d, a = rnd() * PI;
       b.box(x, 0.01, z, 0.22, 0.012, 0.025, 0x8fd8ff, { layer: 'glow', ao: 0, ry: a });
       b.box(x, 0.01, z, 0.14, 0.012, 0.025, 0xffffff, { layer: 'glow', ao: 0, ry: a + PI / 2 });

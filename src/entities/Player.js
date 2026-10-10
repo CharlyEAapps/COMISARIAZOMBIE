@@ -94,6 +94,7 @@ export class Player {
 
   damage(amount) {
     if (!this.alive || this.game.debug.flags.godMode) return;
+    amount *= this.game.despacho?.damageTakenMul() ?? 1;
     // El chaleco absorbe parte del daño hasta agotarse.
     if (this.armor > 0) {
       const absorbed = Math.min(this.armor, amount * this.armorAbsorb);

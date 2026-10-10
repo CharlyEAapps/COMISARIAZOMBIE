@@ -57,7 +57,7 @@ describe('Comisaría por salas: datos (station.json)', () => {
 
   it('nivel de sala y global: suma de sus mejoras', () => {
     const rec = ROOMS_LIST.find((r) => r.id === 'patio');
-    expect(roomMaxLevel(rec)).toBe(5);
+    expect(roomMaxLevel(rec)).toBe(7);
     expect(roomLevel(rec, { transformador: 2, focos: 1, muros: 2 })).toBe(3);
     expect(globalLevel({ transformador: 2, focos: 1, muros: 2 })).toBe(5);
   });
@@ -248,22 +248,34 @@ describe('Comisaría por salas: efectos por nivel', () => {
     expect(g.player.medkits).toBe(1);
   });
 
-  it('calabozos: el suelo electrificado daña a los zombis dentro; el II además aturde', () => {
-    const r = ROOM_RECTS.calabozos;
-    const zin = { state: 0, hp: 100, stunTimer: 0, pos: cellPos(g, r.x0 + 4, r.y0 + 5) };
-    const zout = { state: 0, hp: 100, stunTimer: 0, pos: cellPos(g, 40, 25) };
+  it('pasillo electrificado: quita vida poco a poco a los zombis del pasillo; el II además frena', () => {
+    const r = ROOM_RECTS.pasillo;
+    const K = U.suelo_electrico;
+    const zin = { state: 0, hp: 100, stunTimer: 0, slowMul: 1, pos: cellPos(g, r.x0 + 10, r.y0 + 1) };
+    const zout = { state: 0, hp: 100, stunTimer: 0, slowMul: 1, pos: cellPos(g, ROOM_RECTS.calabozos.x0 + 2, ROOM_RECTS.calabozos.y0 + 3) };
     g.zombies.active.push(zin, zout);
     g.despacho.update(1);
     expect(zin.hp).toBe(100);
-    g.despacho.buy('calabozos');
+    g.despacho.buy('suelo_electrico');
     g.despacho.update(1);
-    expect(zin.hp).toBeCloseTo(100 - U.calabozos.dps[0], 5);
+    expect(zin.hp).toBeCloseTo(100 - K.dps[0], 5);
     expect(zout.hp).toBe(100);
-    expect(zin.stunTimer).toBe(0);
-    g.despacho.buy('calabozos');
+    expect(zin.slowMul).toBe(1);
+    g.despacho.buy('suelo_electrico');
     g.despacho.update(0.5);
-    expect(zin.stunTimer).toBe(U.calabozos.stunSeconds);
-    expect(zin.hp).toBeCloseTo(100 - U.calabozos.dps[0] - U.calabozos.dps[1] * 0.5, 5);
+    expect(zin.slowMul).toBe(K.slowMul);
+    expect(zin.stunTimer).toBe(0);
+    expect(zin.hp).toBeCloseTo(100 - K.dps[0] - K.dps[1] * 0.5, 5);
+  });
+
+  it('calabozos reforzados: el jugador recibe menos daño dentro', () => {
+    const r = ROOM_RECTS.calabozos;
+    expect(g.despacho.damageTakenMul()).toBe(1);
+    g.despacho.buy('calabozos');
+    g.player.position = cellPos(g, r.x0 + 2, r.y0 + 4);
+    expect(g.despacho.damageTakenMul()).toBe(U.calabozos.damageTakenMul[0]);
+    g.player.position = cellPos(g, 40, 25);
+    expect(g.despacho.damageTakenMul()).toBe(1);
   });
 
   it('vestuarios: I chaleco parcial al amanecer; II mejor botín y menos gasto de aguante', () => {

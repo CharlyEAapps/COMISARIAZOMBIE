@@ -241,8 +241,8 @@
       "range": 9,
       "fireRate": 4,
       "damage": 14,
-      "ammo": 200,
-      "ammoCost": 0.5,
+      "ammo": 150,
+      "ammoCost": 0.7,
       "turnSpeed": 6,
       "spreadDeg": 3,
       "aimTolerance": 0.25,
@@ -252,18 +252,19 @@
       "levels": [
         {
           "name": "Torreta",
-          "cost": 500,
+          "cost": 600,
           "hp": 350
         },
         {
           "name": "Torreta pesada",
-          "cost": 900,
+          "cost": 1200,
           "hp": 600,
           "damage": 22,
           "fireRate": 5,
-          "ammo": 300
+          "ammo": 220
         }
-      ]
+      ],
+      "costStep": 0.25
     },
     "foco": {
       "name": "Foco",

@@ -11,7 +11,7 @@
       "text": "Reduce la lista de espera: abate a {n} zombis esta noche",
       "base": 10,
       "perNight": 6,
-      "reward": 150
+      "reward": 100
     },
     {
       "id": "maxDamage",

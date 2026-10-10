@@ -180,10 +180,21 @@ export class BuildSystem {
   }
 
   /** Coste por celda (con recargo nocturno). */
-  costOf(type, level = 0) {
+  /**
+   * Coste por celda (con recargo nocturno). Algunas piezas (torretas) se encarecen por cada una
+   * que ya tengas: `others` = cuántas hay ya, sin contar la que se mejora.
+   */
+  costOf(type, level = 0, others = this.countFast(type)) {
     // Mejora permanente: las primeras barricadas de madera de la partida son gratis.
     if (type === 'barricada' && level === 0 && this.freeBarricades > 0) return 0;
-    return Math.ceil(this.pieces[type].levels[level].cost * this.surcharge);
+    const def = this.pieces[type];
+    const step = 1 + (def.costStep ?? 0) * others;
+    return Math.ceil(def.levels[level].cost * step * this.surcharge);
+  }
+
+  /** Número de piezas de un tipo (O(1) para las que tienen lista propia). */
+  countFast(type) {
+    return this.lists[type]?.length ?? this.countOf(type);
   }
 
   /** Coste total de colocar `type` en la celda k (la puerta cubre todo el hueco). */
@@ -344,7 +355,7 @@ export class BuildSystem {
   }
 
   upgradeCost(s) {
-    return s.level + 1 < s.def.levels.length ? this.costOf(s.type, s.level + 1) * s.n : 0;
+    return s.level + 1 < s.def.levels.length ? this.costOf(s.type, s.level + 1, this.countFast(s.type) - 1) * s.n : 0;
   }
 
   /** ¿Está desbloqueado (en el almacén) el siguiente nivel de la pieza? */

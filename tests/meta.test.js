@@ -68,8 +68,10 @@ describe('Medallas y mejoras', () => {
     expect(list.some((m) => m.label.includes('5 noches'))).toBe(true);
     expect(list.some((m) => m.label === '100 bajas')).toBe(true);
     expect(list.some((m) => m.label === 'Antidisturbios abatido')).toBe(true);
-    expect(list.find((m) => m.label.startsWith('Noche sin'))?.medals).toBe(2);
-    expect(total).toBe(5 + 1 + 2 + 3 + 1 + 2);
+    expect(list.find((m) => m.label.startsWith('Noche sin'))?.medals).toBe(2 * meta.medals.achievements.find((x) => x.id === 'perfect').medals);
+    const A = Object.fromEntries(meta.medals.achievements.map((x) => [x.id, x]));
+    const hitos = meta.medals.milestones.filter((x) => x.night <= 5).reduce((s, x) => s + x.medals, 0);
+    expect(total).toBe(5 * meta.medals.perNight + hitos + A.kills100.medals + A.boss.medals + A.perfect.medals * 2);
   });
 
   it('los logros por unidad tienen tope', () => {

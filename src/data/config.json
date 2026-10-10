@@ -413,8 +413,8 @@
     "fireAt": 0.35,
     "aimDistance": 8,
     "assistAngleDeg": 14,
-    "assistRange": 16,
-    "cameraDistance": 17
+    "assistRange": 12,
+    "cameraDistance": 19
   },
   "gamepad": {
     "deadZone": 0.18,

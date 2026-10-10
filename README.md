@@ -55,7 +55,7 @@ Al empezar solo puedes construir barricadas y sacos de madera.
 | 🛢️ Barril explosivo | — | Dispárale (o deja que lo golpeen) y estalla; encadena con otros barriles. ¡También te daña! |
 | ⚡ Valla electrificada | Normal → Reforzada | Bloquea; con un generador en pie, electrocuta y aturde a quien la toque. Tus balas pasan |
 | 🔋 Generador | — | Da corriente a las vallas. Atrae a los vándalos |
-| 🎯 Torreta automática | Torreta → Pesada | Dispara sola al zombi más cercano. Munición limitada: recárgala con E pagando |
+| 🎯 Torreta automática | Torreta → Pesada | Dispara sola al zombi más cercano. Munición limitada: recárgala pagando (E / ✋ junto a ella). Sin límite, pero cada torreta extra cuesta un 25 % más |
 | 💡 Foco | — | Ilumina una zona de noche |
 
 - Los zombis golpean lo que les cierra el paso. Si encierras la base, eligen el camino más barato (la pieza más débil o la más cercana).
@@ -93,7 +93,7 @@ Al empezar solo puedes construir barricadas y sacos de madera.
 
 ## Menús, medallas y récords
 - **Menú principal:** empezar el turno (Enter), Tablón de la comisaría, Récords, Opciones y Controles.
-- **Medallas:** al acabar cada turno ganas medallas por noche sobrevivida, hitos (3, 5, 10 y 15 noches) y logros (jefe abatido, 100/300/600 bajas, combo de 20, noches sin un rasguño, casos resueltos, 25 construcciones, 5 armas usadas).
+- **Medallas:** al acabar cada turno ganas medallas por noche sobrevivida, hitos (3, 5, 10 y 15 noches) y logros (jefe abatido, 100/300/600 bajas, combo de 30, noches sin un rasguño, casos resueltos, 25 construcciones, 5 armas usadas).
 - **Tablón de la comisaría:** mejoras permanentes que se compran con medallas: vida máxima, puntos iniciales, botiquines, empezar con escopeta, descuento en la armería, recarga más rápida, linterna más potente y barricadas gratis al empezar.
 - **Récords:** los 10 mejores turnos (puntos, noches, bajas, tiempo, arma favorita y fecha).
 - **Fin de turno:** resumen con bajas por tipo, arma favorita, mejor combo, medallas ganadas y si has entrado en los récords. Desde la pausa también puedes abandonar el turno (cuenta como terminado).

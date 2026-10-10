@@ -53,7 +53,7 @@ export class Hud {
           <span class="key">WASD</span> mover <span class="key">Ratón</span> apuntar y disparar <span class="key">R</span> recargar <span class="key">1-7</span> armas <span class="key">G</span> granada <span class="key">E</span> interactuar <span class="key">Q</span> botiquín <span class="key">Esc</span> pausa
         </div>
         <div class="prompt panel" data-k="prompt">
-          <span class="key">E</span><span data-k="promptText"></span>
+          <span class="key" data-k="promptKey">E</span><span data-k="promptText"></span>
           <div class="bar thin"><div class="fill prompt-fill" data-k="promptFill"></div></div>
         </div>
         <div class="prompt panel subtle" data-k="ready"><span class="key">B</span> Construir<span data-k="readyNight"> <span class="key">N</span> Empezar la noche ya</span></div>
@@ -228,6 +228,7 @@ export class Hud {
 
     // Aviso de interacción.
     const it = interactions.current;
+    this.set('promptKey', this.game.useKey);
     this.set('prompt', !!it && player.alive, 'show');
     if (it) {
       const av = interactions.availability(it);
@@ -280,7 +281,7 @@ export class Hud {
     if (s) {
       const lvl = s.def.levels[s.level];
       const parts = [`<b>${s.def.icon} ${lvl.name}</b> ${Math.ceil(s.hp)}/${s.maxHp}`];
-      if (s.type === 'torreta') parts.push(`Munición ${s.ammo}/${s.ammoMax}${s.ammo < s.ammoMax ? ' (recarga con E)' : ''}`);
+      if (s.type === 'torreta') parts.push(`Munición ${s.ammo}/${s.ammoMax}${s.ammo < s.ammoMax ? ` (recarga con ${this.game.useKey})` : ''}`);
       if (s.type === 'valla' && !b.powered) parts.push('<i>Sin corriente: construye un generador</i>');
       if (!b.inReachXY(s.cx, s.cz)) {
         parts.push('<i>Demasiado lejos</i>');
@@ -305,7 +306,7 @@ export class Hud {
         barril: 'Dispárale para detonarlo. ¡También te daña!',
         valla: b.powered ? '' : 'Necesita un generador para dar corriente',
         generador: 'Da corriente a las vallas, pero atrae a los vándalos',
-        torreta: 'Munición limitada: recárgala con E',
+        torreta: `Munición limitada: recárgala con ${this.game.useKey}`,
       };
       const warn = WARN[b.selected] ? ` · <i>${WARN[b.selected]}</i>` : '';
       const width = b.hoverCells.length;

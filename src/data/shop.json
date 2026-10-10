@@ -168,7 +168,7 @@
     {
       "id": "unlock:torreta:0",
       "name": "Torretas automáticas",
-      "desc": "Disparan solas. Munición limitada: recárgalas con E.",
+      "desc": "Disparan solas. Munición limitada: recárgalas junto a ellas.",
       "price": 600,
       "flavor": "No pide vacaciones ni aumentos. Solo balas."
     },

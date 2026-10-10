@@ -117,6 +117,12 @@ export class Game {
 
     this._onResize = () => this.resize();
     window.addEventListener('resize', this._onResize);
+    // Al girar el móvil, iOS cambia las medidas un poco después del evento: se repite.
+    this._onOrient = () => { this.resize(); setTimeout(this._onResize, 250); setTimeout(this._onResize, 700); };
+    window.addEventListener('orientationchange', this._onOrient);
+    window.visualViewport?.addEventListener('resize', this._onResize);
+    this._resizeObs = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => this.resize()) : null;
+    this._resizeObs?.observe(this.canvas);
     // Opciones guardadas.
     const st = this.meta.settings;
     if (st.quality && Object.hasOwn(config.quality.presets, st.quality)) this.setQuality(st.quality);
@@ -129,6 +135,12 @@ export class Game {
     this._last = performance.now();
     this._frame = this.frame.bind(this);
     requestAnimationFrame(this._frame);
+  }
+
+  /** Cómo se llama el botón de "usar" con el control actual (teclado E, táctil ✋, mando A). */
+  get useKey() {
+    const d = this.input.lastDevice;
+    return d === 'touch' ? '✋' : d === 'pad' ? 'A' : 'E';
   }
 
   /** Puntos de interacción de los mostradores (A, M, W del mapa). */
@@ -193,6 +205,9 @@ export class Game {
   dispose() {
     this._disposed = true;
     window.removeEventListener('resize', this._onResize);
+    window.removeEventListener('orientationchange', this._onOrient);
+    window.visualViewport?.removeEventListener('resize', this._onResize);
+    this._resizeObs?.disconnect();
     this.input.dispose();
     this.props.dispose();
     this.structureRenderer.dispose();
@@ -219,7 +234,21 @@ export class Game {
     this.resize();
   }
 
+  /**
+   * En la app instalada de iOS, el alto que da Safari descuenta la barra de estado y deja una
+   * franja negra abajo: se ajusta el contenedor al tamaño real de la pantalla.
+   */
+  fitScreen() {
+    const app = this.canvas.parentElement;
+    if (!app || !window.navigator.standalone) return;
+    const land = window.innerWidth > window.innerHeight;
+    const a = window.screen.width, b = window.screen.height;
+    app.style.width = `${land ? Math.max(a, b) : Math.min(a, b)}px`;
+    app.style.height = `${land ? Math.min(a, b) : Math.max(a, b)}px`;
+  }
+
   resize() {
+    this.fitScreen();
     const w = this.canvas.clientWidth || window.innerWidth;
     const h = this.canvas.clientHeight || window.innerHeight;
     this.renderer.resize(w, h);

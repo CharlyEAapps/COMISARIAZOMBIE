@@ -487,21 +487,30 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
 }
 .tbtn.down { background: rgba(232, 178, 58, 0.75); color: #16181e; }
 .tbtn.big { width: 66px; height: 66px; font-size: 26px; }
-/* Columna derecha, junto al pulgar derecho */
-.tb-pause { top: calc(env(safe-area-inset-top, 0px) + 8px); right: calc(env(safe-area-inset-right, 0px) + 10px); width: 42px; height: 42px; font-size: 16px; }
-.tb-weapon { right: calc(env(safe-area-inset-right, 0px) + 12px); top: 30%; }
-.tb-grenade { right: calc(env(safe-area-inset-right, 0px) + 12px); top: calc(30% + 64px); }
-.tb-reload { right: calc(env(safe-area-inset-right, 0px) + 76px); bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); }
-.tb-use { right: calc(env(safe-area-inset-right, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 82px); }
-.tb-medkit { right: calc(env(safe-area-inset-right, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
+/* Racimo de botones abajo a la derecha, junto al pulgar derecho (todo anclado abajo: no se
+   solapan aunque la pantalla sea baja). --sr/--sb = márgenes seguros del iPhone. */
+.touch-buttons { --sr: env(safe-area-inset-right, 0px); --sb: env(safe-area-inset-bottom, 0px); --sl: env(safe-area-inset-left, 0px); }
+.tb-pause { top: calc(env(safe-area-inset-top, 0px) + 8px); right: calc(var(--sr) + 10px); width: 42px; height: 42px; font-size: 16px; }
+.tb-use { right: calc(var(--sr) + 12px); bottom: calc(var(--sb) + 12px); }
+.tb-reload { right: calc(var(--sr) + 90px); bottom: calc(var(--sb) + 18px); }
+.tb-medkit { right: calc(var(--sr) + 18px); bottom: calc(var(--sb) + 90px); }
+.tb-grenade { right: calc(var(--sr) + 82px); bottom: calc(var(--sb) + 82px); }
+.tb-weapon { right: calc(var(--sr) + 18px); bottom: calc(var(--sb) + 154px); }
+.tb-sell { right: calc(var(--sr) + 12px); bottom: calc(var(--sb) + 90px); display: none; }
 /* Abajo a la izquierda, sobre el pulgar izquierdo */
-.tb-build { left: calc(env(safe-area-inset-left, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); width: 46px; height: 46px; font-size: 18px; }
-.tb-night { left: calc(env(safe-area-inset-left, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 66px); width: 46px; height: 46px; font-size: 18px; display: none; }
-.tb-sell { right: calc(env(safe-area-inset-right, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); display: none; }
+.tb-build { left: calc(var(--sl) + 12px); bottom: calc(var(--sb) + 12px); width: 46px; height: 46px; font-size: 18px; }
+.tb-night { left: calc(var(--sl) + 12px); bottom: calc(var(--sb) + 66px); width: 46px; height: 46px; font-size: 18px; display: none; }
+.stick-right { left: calc(100% - 270px); }
+@media (max-height: 340px) {
+  .tbtn { width: 48px; height: 48px; font-size: 18px; }
+  .tbtn.big { width: 58px; height: 58px; }
+  .tb-weapon { bottom: calc(var(--sb) + 138px); }
+}
 .touch-layer.day .tb-night { display: flex; }
 .touch-layer.building .tb-sell { display: flex; }
 .touch-layer.building .tb-weapon, .touch-layer.building .tb-grenade, .touch-layer.building .tb-reload,
-.touch-layer.building .tb-medkit, .touch-layer.building .tb-use, .touch-layer.building .stick-right { display: none; }
+.touch-layer.building .tb-medkit, .touch-layer.building .tb-use, .touch-layer.building .stick-right,
+.touch-layer.building .tb-night { display: none; }
 .touch-layer.no-grenade .tb-grenade, .touch-layer.no-medkit .tb-medkit { opacity: 0.35; }
 .touch-layer.shop-open .stick-right, .touch-layer.shop-open .tb-weapon, .touch-layer.shop-open .tb-grenade,
 .touch-layer.shop-open .tb-reload, .touch-layer.shop-open .tb-medkit, .touch-layer.shop-open .tb-build { display: none; }
@@ -516,7 +525,7 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
 /* HUD compacto en móvil horizontal */
 .touch .hint, .touch [data-k="ready"] { display: none !important; }
 .touch .panel-status {
-  transform: scale(0.66); transform-origin: top left;
+  transform: scale(0.6); transform-origin: top left;
   top: calc(env(safe-area-inset-top, 0px) + 6px); left: calc(env(safe-area-inset-left, 0px) + 6px);
 }
 .touch .panel-weapon {

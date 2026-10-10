@@ -564,7 +564,7 @@ export class BuildSystem {
         this.game.bus.emit('turret:empty', s);
         if (!s.emptyWarned) {
           s.emptyWarned = true;
-          this.game.hud?.toast(`🎯 Una torreta se ha quedado sin munición: recárgala con E.${this.game.humor?.tag('turretEmpty') ?? ''}`, 5);
+          this.game.hud?.toast(`🎯 Una torreta se ha quedado sin munición: recárgala con ${this.game.useKey}.${this.game.humor?.tag('turretEmpty') ?? ''}`, 5);
         }
         continue;
       }

@@ -16,6 +16,15 @@ const SELECT_ACTIONS = Array.from({ length: 9 }, (_, n) => `weapon${n + 1}`);
 const NO_BUILD_CHARS = new Set(['S', 'A', 'M', 'W']);
 const MAX_DOOR_WIDTH = 6;
 
+/**
+ * Vida máxima de una pieza (función pura): la del nivel por celda, con el refuerzo de muros del
+ * despacho (`mul`, no se aplica a las trampas: su vida es desgaste o usos) y la bonificación
+ * propia de la pieza (`bonus`, persianas automáticas).
+ */
+export function pieceMaxHp(def, level, n, mul = 1, bonus = 1) {
+  return Math.round(def.levels[level].hp * n * (def.kind === 'trampa' ? 1 : mul) * bonus);
+}
+
 /** Coste de reparar una pieza (función pura): proporcional al daño y al coste del nivel actual. */
 export function repairCost(cfg, def, s, mul = 1) {
   if (s.hp >= s.maxHp) return 0;
@@ -46,6 +55,7 @@ export class BuildSystem {
     this.sellArmed = -1;         // id de la pieza con la venta "armada"
     this.sellArmedUntil = 0;
     this.page = 0;
+    this.hpMul = 1;              // refuerzo de muros (despacho del comisario)
     this.lists = {};
     for (const t of LISTED) this.lists[t] = [];
     this.generators = this.lists.generador;
@@ -126,7 +136,7 @@ export class BuildSystem {
 
   /** Las vallas electrificadas funcionan si hay algún generador en pie. */
   get powered() {
-    return this.generators.length > 0;
+    return this.generators.length > 0 || !!this.game.despacho?.emergencyOn;
   }
 
   transformerRepairCost() {
@@ -162,6 +172,7 @@ export class BuildSystem {
     if (this.transformer) { this.transformer.hp = this.transformer.maxHp; this.transformer.flash = 0; this.transformer.alertAt = -Infinity; }
     this.sellArmed = -1;
     this.freeBarricades = 0;
+    this.hpMul = 1;
     this.changed(true);
   }
 
@@ -324,29 +335,14 @@ export class BuildSystem {
   // ------------------------------------------------------------------ acciones
   place(type, k) {
     if (this.canPlace(type, k)) return false;
-    const { grid, run } = this.game;
+    const { run } = this.game;
     const def = this.pieces[type];
     const cells = this.footprint(type, k);
     const n = cells.length;
     const cost = this.costOf(type) * n;
     run.points -= cost;
-    const i = cells[0] % grid.w, j = (cells[0] / grid.w) | 0;
-    let cx = 0, cz = 0;
-    for (const c of cells) { cx += grid.centerX(c % grid.w); cz += grid.centerZ((c / grid.w) | 0); }
-    const hp = def.levels[0].hp * n;
-    const s = {
-      id: this.nextId++, type, def, cells, n, k: cells[0], i, j, cx: cx / n, cz: cz / n,
-      level: 0, hp, maxHp: hp, invested: cost,
-      flash: 0, open: false, axis: type === 'puerta' ? this.doorAxis(i, j) : 'x',
-      rearm: 0, fuse: -1, repairReady: 0, zap: 0,
-    };
-    for (const c of cells) this.structures.set(c, s);
-    this.all.add(s);
-    this.lists[type]?.push(s);
+    const s = this.createStructure(type, cells, 0, cost);
     if (type === 'barricada' && this.freeBarricades > 0) this.freeBarricades = Math.max(0, this.freeBarricades - n);
-    this.applyGrid(s);
-    if (type === 'puerta') this.registerDoor(s);
-    if (type === 'torreta') this.initTurret(s);
     if (type === 'generador' && this.generators.length === 1 && this.fences.length) this.game.hud?.toast('⚡ Vallas electrificadas en marcha', 3);
     this.game.floating?.spawn(`-${cost}`, s.cx, 1.6, s.cz, 'neg');
     this.game.bus.emit('build:placed', { type, k });
@@ -354,7 +350,70 @@ export class BuildSystem {
     return true;
   }
 
+  /** Monta una pieza en `cells` (sin cobrar ni comprobar nada) y la registra. */
+  createStructure(type, cells, level, invested, extra) {
+    const { grid } = this.game;
+    const def = this.pieces[type];
+    const n = cells.length;
+    const i = cells[0] % grid.w, j = (cells[0] / grid.w) | 0;
+    let cx = 0, cz = 0;
+    for (const c of cells) { cx += grid.centerX(c % grid.w); cz += grid.centerZ((c / grid.w) | 0); }
+    const s = {
+      id: this.nextId++, type, def, cells, n, k: cells[0], i, j, cx: cx / n, cz: cz / n,
+      level, hp: 0, maxHp: 0, invested,
+      flash: 0, open: false, axis: type === 'puerta' ? this.doorAxis(i, j) : 'x',
+      rearm: 0, fuse: -1, repairReady: 0, zap: 0, ...extra,
+    };
+    s.hp = s.maxHp = this.maxHpOf(s);
+    for (const c of cells) this.structures.set(c, s);
+    this.all.add(s);
+    this.lists[type]?.push(s);
+    this.applyGrid(s);
+    if (type === 'puerta') this.registerDoor(s);
+    if (type === 'torreta') this.initTurret(s);
+    return s;
+  }
+
+  /**
+   * Pieza automática (persianas del despacho): gratis, no se vende ni se mejora y no cuenta como
+   * construida por el jugador (no emite 'build:placed'). `hpBonus` multiplica su vida.
+   */
+  placeAuto(type, cells, level, hpBonus = 1) {
+    if (!cells.length || cells.some((c) => this.structures.has(c))) return null;
+    const s = this.createStructure(type, cells, level, 0, { auto: true, hpBonus });
+    this.changed(s.def.blocks);
+    return s;
+  }
+
+  /** Vida máxima de la pieza; el refuerzo de muros no afecta a las automáticas (tienen el suyo). */
+  maxHpOf(s) {
+    return pieceMaxHp(s.def, s.level, s.n, s.auto ? 1 : this.hpMul, s.hpBonus ?? 1);
+  }
+
+  /**
+   * Cambia el refuerzo de muros y reajusta la vida de lo ya construido (y de las piezas
+   * automáticas si cambia su bonificación): conserva la proporción de vida de cada pieza.
+   */
+  setHpMul(mul) {
+    this.hpMul = mul;
+    this.refreshMaxHp();
+  }
+
+  refreshMaxHp() {
+    let any = false;
+    for (const s of this.all) {
+      const m = this.maxHpOf(s);
+      if (m === s.maxHp) continue;
+      s.hp = s.maxHp > 0 ? Math.max(Math.min(s.hp, 1), Math.round((s.hp * m) / s.maxHp)) : m;
+      s.maxHp = m;
+      this.applyGrid(s);
+      any = true;
+    }
+    if (any) this.changed(true);
+  }
+
   upgradeCost(s) {
+    if (s.auto) return 0;
     return s.level + 1 < s.def.levels.length ? this.costOf(s.type, s.level + 1, this.countFast(s.type) - 1) * s.n : 0;
   }
 
@@ -369,7 +428,7 @@ export class BuildSystem {
     if (!cost || s.hp < s.maxHp || !this.upgradeUnlocked(s) || this.game.run.points < cost) return false;
     this.game.run.points -= cost;
     s.level++;
-    s.maxHp = s.def.levels[s.level].hp * s.n;
+    s.maxHp = this.maxHpOf(s);
     s.hp = s.maxHp;
     s.invested += cost;
     if (s.type === 'torreta') {
@@ -540,67 +599,76 @@ export class BuildSystem {
   }
 
   updateTurrets(dt) {
+    for (const s of this.turrets) this.updateTurret(s, dt);
+  }
+
+  /**
+   * Una torreta: apunta al zombi más cercano con línea de tiro y dispara. La del tejado del
+   * despacho trae su propio `shotBlocked` (dispara por encima de lo construido) y munición
+   * infinita.
+   */
+  updateTurret(s, dt) {
     const { zombies, grid, effects } = this.game;
-    for (const s of this.turrets) {
-      const def = s.def;
-      s.cooldown -= dt;
-      s.retarget -= dt;
-      if (s.target && (s.target.state !== 0 || !s.target.active)) s.target = null;
-      if (s.retarget <= 0) {
-        // Objetivo: el zombi más cercano dentro del alcance y con línea de tiro.
-        s.retarget = def.retarget;
-        let best = null, bestD = def.range;
-        for (const z of zombies.active) {
-          if (z.state !== 0) continue;
-          const dx = z.pos.x - s.cx, dz = z.pos.z - s.cz;
-          const d = Math.hypot(dx, dz);
-          // No malgasta munición contra un escudo que la mira de frente.
-          if (d >= bestD || d < 1e-3 || zombies.shieldBlocks(z, dx / d, dz / d)) continue;
-          if (raycastGrid(grid, s.cx, s.cz, dx / d, dz / d, d, this.shotBlocked) < d) continue;
-          bestD = d; best = z;
-        }
-        s.target = best;
+    const blocked = s.shotBlocked ?? this.shotBlocked;
+    const def = s.def;
+    s.cooldown -= dt;
+    s.retarget -= dt;
+    if (s.target && (s.target.state !== 0 || !s.target.active)) s.target = null;
+    if (s.retarget <= 0) {
+      // Objetivo: el zombi más cercano dentro del alcance y con línea de tiro.
+      s.retarget = def.retarget;
+      let best = null, bestD = def.range;
+      for (const z of zombies.active) {
+        if (z.state !== 0) continue;
+        const dx = z.pos.x - s.cx, dz = z.pos.z - s.cz;
+        const d = Math.hypot(dx, dz);
+        // No malgasta munición contra un escudo que la mira de frente.
+        if (d >= bestD || d < 1e-3 || zombies.shieldBlocks(z, dx / d, dz / d)) continue;
+        if (raycastGrid(grid, s.cx, s.cz, dx / d, dz / d, d, blocked) < d) continue;
+        bestD = d; best = z;
       }
-      const z = s.target;
-      if (!z) continue;
-      const want = Math.atan2(z.pos.x - s.cx, z.pos.z - s.cz);
-      let dy = want - s.yaw;
-      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
-      const step = def.turnSpeed * dt;
-      s.yaw += Math.max(-step, Math.min(step, dy));
-      if (Math.abs(dy) > def.aimTolerance || s.cooldown > 0) continue;
-      if (s.ammo <= 0) {
-        // Clic de vacío como mucho una vez por cadencia de disparo (sin evento en cada paso).
-        s.cooldown = 1 / this.levelStat(def, s.level, 'fireRate');
-        this.game.bus.emit('turret:empty', s);
-        if (!s.emptyWarned) {
-          s.emptyWarned = true;
-          this.game.hud?.toast(`🎯 Una torreta se ha quedado sin munición: recárgala con ${this.game.useKey}.${this.game.humor?.tag('turretEmpty') ?? ''}`, 5);
-        }
-        continue;
-      }
-      s.ammo--;
-      s.cooldown = 1 / this.levelStat(def, s.level, 'fireRate');
-      const a = s.yaw + THREE.MathUtils.degToRad(def.spreadDeg) * (Math.random() - 0.5);
-      const dx = Math.sin(a), dz = Math.cos(a);
-      // Igual que las balas del jugador: un barril en la trayectoria la para y estalla.
-      const wall0 = raycastGrid(grid, s.cx, s.cz, dx, dz, def.range, this.shotBlocked);
-      const barrel = this.barrelRaycast(s.cx, s.cz, dx, dz, wall0);
-      const wall = barrel ? barrel.t : wall0;
-      const hit = zombies.raycast(s.cx, s.cz, dx, dz, wall);
-      let end = wall;
-      if (!hit && barrel) this.detonateBarrel(barrel.s, 0);
-      if (hit) {
-        end = hit.t;
-        if (zombies.shieldBlocks(hit.zombie, dx, dz)) zombies.shieldHit(hit.zombie, dx, dz);
-        else zombies.damage(hit.zombie, this.levelStat(def, s.level, 'damage'), dx, dz, def.knockback);
-      }
-      const h = def.headHeight;
-      this._from.set(s.cx + dx * 0.55, h, s.cz + dz * 0.55);
-      this._to.set(s.cx + dx * end, h, s.cz + dz * end);
-      effects.tracer(this._from, this._to, 0xffd27a);
-      this.game.bus.emit('turret:fired', s);
+      s.target = best;
     }
+    const z = s.target;
+    if (!z) return;
+    const want = Math.atan2(z.pos.x - s.cx, z.pos.z - s.cz);
+    let dy = want - s.yaw;
+    dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    const step = def.turnSpeed * dt;
+    s.yaw += Math.max(-step, Math.min(step, dy));
+    if (Math.abs(dy) > def.aimTolerance || s.cooldown > 0) return;
+    if (s.ammo <= 0) {
+      // Clic de vacío como mucho una vez por cadencia de disparo (sin evento en cada paso).
+      s.cooldown = 1 / this.levelStat(def, s.level, 'fireRate');
+      this.game.bus.emit('turret:empty', s);
+      if (!s.emptyWarned) {
+        s.emptyWarned = true;
+        this.game.hud?.toast(`🎯 Una torreta se ha quedado sin munición: recárgala con ${this.game.useKey}.${this.game.humor?.tag('turretEmpty') ?? ''}`, 5);
+      }
+      return;
+    }
+    s.ammo--;
+    s.cooldown = 1 / this.levelStat(def, s.level, 'fireRate');
+    const a = s.yaw + THREE.MathUtils.degToRad(def.spreadDeg) * (Math.random() - 0.5);
+    const dx = Math.sin(a), dz = Math.cos(a);
+    // Igual que las balas del jugador: un barril en la trayectoria la para y estalla.
+    const wall0 = raycastGrid(grid, s.cx, s.cz, dx, dz, def.range, blocked);
+    const barrel = this.barrelRaycast(s.cx, s.cz, dx, dz, wall0);
+    const wall = barrel ? barrel.t : wall0;
+    const hit = zombies.raycast(s.cx, s.cz, dx, dz, wall);
+    let end = wall;
+    if (!hit && barrel) this.detonateBarrel(barrel.s, 0);
+    if (hit) {
+      end = hit.t;
+      if (zombies.shieldBlocks(hit.zombie, dx, dz)) zombies.shieldHit(hit.zombie, dx, dz);
+      else zombies.damage(hit.zombie, this.levelStat(def, s.level, 'damage'), dx, dz, def.knockback);
+    }
+    const h = def.headHeight;
+    this._from.set(s.cx + dx * 0.55, h, s.cz + dz * 0.55);
+    // La del tejado dispara hacia abajo: la trazadora acaba a la altura del torso.
+    this._to.set(s.cx + dx * end, s.hitY ?? h, s.cz + dz * end);
+    effects.tracer(this._from, this._to, 0xffd27a);
+    this.game.bus.emit('turret:fired', s);
   }
 
   // ------------------------------------------------------------------ vallas electrificadas
@@ -746,6 +814,10 @@ export class BuildSystem {
   /** Clic derecho: el primero arma la venta, el segundo (en sellConfirmTime s) vende. */
   sellAction(s) {
     if (!this.inReachXY(s.cx, s.cz)) return;
+    if (s.auto) {
+      this.game.hud?.toast('🛡️ Las persianas son de la comisaría: no se venden', 2);
+      return;
+    }
     if (this.sellArmed === s.id && this.game.time < this.sellArmedUntil) {
       this.sellArmed = -1;
       this.sell(s);
@@ -761,7 +833,8 @@ export class BuildSystem {
     const t = this.transformer;
     if (t) {
       t.flash = Math.max(0, t.flash - dt);
-      game.power.generator = t.hp > 0;
+      // Con el generador de emergencia del despacho, la luz aguanta un rato sin transformador.
+      game.power.generator = t.hp > 0 || !!game.despacho?.emergencyOn;
       // Chispas si está dañado.
       if (t.hp > 0 && t.hp < t.maxHp * this.cfg.transformer.damagedThreshold && Math.random() < dt * 3) {
         game.effects.burst(t.x, 1.3, t.z, 2, 0xffe08a, { speed: 1.5, up: 2.5, size: 0.04, life: 0.4 });

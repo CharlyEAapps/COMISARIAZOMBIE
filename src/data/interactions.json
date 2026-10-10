@@ -266,6 +266,15 @@
       "openShop": "almacen"
     }
   },
+  "tienda_despacho": {
+    "label": "Abrir el despacho del comisario",
+    "hold": 0.15,
+    "cooldown": 0.3,
+    "radius": 1.7,
+    "effect": {
+      "openShop": "despacho"
+    }
+  },
   "recargar_torreta": {
     "label": "Recargar torreta",
     "hold": 0.6,

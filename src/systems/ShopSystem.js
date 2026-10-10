@@ -3,6 +3,7 @@ import weaponsData from '../data/weapons.json';
 import interactions from '../data/interactions.json';
 import { PHASE } from './DayNight.js';
 import { WEAPON_IDS, tracksOf } from './WeaponSystem.js';
+import { DESPACHO, UPGRADES, nextPrice } from './Despacho.js';
 
 const MEDKIT_MAX = interactions._medkit.max;
 const GRENADE = weaponsData._granada;
@@ -82,6 +83,7 @@ export class ShopSystem {
     if (shopId === 'armeria') return this.armeria();
     if (shopId === 'enfermeria') return this.enfermeria();
     if (shopId === 'almacen') return this.almacen();
+    if (shopId === 'despacho') return this.despacho();
     return [];
   }
 
@@ -191,6 +193,26 @@ export class ShopSystem {
     return this.finish(items);
   }
 
+  /** Despacho del comisario: mejoras de la comisaría por bloques, con su nivel en estrellas. */
+  despacho() {
+    const D = this.game.despacho;
+    const items = [];
+    if (!D) return items;
+    for (const sec of DESPACHO.sections) {
+      for (const [id, u] of Object.entries(UPGRADES)) {
+        if (u.section !== sec.id) continue;
+        const lvl = D.level(id), max = u.prices.length;
+        const cost = nextPrice(id, lvl);
+        items.push({
+          id: `despacho:${id}`, section: sec.name, name: `${u.icon} ${u.name} ${'★'.repeat(lvl)}${'☆'.repeat(max - lvl)}`,
+          desc: u.desc[Math.min(lvl, max - 1)], flavor: u.flavor,
+          price: cost ? this.price(cost) : 0, state: cost ? null : max > 1 ? 'max' : 'owned',
+        });
+      }
+    }
+    return this.finish(items);
+  }
+
   /** Piezas que el kit puede reparar ahora (dañadas y fuera de su espera de reparación). */
   repairablePieces() {
     const b = this.game.build;
@@ -234,6 +256,8 @@ export class ShopSystem {
       W.applyUpgrade(a, b);
     } else if (kind === 'grenade') {
       W.grenades++;
+    } else if (kind === 'despacho') {
+      msg = game.despacho.buy(a) ?? msg;
     } else if (kind === 'unlock') {
       this.unlocked.add(`${a}:${b}`);
       msg = `🔓 Desbloqueado: ${item.name}`;

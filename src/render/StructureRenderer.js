@@ -13,6 +13,9 @@ const FLASH = new THREE.Color(1.8, 1.6, 1.5);
 const POWERED = new THREE.Color(0.85, 0.95, 1.25);
 const LENS_OFF = new THREE.Color(0.35, 0.33, 0.3);
 const LENS_ON = new THREE.Color(2.2, 2.1, 1.9);
+// Despacho del comisario: tono acerado de los muros reforzados (niveles I y II) y de las persianas.
+const REINFORCED = [new THREE.Color(0.86, 0.93, 1.08), new THREE.Color(0.74, 0.86, 1.15)];
+const SHUTTER = new THREE.Color(0.72, 0.78, 0.9);
 /** Piezas lineales (corren a lo largo de X) que se giran 90° en una columna. */
 const LINEAR = new Set(['valla', 'alambre']);
 
@@ -172,12 +175,16 @@ export class StructureRenderer {
       for (const s of build.all) if (LINEAR.has(s.type)) s.rot = this.linearRotation(s.type, s.i, s.j);
     }
     const powered = build.powered;
+    const wallsLevel = game.despacho?.level('muros') ?? 0;
+    const reinforced = wallsLevel ? REINFORCED[Math.min(wallsLevel, REINFORCED.length) - 1] : null;
     this.lensMaterial.color.copy(LENS_OFF).lerp(LENS_ON, game.lighting?.focoGlow ?? 0);
 
     for (const s of build.all) {
       // Color: se oscurece con el daño; destello al recibir un golpe.
       _c.copy(WHITE).lerp(DAMAGED, s.def.kind === 'trampa' ? 0 : 1 - s.hp / s.maxHp);
       if (s.type === 'valla' && powered) _c.multiply(POWERED);
+      if (s.auto) _c.multiply(SHUTTER);
+      else if (reinforced && s.def.kind !== 'trampa') _c.multiply(reinforced);
       if (s.flash > 0) _c.lerp(FLASH, 0.6);
       const baseRot = s.type === 'puerta' && s.axis === 'z' ? Math.PI / 2 : (s.rot ?? 0);
       if (s.type === 'puerta' && s.cells.length > 1) {

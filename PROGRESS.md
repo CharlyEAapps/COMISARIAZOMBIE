@@ -223,6 +223,12 @@ Tono ácido sin gore. Todo el texto en `src/data/humor.json` (más frases en tie
 - **Amanecer y muerte:** parte de servicio irónico con las bajas de la noche, y esquela/informe al caer.
 - **Comisaría:** carteles "Se ruega no morder al personal" y "Llevamos 0 días sin incidentes", mostradores "(solo vivos)" y "solo con cita previa", carteles de "Se busca" con delitos de poca monta, casos de la pizarra y 5 llamadas nuevas al teléfono.
 
+## Mejoras de Carlos tras la fase 8
+- **Despacho del comisario** (`systems/Despacho.js`, `render/DespachoRenderer.js`, `data/despacho.json`): tienda de mejoras de la comisaría por turno en 4 secciones (Seguridad, Energía, Vigilancia, Apoyo), todas visibles en el mundo.
+- **Continuar turno** (`save/RunSave.js`): guardado al amanecer desde el día 2, incluido el despacho; se borra al caer.
+- **Iniciales de recreativa** en los récords (3 letras, guardadas por dispositivo).
+- **Indicadores de amenaza** (`ui/ThreatIndicators.js`): flechas en el borde y destello de daño direccional; las cámaras alargan su alcance.
+
 ## Placeholders pendientes de sustituir
 - Arte: todo procedural en el estilo de la referencia (decisión de Carlos). Los packs CC0 solo se usarán para sonido y música (fase 6).
 - Trampas, barricadas y armas: se modelarán por código en sus fases.

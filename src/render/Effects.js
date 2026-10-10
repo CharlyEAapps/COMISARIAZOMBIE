@@ -388,7 +388,7 @@ export class Effects {
 
   onTurretFired(s) {
     const a = s.yaw, dx = Math.sin(a), dz = Math.cos(a);
-    const h = FX.turret.height;
+    const h = (s.baseY ?? 0) + FX.turret.height; // baseY: torreta del tejado (despacho)
     const x = s.cx + dx * FX.turret.muzzle, z = s.cz + dz * FX.turret.muzzle;
     this.sparkBurst(x, h, z, dx, dz, 3, FX.muzzleFlash.speed, FX.muzzleFlash.up, hex(FX.muzzleFlash.color), FX.muzzleFlash.life, FX.muzzleFlash.width, FX.muzzleFlash.spread, 0);
     this.puff(x, h, z, dx * 0.8, 0.5, dz * 0.8, SMOKE.size, SMOKE.size * SMOKE.grow, SMOKE.life, SMOKE.alpha, hex(SMOKE.color), 2.4, 0);

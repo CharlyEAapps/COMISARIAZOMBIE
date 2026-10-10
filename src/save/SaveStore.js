@@ -17,6 +17,11 @@ export function defaultSave() {
   };
 }
 
+/** Iniciales de recreativa: hasta 3 letras o números en mayúsculas ('' si no hay). */
+export function cleanInitials(v) {
+  return typeof v === 'string' ? v.toUpperCase().normalize('NFD').replace(/[^A-Z0-9Ñ]/g, '').slice(0, 3) : '';
+}
+
 const num = (v, def = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : def);
 const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
 
@@ -37,6 +42,7 @@ export function migrate(raw, limits = {}) {
       .map((r) => ({
         points: num(r.points), nights: num(r.nights), kills: num(r.kills), time: Math.max(0, num(r.time)),
         date: typeof r.date === 'string' ? r.date : '', weapon: typeof r.weapon === 'string' ? r.weapon : '',
+        initials: cleanInitials(r.initials),
       }))
       .sort((a, b) => b.points - a.points || b.nights - a.nights)
       .slice(0, limits.maxRecords ?? 10);

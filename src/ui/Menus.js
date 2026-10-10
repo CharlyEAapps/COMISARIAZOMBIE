@@ -1,5 +1,6 @@
 import config from '../data/config.json';
 import weaponsData from '../data/weapons.json';
+import { describeSave } from '../save/RunSave.js';
 
 const STATE_MENU = 'menu'; // Game.STATE.MENU (sin importar Game para evitar el ciclo)
 const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -42,6 +43,18 @@ export class Menus {
     this.root.addEventListener('mousedown', (e) => e.stopPropagation());
     this.root.addEventListener('click', (e) => this.onClick(e));
     this.root.addEventListener('input', (e) => this.onInput(e));
+    // Iniciales de recreativa en la pantalla de fin (Enter o botón para guardar).
+    this.root.addEventListener('submit', (e) => {
+      if (e.target.dataset.form !== 'initials') return;
+      e.preventDefault();
+      const input = e.target.querySelector('input');
+      if (this.game.meta.setRecordInitials(input.value)) {
+        this.initialsSaved = true;
+        this.game.audio?.play('ui_buy');
+        input.blur();
+        this.render();
+      }
+    });
     this.root.addEventListener('change', (e) => this.onInput(e));
     this._off = game.bus.on('meta:runFinished', () => this.show('gameover', true, true));
   }
@@ -64,6 +77,8 @@ export class Menus {
     this.resetArmed = false;
     this.abandonArmed = false;
     this.buyArmed = null;
+    this.newArmed = false;
+    this.initialsSaved = false;
     this.render();
     this.root.classList.add('show');
     // El HUD se oculta en el menú principal y en el fin de turno (en la pausa se ve detrás).
@@ -98,7 +113,8 @@ export class Menus {
 
   /** Enter: jugar desde el menú principal o reintentar tras caer. */
   confirm() {
-    if (this.current === 'main' || this.current === 'gameover') this.game.startRun();
+    if (this.current === 'main' && this.game.runSave.load()) this.game.continueRun();
+    else if (this.current === 'main' || this.current === 'gameover') this.game.startRun();
   }
 
   // ------------------------------------------------------------------ pantallas
@@ -114,11 +130,14 @@ export class Menus {
   screen_main() {
     const m = this.game.meta;
     const best = m.records[0];
+    const save = describeSave(this.game.runSave.load());
     const tag = TAGLINES[(Math.random() * TAGLINES.length) | 0];
     return `
       <div class="menu-title"><h1>Turno de noche</h1><p>${esc(tag)}</p></div>
       <div class="panel menu-box">
-        <button class="btn big" data-act="play">Empezar el turno <span class="key">Enter</span></button>
+        ${save ? `<button class="btn big" data-act="continue">▶ Continuar turno <span class="key">Enter</span><small class="btn-sub">Día ${save.night} · ${save.points} puntos · ${save.nights} ${save.nights === 1 ? 'noche superada' : 'noches superadas'}</small></button>
+        <button class="btn ghost" data-act="new">${this.newArmed ? '¿Seguro? Se pierde el turno guardado' : 'Turno nuevo'}</button>`
+    : '<button class="btn big" data-act="play">Empezar el turno <span class="key">Enter</span></button>'}
         <button class="btn ghost" data-go="tablon">Tablón de la comisaría ${this.medalsChip()}</button>
         <button class="btn ghost" data-go="records">Récords</button>
         <button class="btn ghost" data-go="options">Opciones</button>
@@ -151,13 +170,13 @@ export class Menus {
     const rows = this.game.meta.records;
     const last = this.game.meta.lastRun;
     const body = rows.length ? rows.map((r, k) => `<tr class="${last && last.rank === k ? 'me' : ''}">
-        <td>${k + 1}</td><td><b>${r.points}</b></td><td>${r.nights}</td><td>${r.kills}</td><td>${fmtTime(r.time)}</td><td class="opt">${esc(r.weapon || '—')}</td><td class="opt">${esc(r.date)}</td></tr>`).join('')
-      : '<tr><td colspan="7" class="empty">Todavía no hay turnos registrados. El expediente está limpio. Sospechosamente limpio.</td></tr>';
+        <td>${k + 1}</td><td class="ini">${esc(r.initials || '???')}</td><td><b>${r.points}</b></td><td>${r.nights}</td><td>${r.kills}</td><td>${fmtTime(r.time)}</td><td class="opt">${esc(r.weapon || '—')}</td><td class="opt">${esc(r.date)}</td></tr>`).join('')
+      : '<tr><td colspan="8" class="empty">Todavía no hay turnos registrados. El expediente está limpio. Sospechosamente limpio.</td></tr>';
     const st = this.game.meta.data.stats;
     return `
       <div class="menu-header"><h2>Récords</h2></div>
       <div class="panel menu-box wide">
-        <table class="records"><thead><tr><th>#</th><th>Puntos</th><th>Noches</th><th>Bajas</th><th>Tiempo</th><th class="opt">Arma favorita</th><th class="opt">Fecha</th></tr></thead><tbody>${body}</tbody></table>
+        <table class="records"><thead><tr><th>#</th><th>Jugador</th><th>Puntos</th><th>Noches</th><th>Bajas</th><th>Tiempo</th><th class="opt">Arma favorita</th><th class="opt">Fecha</th></tr></thead><tbody>${body}</tbody></table>
         <p class="menu-note">Turnos jugados: ${st.runs} · Mejor noche: ${st.bestNight} · Bajas totales: ${st.totalKills}</p>
       </div>
       <div class="menu-footer"><button class="btn ghost" data-act="back">Volver <span class="key">Esc</span></button></div>`;
@@ -212,7 +231,12 @@ export class Menus {
     const medals = r.medals.length
       ? r.medals.map((m) => `<li><span>${esc(m.label)}</span><b>+${m.medals} 🎖️</b></li>`).join('')
       : '<li><span>Sin medallas este turno</span><b>0</b></li>';
-    const record = r.rank >= 0 ? `<div class="new-record">${r.rank === 0 ? '🏆 ¡Nuevo récord!' : `📋 Entra en el top ${this.game.meta.cfg.maxRecords}: puesto ${r.rank + 1}`}</div>` : '';
+    const record = r.rank >= 0 ? `<div class="new-record">${r.rank === 0 ? '🏆 ¡Nuevo récord!' : `📋 Entra en el top ${this.game.meta.cfg.maxRecords}: puesto ${r.rank + 1}`}</div>
+        <form class="initials" data-form="initials" autocomplete="off">
+          <label for="initials-input">Tus iniciales</label>
+          <input id="initials-input" name="initials" maxlength="3" autocapitalize="characters" spellcheck="false" value="${esc(r.initials || '')}" placeholder="AAA">
+          <button class="btn small" type="submit">${this.initialsSaved ? '✔ Guardadas' : 'Guardar'}</button>
+        </form>` : '';
     return `
       <div class="panel menu-box wide gameover">
         <h1 class="danger">${r.abandoned ? 'Turno abandonado' : 'Has caído'}</h1>
@@ -261,6 +285,10 @@ export class Menus {
     }
     switch (el.dataset.act) {
       case 'play': g.startRun(); break;
+      case 'continue': g.continueRun(); break;
+      case 'new':
+        if (this.newArmed) { this.newArmed = false; g.startRun(); } else { this.newArmed = true; this.render(); }
+        break;
       case 'resume': g.resume(); break;
       case 'back': this.back(); break;
       case 'menu': g.quitToMenu(); break;

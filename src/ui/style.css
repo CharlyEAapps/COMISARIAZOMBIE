@@ -620,3 +620,49 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
 
 .menus { touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .btn.armed { background: #f4d27a; box-shadow: 0 0 0 3px rgba(232, 178, 58, 0.35); }
+
+.btn .btn-sub { display: block; font-size: 12px; font-weight: 400; opacity: 0.8; margin-top: 2px; }
+
+/* ---------------------------------------------------------------- Indicadores de amenaza */
+.threats { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
+.hurt-dir { position: absolute; opacity: 0; will-change: opacity; }
+.hurt-dir.top { left: 0; right: 0; top: 0; height: 42%; background: linear-gradient(to bottom, rgba(200, 24, 24, 0.7), transparent); }
+.hurt-dir.bottom { left: 0; right: 0; bottom: 0; height: 42%; background: linear-gradient(to top, rgba(200, 24, 24, 0.7), transparent); }
+.hurt-dir.left { top: 0; bottom: 0; left: 0; width: 32%; background: linear-gradient(to right, rgba(200, 24, 24, 0.7), transparent); }
+.hurt-dir.right { top: 0; bottom: 0; right: 0; width: 32%; background: linear-gradient(to left, rgba(200, 24, 24, 0.7), transparent); }
+
+.threat { position: absolute; left: 0; top: 0; width: 0; height: 0; transition: transform 0.07s linear; }
+.threat-arrow { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.threat-arrow::after {
+  content: ""; position: absolute; left: 21px; top: -8px;
+  border-left: 12px solid #ff5a4a; border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+.threat-badge {
+  position: absolute; left: 0; top: 0; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+  background: rgba(22, 24, 30, 0.78); border: 2px solid #ff5a4a; color: var(--hud-fg, #f2efe6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+.threat-icon { font-size: 16px; }
+.threat-dist { font: 700 9px ui-monospace, "Cascadia Mono", Consolas, monospace; margin-top: 1px; }
+.threat.special .threat-badge { animation: threat-pulse 0.9s ease-in-out infinite; }
+.threat.boss .threat-badge { border-color: #f4c94a; background: rgba(40, 30, 6, 0.85); box-shadow: 0 0 10px rgba(244, 201, 74, 0.7); animation: threat-pulse 0.7s ease-in-out infinite; }
+.threat.boss .threat-arrow::after { border-left-color: #f4c94a; }
+.threat.boss .threat-dist { color: #f4c94a; }
+.threat.generic { opacity: 0.6; }
+.threat.generic .threat-badge { width: 30px; height: 30px; margin: -15px 0 0 -15px; border-width: 1px; border-color: rgba(255, 255, 255, 0.4); }
+.threat.generic .threat-arrow::after { left: 17px; top: -6px; border-left-width: 9px; border-top-width: 6px; border-bottom-width: 6px; border-left-color: rgba(255, 255, 255, 0.7); }
+.threat.generic .threat-icon { display: none; }
+.threat.generic .threat-dist { font-size: 9px; margin: 0; }
+@keyframes threat-pulse { 50% { transform: scale(1.12); } }
+
+/* Iniciales de recreativa */
+.initials { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.initials label { font-size: 13px; color: var(--hud-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+.initials input {
+  width: 4.2em; padding: 4px 8px; text-align: center; text-transform: uppercase; letter-spacing: 0.3em;
+  font: 800 26px ui-monospace, Consolas, monospace; color: var(--accent); background: #10131a;
+  border: 2px solid var(--accent); border-radius: 8px; user-select: text; -webkit-user-select: text;
+}
+table.records td.ini { font: 800 14px ui-monospace, Consolas, monospace; color: var(--accent); letter-spacing: 0.15em; }

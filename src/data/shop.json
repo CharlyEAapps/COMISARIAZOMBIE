@@ -17,6 +17,11 @@
       "name": "Almacén de pruebas",
       "icon": "📦",
       "subtitle": "Material de construcción y trampas"
+    },
+    "despacho": {
+      "name": "Despacho del comisario",
+      "icon": "🗄️",
+      "subtitle": "Mejoras de la comisaría (solo durante este turno)"
     }
   },
   "enfermeria": [

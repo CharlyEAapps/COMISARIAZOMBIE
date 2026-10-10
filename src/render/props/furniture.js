@@ -10,8 +10,46 @@ const add = (name, def) => { FURNITURE[name] = { blocking: true, ...def }; };
 const back = (fp) => -fp.ld / 2 + 0.03; // fondo útil pegado al lado de la pared
 
 // ---------------------------------------------------------------- oficinas
+/**
+ * Mesa del comisario (variante de escritorio): madera oscura con tapete verde, placa con su
+ * cargo, lámpara de banquero, teléfono rojo y banderitas. Es el mostrador del despacho (tienda
+ * de mejoras de la comisaría): el punto de uso va delante, en su lado de la mesa.
+ */
+function comisarioDesk(b, fp) {
+  const w = fp.lw - 0.06, d = fp.ld - 0.1;
+  b.box(0, 0.7, 0, w, 0.07, d, C.woodDD);
+  b.box(0, 0.77, 0, w - 0.3, 0.006, d - 0.25, C.greenD, { ao: 0 });
+  for (const s of [-1, 1]) {
+    const x = s * (w / 2 - 0.25);
+    b.box(x, 0, 0, 0.48, 0.7, d - 0.06, C.woodD);
+    for (let k = 0; k < 3; k++) b.box(x, 0.06 + k * 0.215, d / 2 - 0.03, 0.4, 0.18, 0.025, C.wood, { ao: 0.05 });
+    for (let k = 0; k < 3; k++) b.box(x, 0.13 + k * 0.215, d / 2 - 0.01, 0.1, 0.02, 0.02, C.yellow, { ao: 0 });
+  }
+  b.box(0, 0.05, -d / 2 + 0.05, w - 1.0, 0.62, 0.03, C.woodDD);
+  // Placa con el cargo, mirando al frente.
+  b.box(0, 0.776, d / 2 - 0.16, 0.66, 0.025, 0.08, C.woodDD, { ao: 0 });
+  b.sprite('comisario', 0, 0.9, d / 2 - 0.15, 0.6, 0.19, { rx: -0.25 });
+  monitor(b, -0.42, 0.77, -0.2);
+  keyboard(b, -0.42, 0.77, 0.12);
+  deskLamp(b, -0.85, 0.77, -0.22, 0.4);
+  phone(b, 0.3, 0.77, -0.15, 0.3, C.red);
+  papers(b, 0.08, 0.77, 0.05, fp.rnd, 4);
+  mug(b, 0.84, 0.77, 0.08, C.navy);
+  // Banderitas de mesa.
+  for (const [x, f] of [[0.55, 'bandera_es'], [0.68, 'bandera_pol']]) {
+    b.cyl(x, 0.77, 0.1, 0.04, 0.045, 0.02, C.steelD, 8);
+    b.cyl(x, 0.79, 0.1, 0.006, 0.006, 0.34, C.steelD, 6);
+    b.flag(f, x + 0.006, 0.95, 0.1, 0.18, 0.12, 0.02, 4);
+  }
+}
+
 add('escritorio', {
   build(b, fp) {
+    if (fp.variant === 'comisario') {
+      comisarioDesk(b, fp);
+      b.interact('tienda_despacho', 'Despacho del comisario', 0, fp.ld / 2 + 0.75);
+      return;
+    }
     const w = fp.lw - 0.08, d = fp.ld - 0.12, rnd = fp.rnd;
     b.box(0, 0.7, 0, w, 0.05, d, C.woodL);
     b.box(0, 0.7, d / 2 - 0.004, w, 0.05, 0.008, C.wood, { ao: 0 });
@@ -43,7 +81,7 @@ add('escritorio', {
     }
     b.box(0.03, 0.75, 0.2, 0.13, 0.03, 0.04, C.navy, { ao: 0 }); // placa con nombre
   },
-  companions: (fp) => [-0.47, 0.47].map((x) => ({ type: 'silla_oficina', lx: x, lz: fp.ld / 2 + 0.12, rel: 180 })),
+  companions: (fp) => (fp.variant === 'comisario' ? [0.55] : [-0.47, 0.47]).map((x) => ({ type: 'silla_oficina', lx: x, lz: fp.ld / 2 + 0.12, rel: 180 })),
 });
 
 add('archivador', {

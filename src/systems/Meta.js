@@ -1,7 +1,7 @@
 import metaData from '../data/meta.json';
 import zombieData from '../data/zombies.json';
 import weaponsData from '../data/weapons.json';
-import { SaveStore, addRecord, defaultSave } from '../save/SaveStore.js';
+import { SaveStore, addRecord, defaultSave, cleanInitials } from '../save/SaveStore.js';
 
 /**
  * Medallas ganadas en una partida (función pura, testeable).
@@ -102,6 +102,7 @@ export class Meta {
     const entry = {
       points: run.score, nights: run.nights, kills: run.kills, time: Math.round(run.time),
       date: new Date().toISOString().slice(0, 10), weapon: fav ? weaponsData[fav].name : '',
+      initials: cleanInitials(this.data.settings.initials), // se pueden cambiar en la pantalla de fin
     };
     // Un turno sin puntos ni noches no es un récord.
     const counts = entry.points > 0 || entry.nights > 0;
@@ -150,6 +151,19 @@ export class Meta {
     this.data = defaultSave();
     this.data.settings = settings;
     this.store.save(this.data);
+  }
+
+  /** Pone las iniciales al récord de la última partida (y las recuerda para la próxima). */
+  setRecordInitials(text) {
+    const ini = cleanInitials(text);
+    const r = this.lastRun;
+    if (!ini || !r || r.rank < 0) return false;
+    const rec = this.data.records[r.rank];
+    if (rec) rec.initials = ini;
+    r.initials = ini;
+    this.data.settings.initials = ini;
+    this.store.save(this.data);
+    return true;
   }
 
   setSetting(key, value) {

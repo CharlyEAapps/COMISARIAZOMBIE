@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import dn from '../data/daynight.json';
 import buildData from '../data/build.json';
+import despachoData from '../data/despacho.json';
 
 // Iluminación día/noche. Número de luces FIJO (cambiarlo recompila todos los shaders):
 // hemisférica + sol/luna (Renderer) + linterna + N luces de farola reasignadas a las más
@@ -69,6 +70,8 @@ export class Lighting {
       this.focoLights.push(pl);
     }
     this._focoVersion = -1;
+    this._yardVersion = -1;
+    this._focoAll = []; // focos construidos + focos del patio (despacho del comisario)
     this._focoDrawn = [];
     this._focoSorted = [];
 
@@ -98,19 +101,29 @@ export class Lighting {
     this.lampPools = this.makePools(this.lamps, this.cfg.lampPoolRadius, 0xffcf8a);
     this.interiorPools = this.makePools(this.interior, this.cfg.interiorPoolRadius, 0xfff3d6);
     if (!this.focoPools) {
-      this.focoPools = this.makePools(new Array(buildData.pieces.foco.maxCount).fill(null), this.cfg.focoPoolRadius, 0xfff6e2);
+      const maxFocos = buildData.pieces.foco.maxCount + despachoData.upgrades.focos.positions.length;
+      this.focoPools = this.makePools(new Array(maxFocos).fill(null), this.cfg.focoPoolRadius, 0xfff6e2);
       this.focoPools.count = 0;
     }
   }
 
-  /** Coloca los charcos de los focos construidos (solo cuando cambian las construcciones). */
+  /**
+   * Coloca los charcos de los focos construidos y de los del patio (solo cuando cambian las
+   * construcciones o las mejoras del despacho).
+   */
   syncFocos() {
     const build = this.game.build;
-    if (!build || build.version === this._focoVersion) return;
+    const despacho = this.game.despacho;
+    const yv = despacho?.version ?? 0;
+    if (!build || (build.version === this._focoVersion && yv === this._yardVersion)) return;
     this._focoVersion = build.version;
+    this._yardVersion = yv;
+    const list = this._focoAll;
+    list.length = 0;
+    for (const f of build.lights) list.push(f);
+    for (const f of despacho?.yardLights ?? []) list.push(f);
     const m = new THREE.Matrix4();
     const R = this.cfg.focoPoolRadius;
-    const list = build.lights;
     const max = this.focoPools.instanceMatrix.count;
     // Los charcos son aditivos: si dos focos están muy juntos, se dibuja solo uno (si no,
     // la suma quema la imagen).
@@ -255,7 +268,7 @@ export class Lighting {
       }
       const focos = this._focoSorted;
       focos.length = 0;
-      for (const f of game.build?.lights ?? []) { f._d = (f.cx - px) ** 2 + (f.cz - pz) ** 2; focos.push(f); }
+      for (const f of this._focoAll) { f._d = (f.cx - px) ** 2 + (f.cz - pz) ** 2; focos.push(f); }
       focos.sort((x, y) => x._d - y._d);
       for (let k = 0; k < this.focoLights.length; k++) {
         const pl = this.focoLights[k], f = focos[k];

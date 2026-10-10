@@ -2,6 +2,7 @@
   "groups": {
     "43,16": { "type": "fuente" },
     "43,19": { "type": "fotocopiadora" },
+    "40,17": { "type": "escritorio", "variant": "comisario" },
     "35,29": { "type": "cafetera" },
     "44,29": { "type": "vending" },
     "36,37": { "type": "mastil", "variant": "es" },

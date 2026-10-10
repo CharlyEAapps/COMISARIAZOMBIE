@@ -404,6 +404,28 @@
       "resistDamp": 0.85
     }
   },
+  "threats": {
+    "_comment": "Indicadores de amenaza: flechas en el borde hacia zombis peligrosos fuera de pantalla y destello de daño direccional. Distancias en metros, tiempos en segundos, margenes en px.",
+    "updateHz": 15,
+    "offscreenNdc": 0.92,
+    "specialRange": 26,
+    "normalRange": 14,
+    "camerasRangeMul": 1.6,
+    "maxArrows": 8,
+    "maxGeneric": 3,
+    "groupMin": 2,
+    "sectors": 8,
+    "dedupePx": 40,
+    "aimHeight": 1,
+    "bossIcon": "☠",
+    "specials": { "escupidor": "🤢", "explosivo": "💥", "tanque": "🦍" },
+    "layout": {
+      "margin": 36,
+      "touch": { "top": 80, "bossBarExtra": 36, "sideTop": 66, "topMinX": 128, "bottomFrac": 0.2, "bottomPx": 0, "cornerFrac": 0.3, "leftMinY": 150, "leftMaxFromBottom": 150, "rightMaxFromBottom": 250 },
+      "desktop": { "top": 24, "bossBarExtra": 76, "sideTop": 24, "topMinX": 290, "bottomFrac": 0, "bottomPx": 170, "cornerFrac": 0.2, "leftMinY": 430, "leftMaxFromBottom": 24, "rightMaxFromBottom": 200 }
+    },
+    "hurt": { "range": 3, "duration": 0.5, "strength": 0.9 }
+  },
   "touch": {
     "leftZone": 0.5,
     "stickRadius": 58,

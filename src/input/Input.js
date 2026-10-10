@@ -35,6 +35,9 @@ export class Input {
     this.lastDevice = 'kbm';
 
     this._onKeyDown = (e) => {
+      // Escribiendo en un campo de texto (iniciales), las teclas no son del juego.
+      const el = document.activeElement;
+      if (el && el.tagName === 'INPUT' && el.type === 'text') return;
       const a = KEYMAP[e.code];
       if (!a) return;
       // Tab solo se captura en juego; en los menús sirve para recorrer los botones.

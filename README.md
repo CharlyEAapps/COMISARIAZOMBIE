@@ -42,6 +42,13 @@ De noche, todo cuesta un 50 % más. La tienda no pausa el juego.
 
 Al empezar solo puedes construir barricadas y sacos de madera.
 
+### 🗄️ Despacho del comisario (mesa del comisario, en las oficinas)
+Mejoras de la comisaría para el turno en curso, todas visibles en el mapa:
+- **Seguridad:** persianas blindadas automáticas en los 3 accesos cada noche (I-III) y muros reforzados (+vida a todo lo construido).
+- **Energía:** transformador reforzado (más vida y se repara solo de día, I-III), generador de emergencia (60 s de luz si cae el transformador) y focos del patio.
+- **Vigilancia:** radar (avisa por dónde llega la horda y el jefe) y cámaras (los indicadores de amenaza llegan más lejos).
+- **Apoyo:** torreta del tejado (I-II), alarma mejorada y botiquines de pared extra.
+
 ## Construcción y trampas (tecla B)
 | Pieza | Niveles | Notas |
 |---|---|---|
@@ -97,6 +104,9 @@ Al empezar solo puedes construir barricadas y sacos de madera.
 - **Tablón de la comisaría:** mejoras permanentes que se compran con medallas: vida máxima, puntos iniciales, botiquines, empezar con escopeta, descuento en la armería, recarga más rápida, linterna más potente y barricadas gratis al empezar.
 - **Récords:** los 10 mejores turnos (puntos, noches, bajas, tiempo, arma favorita y fecha).
 - **Fin de turno:** resumen con bajas por tipo, arma favorita, mejor combo, medallas ganadas y si has entrado en los récords. Desde la pausa también puedes abandonar el turno (cuenta como terminado).
+- **Continuar turno:** al amanecer (desde el día 2) se guarda el turno en curso. Desde el menú principal puedes seguir donde lo dejaste; al caer o abandonar se borra.
+- **Iniciales de recreativa:** si entras en los récords, escribes tus 3 iniciales. Cada móvil guarda su propio progreso, medallas y turno.
+- **Indicadores de amenaza:** flechas en el borde de la pantalla hacia los zombis especiales y el jefe fuera de cámara, y destello rojo en el lado por el que te golpean.
 - **Opciones:** volúmenes, calidad gráfica, temblor de cámara y borrar el progreso.
 - Todo se guarda en el navegador (`localStorage`). Si el navegador no deja guardar, el juego funciona igual y lo avisa.
 

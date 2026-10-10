@@ -103,6 +103,7 @@ plate('enfermeria', 512, 160, '#f4f1ea', '#2f7d55', 'ENFERMERÍA', { icon: (c, x
 plate('almacen', 640, 160, '#c89c62', '#3a2412', ['ALMACÉN DE', 'PRUEBAS'], { border: 5 });
 plate('calabozos', 512, 160, '#3a3d42', '#f0a04b', 'CALABOZOS');
 plate('oficinas', 512, 160, '#2f5fa8', '#ffffff', 'OFICINAS');
+plate('comisario', 512, 160, '#5e3d26', '#eab43c', 'COMISARIO', { icon: (c, x, y, r) => star(c, x, y, r, '#eab43c') });
 plate('seguridad', 320, 100, '#2f5fa8', '#ffffff', 'SEGURIDAD', { border: 4 });
 plate('solo_policia', 256, 256, '#1f3260', '#ffffff', ['SOLO', 'POLICÍA'], { fg2: '#eab43c' });
 plate('acceso', 512, 128, '#d24a3e', '#ffffff', 'ACCESO RESTRINGIDO');

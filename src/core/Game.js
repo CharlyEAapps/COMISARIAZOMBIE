@@ -27,6 +27,8 @@ import { Score } from '../systems/Score.js';
 import { InteractionSystem } from '../systems/InteractionSystem.js';
 import { BuildSystem } from '../systems/BuildSystem.js';
 import { StructureRenderer } from '../render/StructureRenderer.js';
+import { Despacho } from '../systems/Despacho.js';
+import { DespachoRenderer } from '../render/DespachoRenderer.js';
 import { GrenadeRenderer } from '../render/GrenadeRenderer.js';
 import { ShopSystem } from '../systems/ShopSystem.js';
 import { BlastQueue } from '../systems/Explosions.js';
@@ -34,8 +36,10 @@ import { AcidSystem } from '../systems/AcidSystem.js';
 import { Humor } from '../systems/Humor.js';
 import { AudioSystem } from '../audio/AudioSystem.js';
 import { Meta } from '../systems/Meta.js';
+import { RunSaveStore, captureRun, restoreRun } from '../save/RunSave.js';
 import { Menus } from '../ui/Menus.js';
 import { TouchControls } from '../input/TouchControls.js';
+import { ThreatIndicators } from '../ui/ThreatIndicators.js';
 import { GamepadInput } from '../input/GamepadInput.js';
 import zombieData from '../data/zombies.json';
 import { ShopPanel } from '../ui/ShopPanel.js';
@@ -88,14 +92,18 @@ export class Game {
     this.shop = new ShopSystem(this);
     this.build = new BuildSystem(this);
     this.structureRenderer = new StructureRenderer(this);
+    this.despacho = new Despacho(this); // mejoras de la comisaría (despacho del comisario)
+    this.despachoRenderer = new DespachoRenderer(this);
     this.grenadeRenderer = new GrenadeRenderer(this);
     this.flowViz = new FlowFieldViz(this.scene, this.grid);
     this.hud = new Hud(this);
     this.shopPanel = new ShopPanel(this);
     this.audio = new AudioSystem(this);
     this.meta = new Meta(this);
+    this.runSave = new RunSaveStore('turno-de-noche.run');
     this.menus = new Menus(this);
     this.touch = new TouchControls(this);
+    this.threats = new ThreatIndicators(this);
     this.gamepad = new GamepadInput(this);
 
     this.aimPoint = new THREE.Vector3();
@@ -107,6 +115,11 @@ export class Game {
     this._cutTarget = new THREE.Vector3();
 
     this.bus.on('player:died', () => { this.deathTimer = this.player.data.gameOverDelay; });
+    // Continuar turno: se guarda al empezar cada día (tras sobrevivir una noche) y se borra al caer.
+    this.bus.on('phase:dia', ({ night }) => {
+      if (night > 1 && this.player.alive) this.runSave.save(captureRun(this));
+    });
+    this.bus.on('run:over', () => this.runSave.clear());
     this.bus.on('phase:noche', ({ night, duration }) => this.waves.startNight(night, duration));
     this.deathTimer = 0;
     this.wavesEnabled = true;
@@ -211,6 +224,8 @@ export class Game {
     this.input.dispose();
     this.props.dispose();
     this.structureRenderer.dispose();
+    this.despachoRenderer.dispose();
+    this.despacho.dispose();
     this.grenadeRenderer.dispose();
     this.acid.dispose();
     this.zombies.dispose();
@@ -221,6 +236,7 @@ export class Game {
     this.meta.dispose();
     this.menus.dispose();
     this.touch.dispose();
+    this.threats.dispose();
     this.lighting.dispose();
     this.debug.gui.destroy();
     this.renderer.renderer.dispose();
@@ -266,11 +282,13 @@ export class Game {
     this.interactions.reset();
     this.build.reset();
     this.shop.reset();
+    this.despacho.reset();
     this.effects.reset();
     this.decals.reset();
     this.blasts.reset();
     this.acid.reset();
     this.floating.reset();
+    this.threats.reset();
     this.hud.reset();
     this.lighting.alarmTimer = 0;
     Object.assign(this.power, { generator: true, lightsOn: true });
@@ -284,8 +302,27 @@ export class Game {
   // ------------------------------------------------------------------ partidas y menús
   /** Empieza un turno nuevo con las mejoras permanentes del tablón. */
   startRun() {
+    this.runSave.clear(); // un turno nuevo descarta el guardado
     this.restart();
     this.meta.applyUpgrades();
+    this.menus.hide();
+  }
+
+  /** Continúa el turno guardado al último amanecer (o empieza uno nuevo si no hay). */
+  continueRun() {
+    const save = this.runSave.load();
+    if (!save) { this.startRun(); return; }
+    this.restart();
+    this.meta.applyUpgrades();
+    try {
+      restoreRun(this, save);
+    } catch (e) {
+      console.warn('No se pudo restaurar el turno guardado', e);
+      this.runSave.clear();
+      this.restart();
+      this.meta.applyUpgrades();
+    }
+    this.cameraRig.snap(this.player.position);
     this.menus.hide();
   }
 
@@ -418,6 +455,7 @@ export class Game {
     this.player.render();
     this.zombies.render();
     this.structureRenderer.update();
+    this.despachoRenderer.update();
     this.grenadeRenderer.update();
     this.acid.render(this.time);
     this.effects.update(visualDt);
@@ -439,6 +477,7 @@ export class Game {
     this.touch.update();
     this.shopPanel.update(visualDt);
     this.floating.update(visualDt);
+    this.threats.update(visualDt);
     this.debug.frame(dt, this.debug.visible ? [
       `Estado ${this.state} · ${this.dayNight.phase} ${this.dayNight.night} (${this.dayNight.t.toFixed(0)}/${this.dayNight.duration.toFixed(0)} s)`,
       `Zombis ${this.zombies.aliveCount} vivos / ${this.zombies.active.length} activos · por salir ${this.waves.toSpawn}`,
@@ -472,6 +511,7 @@ export class Game {
     this.interactions.update(dt);
     this.weapons.update(dt);
     this.build.update(dt);
+    this.despacho.update(dt);
     if (this.wavesEnabled && this.player.alive) this.waves.update(dt, this.dayNight);
     this.zombies.update(dt);
     this.blasts.update(dt);

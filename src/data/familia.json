@@ -1,83 +1,449 @@
 {
   "_comment": "Llamadas de Ana (la mujer de Carlos) y de Oliver (su hijo, 6 años), que pasan el apocalipsis en casa de la madre de Ana. Como mucho una por periodo (día/noche), con probabilidad. De noche llegan en el peor momento (zombis cerca, jefe o poca vida). Sin repetir hasta agotar cada lista (when: day, night o any).",
   "fromDay": 2,
-  "day": { "chance": 0.5, "at": [20, 65] },
-  "night": { "chance": 0.45, "minDelay": 20, "maxDelay": 100, "nearRadius": 7, "nearZombies": 4, "lowHp": 0.35 },
-  "ring": { "_comment": "Tono de móvil antes de cada llamada: times timbrazos cada gap s (receta phone_ring de Synth.js); el texto sale a los time s.", "time": 1.8, "sound": "phone_ring", "times": 2, "gap": 0.85 },
+  "day": {
+    "chance": 0.5,
+    "at": [
+      20,
+      65
+    ]
+  },
+  "night": {
+    "chance": 0.45,
+    "minDelay": 20,
+    "maxDelay": 100,
+    "nearRadius": 7,
+    "nearZombies": 4,
+    "lowHp": 0.35
+  },
+  "ring": {
+    "_comment": "Tono de móvil antes de cada llamada: times timbrazos cada gap s (receta phone_ring de Synth.js); el texto sale a los time s.",
+    "time": 1.8,
+    "sound": "phone_ring",
+    "times": 2,
+    "gap": 0.85
+  },
   "replyAt": 0.8,
   "replyName": "Carlos",
   "people": {
-    "ana": { "name": "Ana", "icon": "📱" },
-    "oliver": { "name": "Oliver", "icon": "📱" }
+    "ana": {
+      "name": "Ana",
+      "icon": "📱"
+    },
+    "oliver": {
+      "name": "Oliver",
+      "icon": "📱"
+    }
   },
   "calls": [
-    { "who": "ana", "when": "day", "text": "Carlos, ¿te acordaste de sacar la basura antes de irte?", "reply": "Cariño, ahora mismo la basura viene sola. Y en grupo." },
-    { "who": "ana", "when": "day", "text": "Mi madre dice que en la tele se te ve más delgado.", "reply": "Es el chaleco. Y el pánico, que adelgaza muchísimo." },
-    { "who": "ana", "when": "day", "text": "¿Has comido algo caliente hoy?", "reply": "Un café de la cafetera. Caliente no estaba, pero intenso, un rato." },
-    { "who": "ana", "when": "day", "text": "Mi madre dice que si fueras buen marido ya habrías venido a buscarnos.", "reply": "Dile que estoy rodeado de zombis. Y que sí, que ya sé que ella prefiere que vaya igual." },
-    { "who": "ana", "when": "day", "text": "¿Te pongo una lavadora con el uniforme cuando vuelvas?", "reply": "Mejor quémalo, Ana. Con cariño, pero quémalo." },
-    { "who": "ana", "when": "day", "text": "La vecina dice que su marido está rarísimo desde el lunes.", "reply": "¿Gruñe y arrastra los pies? Ana, Paco está así desde la boda." },
-    { "who": "ana", "when": "day", "text": "¿Has visto que el recibo de la luz ha vuelto a subir?", "reply": "Aquí la luz la pago a tiros, cariño. Literalmente." },
-    { "who": "ana", "when": "day", "text": "Oliver dice que de mayor quiere ser policía, como tú.", "reply": "Convéncele de que sea notario. Trabajan sentados y no les muerde nadie. Casi nadie." },
-    { "who": "ana", "when": "day", "text": "Oye, ¿has presentado la declaración de la renta?", "reply": "Hacienda sigue abierta, Ana. Los zombis la rodean, pero no se atreven a entrar." },
-    { "who": "ana", "when": "day", "text": "¿Te estás poniendo la crema para la espalda que te di?", "reply": "Llevo un chaleco antibalas, Ana. No me llega el brazo ni para rascarme el alma." },
-    { "who": "ana", "when": "day", "text": "Mi madre ha hecho croquetas y dice que, si no vienes, se las da al perro.", "reply": "Que el perro las pruebe primero. Por si acaso. Conozco a tu madre." },
-    { "who": "ana", "when": "day", "text": "Carlos, ¿dónde guardamos las pilas?", "reply": "En el cajón de las pilas que no funcionan, como todo el mundo." },
-    { "who": "ana", "when": "day", "text": "Te he visto en las noticias. Salías de espaldas, disparando. Estabas muy guapo.", "reply": "Es mi lado bueno. El otro lleva ojeras de quince noches." },
-    { "who": "ana", "when": "day", "text": "El seguro del coche vence este mes. ¿Lo renuevo?", "reply": "Pregunta si cubre «zombi en el capó». Si no, ni te molestes." },
-    { "who": "ana", "when": "day", "text": "¿Tú crees que esto saldrá en el grupo de WhatsApp del cole?", "reply": "Ana, el grupo del cole sobrevivirá a todo. Es lo único más resistente que los zombis." },
-    { "who": "ana", "when": "day", "text": "Mi madre pregunta si en la comisaría habría sitio para ella.", "reply": "Dile que no, que aquí correría peligro. Los zombis, digo." },
-    { "who": "ana", "when": "day", "text": "Me han dicho que si te muerden cobras doble.", "reply": "Te han engañado. Si me muerden cobro lo mismo, pero ya no reclamo." },
-    { "who": "ana", "when": "day", "text": "¿Te acuerdas de que el sábado es la comunión de tu sobrina?", "reply": "Diles que voy, y que llevo a unos amigos. Comen poco. Bueno, no." },
-    { "who": "ana", "when": "day", "text": "Oliver te ha hecho un dibujo. Te ha puesto capa.", "reply": "Dile que me dibuje un relevo. Es lo único que me falta." },
-    { "who": "ana", "when": "day", "text": "Me ha llamado tu jefe. Bueno, el contestador de tu jefe.", "reply": "Ni caso. Ese contestador lleva más tiempo al mando que él." },
-    { "who": "ana", "when": "day", "text": "¿Me oyes? Es que en el pueblo de mi madre hay muy poca cobertura.", "reply": "Te oigo, cariño. Aquí cobertura hay de sobra. Lo que falta es todo lo demás." },
-    { "who": "ana", "when": "day", "text": "He apuntado a Oliver a natación. ¿Te parece bien?", "reply": "Perfecto. Y que le enseñen a correr, que eso sí que es para toda la vida." },
-    { "who": "ana", "when": "day", "text": "Mi madre dice que esto de los zombis es culpa del Gobierno.", "reply": "Por una vez tu madre y yo estamos de acuerdo. Apúntalo, que no se repite." },
-    { "who": "ana", "when": "day", "text": "Carlos, ¿tú me echas de menos?", "reply": "Muchísimo. Eres la única que me llama sin querer morderme." },
-    { "who": "ana", "when": "night", "text": "¿Te pillo bien?", "reply": "Perfecto, cariño. Estoy con unos vecinos. Muy cercanos. Cada vez más." },
-    { "who": "ana", "when": "night", "text": "Rápido: ¿el cargador del móvil es el blanco o el negro?", "reply": "El blanco. Y ahora mismo el que se está cargando soy yo, Ana." },
-    { "who": "ana", "when": "night", "text": "¿Qué es ese ruido? ¿Estás en un concierto?", "reply": "Algo así. Público entregadísimo. Quieren subir al escenario." },
-    { "who": "ana", "when": "night", "text": "Se ha ido la luz en casa de mi madre. ¿Qué hago?", "reply": "Sube el diferencial. Yo voy a bajar a un tanque. Te dejo." },
-    { "who": "ana", "when": "night", "text": "No te molesto, solo era para decirte que te quiero.", "reply": "Y yo a ti. Estos señores también me quieren, pero de otra manera." },
-    { "who": "ana", "when": "night", "text": "¿Por qué jadeas? ¿Estás corriendo?", "reply": "Estoy en el gimnasio. Me persigue un entrenador personal. Y otro. Y otro." },
-    { "who": "ana", "when": "night", "text": "Mi madre quiere hablar contigo.", "reply": "¿Ahora? Dile que estoy… No. Mira, prefiero a los zombis. Cuelgo." },
-    { "who": "ana", "when": "night", "text": "Oliver no se duerme. ¿Le cantas algo?", "reply": "A la nanita nana… (¡pum!) …nanita ea… (¡pum, pum!) ¿Ya se ha dormido?" },
-    { "who": "ana", "when": "night", "text": "¿Has cenado?", "reply": "Estoy en ello, Ana. Bueno, intentan cenarme a mí, que no es lo mismo." },
-    { "who": "ana", "when": "night", "text": "Carlos, ¿a qué hora vienes?", "reply": "Diez minutos, cariño. Diez minutos." },
-    { "who": "ana", "when": "night", "text": "Me aburro. ¿Qué haces?", "reply": "Horas extra, Ana. De las que no se pagan y encima te persiguen." },
-    { "who": "ana", "when": "night", "text": "Carlos, ¿dónde dejaste las llaves del trastero?", "reply": "En el bolsillo, rodeado de cuarenta señores. Mañana te las mando." },
-    { "who": "ana", "when": "night", "text": "¿Has visto el último capítulo de la serie?", "reply": "Ni se te ocurra destripármelo, que es lo único que me queda por vivir." },
-    { "who": "oliver", "when": "day", "text": "Papá, ¿los zombis tienen que ir al cole?", "reply": "No, hijo. Por eso han acabado así." },
-    { "who": "oliver", "when": "day", "text": "Papá, ¿me llevas un zombi pequeñito para la clase de ciencias?", "reply": "No, Oliver. Los zombis no se pueden tener en casa. Lo prohíben los estatutos de la comunidad." },
-    { "who": "oliver", "when": "day", "text": "Papá, el abuelo dice que en su época no había zombis.", "reply": "En su época había mili, hijo. Es parecido, pero con peor comida." },
-    { "who": "oliver", "when": "day", "text": "Papá, ¿a cuántos malos has detenido hoy?", "reply": "Detenido, a ninguno. Pero ninguno ha vuelto a quejarse." },
-    { "who": "oliver", "when": "day", "text": "Papá, se me ha caído un diente. ¿El Ratoncito Pérez viene aunque haya zombis?", "reply": "El Ratoncito Pérez es funcionario, hijo. Viene, pero con cita previa." },
-    { "who": "oliver", "when": "day", "text": "Papá, la abuela me obliga a comerme las judías.", "reply": "Cómetelas, campeón. Por lo menos las judías no te persiguen por el pasillo." },
-    { "who": "oliver", "when": "day", "text": "Papá, ¿los zombis son buenos o malos?", "reply": "Son como los de Hacienda, hijo: no es nada personal, pero vienen a por ti." },
-    { "who": "oliver", "when": "day", "text": "Papá, he dibujado un zombi. ¿Lo cuelgas en la comisaría?", "reply": "Claro. Al lado del cartel de «Se ruega no morder al personal»." },
-    { "who": "oliver", "when": "day", "text": "Papá, ¿tú tienes miedo?", "reply": "Un poquito. Pero no se lo digas a los zombis, que se vienen arriba." },
-    { "who": "oliver", "when": "day", "text": "Papá, ¿por qué los zombis andan tan raro?", "reply": "Porque nadie les ha enseñado, hijo. Como a ti con los cordones." },
-    { "who": "oliver", "when": "day", "text": "Papá, la abuela dice que tú no sabes ni freír un huevo.", "reply": "Dile a la abuela que llevo quince días sobreviviendo a trescientos zombis. Que a ella, de momento, no." },
-    { "who": "oliver", "when": "day", "text": "Papá, ¿un zombi le ganaría a un dinosaurio?", "reply": "Ni de broma. El dinosaurio se extinguió, pero con dignidad." },
-    { "who": "oliver", "when": "day", "text": "Papá, ¿cuando vuelvas me llevas al parque?", "reply": "Claro, hijo. En cuanto el parque deje de llevarse a la gente." },
-    { "who": "oliver", "when": "day", "text": "Papá, en el cole dicen que eres un héroe.", "reply": "En el cole también dicen que la profe tiene ojos en la nuca. No te lo creas todo." },
-    { "who": "oliver", "when": "day", "text": "Papá, ¡ya sé contar hasta cien!", "reply": "Genial, campeón. Esta noche te dejo practicar con los de la puerta." },
-    { "who": "oliver", "when": "day", "text": "Papá, ¿los zombis celebran la Navidad?", "reply": "Sí, hijo. Pero en vez de turrón quieren al cuñado. Como en todas las casas." },
-    { "who": "oliver", "when": "day", "text": "Papá, mamá dice que eres un cabezota.", "reply": "Dile a mamá que gracias a eso sigo aquí. Bueno, a eso y a la escopeta." },
-    { "who": "oliver", "when": "day", "text": "Papá, ¿me puedo disfrazar de zombi en Carnaval?", "reply": "Vale, pero de los lentos. De los rápidos ya tengo bastantes." },
-    { "who": "oliver", "when": "day", "text": "Papá, ¿qué quiere decir «sin relevo»?", "reply": "Que papá trabaja hasta que se jubile, hijo. O hasta que se jubile Mari Luz. Lo que pase antes." },
-    { "who": "oliver", "when": "night", "text": "Papá, no me puedo dormir. ¿Me cuentas un cuento?", "reply": "Érase una vez un policía que no tenía relevo… (¡pum!) …y colorín colorado. Duérmete." },
-    { "who": "oliver", "when": "night", "text": "Papá, ¿qué es ese ruido?", "reply": "La tele, campeón. Una peli de miedo. En directo. Muy en directo." },
-    { "who": "oliver", "when": "night", "text": "Papá, ¿cuánto es siete por ocho?", "reply": "¿Ahora, Oliver? ¡Cincuenta y seis! Y aquí cuarenta y tantos zombis. Te llamo luego." },
-    { "who": "oliver", "when": "night", "text": "Papá, ¿me dejas jugar a tu juego de zombis?", "reply": "Hijo, papá está en el nivel difícil. Y este no tiene pausa." },
-    { "who": "oliver", "when": "night", "text": "Papá, ¿por qué gritas?", "reply": "No grito, Oliver. Doy instrucciones. Muy alto. A gente que no escucha." },
-    { "who": "oliver", "when": "night", "text": "Papá, me he hecho pis en la cama.", "reply": "Pues ya somos dos, campeón. Que te cambie mamá." },
-    { "who": "oliver", "when": "night", "text": "Papá, ¿hay un monstruo debajo de mi cama?", "reply": "Ahí no, hijo. Están todos aquí, en la puerta. Duerme tranquilo." },
-    { "who": "oliver", "when": "night", "text": "Papá, ¿vas ganando?", "reply": "Vamos empate. Bueno, ellos ganan por trescientos, pero yo tengo escopeta." },
-    { "who": "oliver", "when": "night", "text": "Papá, ¿me compras una tablet?", "reply": "¿Ahora? … ¡Sí, sí, lo que quieras! ¡Cuelga, cuelga!" },
-    { "who": "oliver", "when": "night", "text": "Papá, la abuela ronca igual que tus zombis.", "reply": "Peor, hijo. A los zombis por lo menos se los lleva el amanecer." },
-    { "who": "oliver", "when": "night", "text": "Papá, ¿hoy has comido verdura?", "reply": "Hijo, todo lo que me rodea esta noche está bastante pocho. Cuenta como verdura." },
-    { "who": "oliver", "when": "night", "text": "Papá, mamá dice que vengas ya.", "reply": "Diez minutos, campeón. Dile a mamá: diez minutos." }
-  ]
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Carlos, ¿te acordaste de sacar la basura antes de irte?",
+      "reply": "Cariño, ahora mismo la basura viene sola. Y en grupo."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Mi madre dice que en la tele se te ve más delgado.",
+      "reply": "Es el chaleco. Y el pánico, que adelgaza muchísimo."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "¿Has comido algo caliente hoy?",
+      "reply": "Un café de la cafetera. Caliente no estaba, pero intenso, un rato."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Mi madre dice que si fueras buen marido ya habrías venido a buscarnos.",
+      "reply": "Dile que estoy rodeado de zombis. Y que sí, que ya sé que ella prefiere que vaya igual."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "¿Te pongo una lavadora con el uniforme cuando vuelvas?",
+      "reply": "Mejor quémalo, Ana. Con cariño, pero quémalo."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "La vecina dice que su marido está rarísimo desde el lunes.",
+      "reply": "¿Gruñe y arrastra los pies? Ana, Paco está así desde la boda."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "¿Has visto que el recibo de la luz ha vuelto a subir?",
+      "reply": "Aquí la luz la pago a tiros, cariño. Literalmente."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Oliver dice que de mayor quiere ser policía, como tú.",
+      "reply": "Convéncele de que sea notario. Trabajan sentados y no les muerde nadie. Casi nadie."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Oye, ¿has presentado la declaración de la renta?",
+      "reply": "Hacienda sigue abierta, Ana. Los zombis la rodean, pero no se atreven a entrar."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "¿Te estás poniendo la crema para la espalda que te di?",
+      "reply": "Llevo un chaleco antibalas, Ana. No me llega el brazo ni para rascarme el alma."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Mi madre ha hecho croquetas y dice que, si no vienes, se las da al perro.",
+      "reply": "Que el perro las pruebe primero. Por si acaso. Conozco a tu madre."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Carlos, ¿dónde guardamos las pilas?",
+      "reply": "En el cajón de las pilas que no funcionan, como todo el mundo."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Te he visto en las noticias. Salías de espaldas, disparando. Estabas muy guapo.",
+      "reply": "Es mi lado bueno. El otro lleva ojeras de quince noches."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "El seguro del coche vence este mes. ¿Lo renuevo?",
+      "reply": "Pregunta si cubre «zombi en el capó». Si no, ni te molestes."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "¿Tú crees que esto saldrá en el grupo de WhatsApp del cole?",
+      "reply": "Ana, el grupo del cole sobrevivirá a todo. Es lo único más resistente que los zombis."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Mi madre pregunta si en la comisaría habría sitio para ella.",
+      "reply": "Dile que no, que aquí correría peligro. Los zombis, digo."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Me han dicho que si te muerden cobras doble.",
+      "reply": "Te han engañado. Si me muerden cobro lo mismo, pero ya no reclamo."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "¿Te acuerdas de que el sábado es la comunión de tu sobrina?",
+      "reply": "Diles que voy, y que llevo a unos amigos. Comen poco. Bueno, no."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Oliver te ha hecho un dibujo. Te ha puesto capa.",
+      "reply": "Dile que me dibuje un relevo. Es lo único que me falta."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Me ha llamado tu jefe. Bueno, el contestador de tu jefe.",
+      "reply": "Ni caso. Ese contestador lleva más tiempo al mando que él."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "¿Me oyes? Es que en el pueblo de mi madre hay muy poca cobertura.",
+      "reply": "Te oigo, cariño. Aquí cobertura hay de sobra. Lo que falta es todo lo demás."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "He apuntado a Oliver a natación. ¿Te parece bien?",
+      "reply": "Perfecto. Y que le enseñen a correr, que eso sí que es para toda la vida."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Mi madre dice que esto de los zombis es culpa del Gobierno.",
+      "reply": "Por una vez tu madre y yo estamos de acuerdo. Apúntalo, que no se repite."
+    },
+    {
+      "who": "ana",
+      "when": "day",
+      "text": "Carlos, ¿tú me echas de menos?",
+      "reply": "Muchísimo. Eres la única que me llama sin querer morderme."
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "¿Te pillo bien?",
+      "reply": "Perfecto, cariño. Estoy con unos vecinos. Muy cercanos. Cada vez más."
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "Rápido: ¿el cargador del móvil es el blanco o el negro?",
+      "reply": "El blanco. Y ahora mismo el que se está cargando soy yo, Ana."
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "¿Qué es ese ruido? ¿Estás en un concierto?",
+      "reply": "Algo así. Público entregadísimo. Quieren subir al escenario."
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "Se ha ido la luz en casa de mi madre. ¿Qué hago?",
+      "reply": "Sube el diferencial. Yo voy a bajar a un tanque. Te dejo."
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "No te molesto, solo era para decirte que te quiero.",
+      "reply": "Y yo a ti. Estos señores también me quieren, pero de otra manera."
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "¿Por qué jadeas? ¿Estás corriendo?",
+      "reply": "Estoy en el gimnasio. Me persigue un entrenador personal. Y otro. Y otro."
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "Mi madre quiere hablar contigo.",
+      "reply": "¿Ahora? Dile que estoy… No. Mira, prefiero a los zombis. Cuelgo."
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "Oliver no se duerme. ¿Le cantas algo?",
+      "reply": "A la nanita nana… (¡pum!) …nanita ea… (¡pum, pum!) ¿Ya se ha dormido?"
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "¿Has cenado?",
+      "reply": "Estoy en ello, Ana. Bueno, intentan cenarme a mí, que no es lo mismo."
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "Carlos, ¿a qué hora vienes?",
+      "reply": "Diez minutos, cariño. Diez minutos."
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "Me aburro. ¿Qué haces?",
+      "reply": "Horas extra, Ana. De las que no se pagan y encima te persiguen."
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "Carlos, ¿dónde dejaste las llaves del trastero?",
+      "reply": "En el bolsillo, rodeado de cuarenta señores. Mañana te las mando."
+    },
+    {
+      "who": "ana",
+      "when": "night",
+      "text": "¿Has visto el último capítulo de la serie?",
+      "reply": "Ni se te ocurra destripármelo, que es lo único que me queda por vivir."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, ¿los zombis tienen que ir al cole?",
+      "reply": "No, hijo. Por eso han acabado así."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, ¿me llevas un zombi pequeñito para la clase de ciencias?",
+      "reply": "No, Oliver. Los zombis no se pueden tener en casa. Lo prohíben los estatutos de la comunidad."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, el abuelo dice que en su época no había zombis.",
+      "reply": "En su época había mili, hijo. Es parecido, pero con peor comida."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, ¿a cuántos malos has detenido hoy?",
+      "reply": "Detenido, a ninguno. Pero ninguno ha vuelto a quejarse."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, se me ha caído un diente. ¿El Ratoncito Pérez viene aunque haya zombis?",
+      "reply": "El Ratoncito Pérez es funcionario, hijo. Viene, pero con cita previa."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, la abuela me obliga a comerme las judías.",
+      "reply": "Cómetelas, campeón. Por lo menos las judías no te persiguen por el pasillo."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, ¿los zombis son buenos o malos?",
+      "reply": "Son como los de Hacienda, hijo: no es nada personal, pero vienen a por ti."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, he dibujado un zombi. ¿Lo cuelgas en la comisaría?",
+      "reply": "Claro. Al lado del cartel de «Se ruega no morder al personal»."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, ¿tú tienes miedo?",
+      "reply": "Un poquito. Pero no se lo digas a los zombis, que se vienen arriba."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, ¿por qué los zombis andan tan raro?",
+      "reply": "Porque nadie les ha enseñado, hijo. Como a ti con los cordones."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, la abuela dice que tú no sabes ni freír un huevo.",
+      "reply": "Dile a la abuela que llevo quince días sobreviviendo a trescientos zombis. Que a ella, de momento, no."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, ¿un zombi le ganaría a un dinosaurio?",
+      "reply": "Ni de broma. El dinosaurio se extinguió, pero con dignidad."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, ¿cuando vuelvas me llevas al parque?",
+      "reply": "Claro, hijo. En cuanto el parque deje de llevarse a la gente."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, en el cole dicen que eres un héroe.",
+      "reply": "En el cole también dicen que la profe tiene ojos en la nuca. No te lo creas todo."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, ¡ya sé contar hasta cien!",
+      "reply": "Genial, campeón. Esta noche te dejo practicar con los de la puerta."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, ¿los zombis celebran la Navidad?",
+      "reply": "Sí, hijo. Pero en vez de turrón quieren al cuñado. Como en todas las casas."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, mamá dice que eres un cabezota.",
+      "reply": "Dile a mamá que gracias a eso sigo aquí. Bueno, a eso y a la escopeta."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, ¿me puedo disfrazar de zombi en Carnaval?",
+      "reply": "Vale, pero de los lentos. De los rápidos ya tengo bastantes."
+    },
+    {
+      "who": "oliver",
+      "when": "day",
+      "text": "Papá, ¿qué quiere decir «sin relevo»?",
+      "reply": "Que papá trabaja hasta que se jubile, hijo. O hasta que se jubile Mari Luz. Lo que pase antes."
+    },
+    {
+      "who": "oliver",
+      "when": "night",
+      "text": "Papá, no me puedo dormir. ¿Me cuentas un cuento?",
+      "reply": "Érase una vez un policía que no tenía relevo… (¡pum!) …y colorín colorado. Duérmete."
+    },
+    {
+      "who": "oliver",
+      "when": "night",
+      "text": "Papá, ¿qué es ese ruido?",
+      "reply": "La tele, campeón. Una peli de miedo. En directo. Muy en directo."
+    },
+    {
+      "who": "oliver",
+      "when": "night",
+      "text": "Papá, ¿cuánto es siete por ocho?",
+      "reply": "¿Ahora, Oliver? ¡Cincuenta y seis! Y aquí cuarenta y tantos zombis. Te llamo luego."
+    },
+    {
+      "who": "oliver",
+      "when": "night",
+      "text": "Papá, ¿me dejas jugar a tu juego de zombis?",
+      "reply": "Hijo, papá está en el nivel difícil. Y este no tiene pausa."
+    },
+    {
+      "who": "oliver",
+      "when": "night",
+      "text": "Papá, ¿por qué gritas?",
+      "reply": "No grito, Oliver. Doy instrucciones. Muy alto. A gente que no escucha."
+    },
+    {
+      "who": "oliver",
+      "when": "night",
+      "text": "Papá, me he hecho pis en la cama.",
+      "reply": "Pues ya somos dos, campeón. Que te cambie mamá."
+    },
+    {
+      "who": "oliver",
+      "when": "night",
+      "text": "Papá, ¿hay un monstruo debajo de mi cama?",
+      "reply": "Ahí no, hijo. Están todos aquí, en la puerta. Duerme tranquilo."
+    },
+    {
+      "who": "oliver",
+      "when": "night",
+      "text": "Papá, ¿vas ganando?",
+      "reply": "Vamos empate. Bueno, ellos ganan por trescientos, pero yo tengo escopeta."
+    },
+    {
+      "who": "oliver",
+      "when": "night",
+      "text": "Papá, ¿me compras una tablet?",
+      "reply": "¿Ahora? … ¡Sí, sí, lo que quieras! ¡Cuelga, cuelga!"
+    },
+    {
+      "who": "oliver",
+      "when": "night",
+      "text": "Papá, la abuela ronca igual que tus zombis.",
+      "reply": "Peor, hijo. A los zombis por lo menos se los lleva el amanecer."
+    },
+    {
+      "who": "oliver",
+      "when": "night",
+      "text": "Papá, ¿hoy has comido verdura?",
+      "reply": "Hijo, todo lo que me rodea esta noche está bastante pocho. Cuenta como verdura."
+    },
+    {
+      "who": "oliver",
+      "when": "night",
+      "text": "Papá, mamá dice que vengas ya.",
+      "reply": "Diez minutos, campeón. Dile a mamá: diez minutos."
+    }
+  ],
+  "extraTime": 1
 }

@@ -276,7 +276,7 @@ export class Story {
     return {
       kind: 'call', who: c.who, name: person.name, icon: person.icon, text: c.text, reply: c.reply,
       replyName: f.replyName, night: p.when === 'night', stage: 0, t: 0, ring, replyAt,
-      dur: replyAt + readTime(c.reply, this.t),
+      dur: replyAt + readTime(c.reply, this.t) + (f.extraTime ?? 0), // un poco más para leer con calma
     };
   }
 

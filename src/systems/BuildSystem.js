@@ -797,6 +797,12 @@ export class BuildSystem {
   setActive(on) {
     this.active = on;
     this.dragging = false;
+    // Móvil: el cursor empieza delante de Carlos (luego se mueve tocando el suelo).
+    const { game } = this;
+    if (on && game.input?.lastDevice === 'touch' && game.player && game.groundPoint) {
+      const p = game.player.position, f = game.player.facing ?? 0, d = this.cfg.touchStartDistance;
+      game.groundPoint.set(p.x + Math.sin(f) * d, 0, p.z + Math.cos(f) * d);
+    }
     this.game.bus.emit('build:mode', { active: on });
   }
 
@@ -873,6 +879,11 @@ export class BuildSystem {
       return;
     }
     if (this.sellArmed >= 0 && (hovered?.id !== this.sellArmed || this.game.time >= this.sellArmedUntil)) this.sellArmed = -1;
+    // Móvil: el dedo solo mueve el cursor; construir, mejorar o reparar se confirma con el botón ✔.
+    if (input.consume('buildConfirm')) {
+      this.primaryAction(this.hoverCell);
+      return;
+    }
     if (input.consume('fire')) {
       const action = this.primaryAction(this.hoverCell);
       // Arrastrar solo para colocar piezas que bloquean (filas de muro o sacos).

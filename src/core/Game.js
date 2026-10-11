@@ -385,7 +385,10 @@ export class Game {
   updateAimPoint() {
     const p = this.input.pointer;
     const analog = this.input.analog;
-    if (p.inside) {
+    // Construyendo en el móvil, el cursor solo se mueve mientras el dedo está en el suelo: si no,
+    // se quedaría resbalando al moverse la cámara.
+    const lockBuild = this.build.active && this.input.lastDevice === 'touch' && !(this.touch?.buildTouch >= 0);
+    if (p.inside && !lockBuild) {
       this._ndc.set(p.ndcX, p.ndcY);
       this._raycaster.setFromCamera(this._ndc, this.cameraRig.camera);
       this._raycaster.ray.intersectPlane(this._groundPlane, this.groundPoint);

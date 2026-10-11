@@ -295,6 +295,7 @@
   },
   "repairCooldown": 1.5,
   "sellConfirmTime": 2.0,
+  "touchStartDistance": 2,
   "maxPerType": 200,
   "placeMargin": 0.05,
   "trapDamageTick": 0.25,

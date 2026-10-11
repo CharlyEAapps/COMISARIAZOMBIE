@@ -324,14 +324,19 @@ export class Hud {
       const what = width > 1 ? `${def.name.toLowerCase()} de ${width} celdas (${b.placeCost(b.selected, b.hoverCell)})` : def.name.toLowerCase();
       info = `<span class="key">Clic</span> Construir ${what}${drag} · <span class="key">Clic dcho</span> Salir${b.isNight ? ` · <i>De noche +${surcharge} %</i>` : ''}${warn}`;
     }
-    // En el móvil: "toca" en vez de "clic", y vender/salir con los botones de la pantalla.
+    // En el móvil: el dedo elige la celda y los botones ✔ / 💲 confirman (ver TouchControls).
     if (this.game.input.lastDevice === 'touch') {
-      info = info.replaceAll('<span class="key">Clic dcho otra vez', '<span class="key">💲 otra vez')
-        .replaceAll('Clic dcho otra vez', '💲 otra vez')
-        .replaceAll('<span class="key">Clic dcho</span> Vender', '<span class="key">💲</span> Vender')
-        .replaceAll('<span class="key">Clic dcho</span> Salir', '<span class="key">🔨</span> Salir')
-        .replaceAll('<span class="key">Clic</span>', '<span class="key">Toca</span>')
-        .replaceAll(' (arrastra para hacer una fila)', ' (desliza para una fila)');
+      if (s) {
+        const lvl = s.def.levels[s.level];
+        info = `<b>${s.def.icon} ${lvl.name}</b> ${Math.ceil(s.hp)}/${s.maxHp}`;
+        if (s.type === 'torreta') info += ` · Munición ${s.ammo}/${s.ammoMax}`;
+        if (s.type === 'valla' && !b.powered) info += ' · <i>Sin corriente: construye un generador</i>';
+      } else if (b.hoverReason) {
+        info = `<i>${b.hoverReason}</i>`;
+      } else {
+        const def = b.pieces[b.selected];
+        info = `<b>${def.icon} ${def.name}</b> · Toca el suelo para elegir sitio y pulsa ✔${b.isNight ? ` · <i>De noche +${surcharge} %</i>` : ''}`;
+      }
     }
     this.set('buildInfo', info, 'innerHTML');
   }

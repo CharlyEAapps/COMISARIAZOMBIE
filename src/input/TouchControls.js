@@ -64,7 +64,10 @@ export class TouchControls {
         <button class="tbtn tb-grenade" data-a="grenade" aria-label="Granada">💣<i data-m="grenades">1</i></button>
         <button class="tbtn tb-medkit" data-a="medkit" aria-label="Botiquín">🩹<i data-m="medkits">1</i></button>
         <button class="tbtn tb-use" data-a="interact" data-hold="1" aria-label="Usar">✋</button>
-        <button class="tbtn tb-sell" data-a="alt" aria-label="Vender">💲</button>
+      </div>
+      <div class="build-actions">
+        <button class="bact bact-main" data-a="buildConfirm"><b data-m="baMain">✔ Construir</b><small data-m="baMainSub"></small></button>
+        <button class="bact bact-sell" data-a="alt"><b data-m="baSell">💲 Vender</b><small data-m="baSellSub"></small></button>
       </div>
       <div class="rotate-hint panel"><div>📱↻</div><p>Gira el móvil: el turno se juega en horizontal.</p></div>`;
     game.uiRoot.prepend(root);
@@ -74,7 +77,7 @@ export class TouchControls {
     root.querySelectorAll('[data-m]').forEach((e) => { this.m[e.dataset.m] = e; });
 
     // Botones: pulsar = flanco de la acción; los de mantener (usar) siguen pulsados.
-    for (const b of root.querySelectorAll('.tbtn, .m-weapon')) {
+    for (const b of root.querySelectorAll('.tbtn, .m-weapon, .bact')) {
       b.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -145,11 +148,10 @@ export class TouchControls {
     this.enable();
     const w = window.innerWidth;
     const side = e.clientX < w * T.leftZone ? 'left' : 'right';
-    // En modo construcción, la mano derecha toca el suelo para construir.
+    // En modo construcción, la mano derecha elige la celda (sin construir: se confirma con ✔).
     if (side === 'right' && this.game.build.active) {
       this.buildTouch = e.pointerId;
       this.setPointer(e.clientX, e.clientY);
-      this.input.press('fire');
       return;
     }
     if ([...this.sticks.values()].some((s) => s.side === side)) return;
@@ -187,7 +189,6 @@ export class TouchControls {
   onUp(e) {
     if (e.pointerId === this.buildTouch) {
       this.buildTouch = -1;
-      this.input.release('fire');
       return;
     }
     const s = this.sticks.get(e.pointerId);
@@ -267,6 +268,7 @@ export class TouchControls {
     const g = this.game;
     const { player, weapons, run, dayNight, waves, interactions } = g;
     this.toggle('building', g.build.active);
+    if (g.build.active) this.updateBuildActions();
     this.toggle('day', dayNight.phase === PHASE.DAY);
     this.toggle('no-grenade', weapons.grenades <= 0);
     this.toggle('no-medkit', player.medkits <= 0);
@@ -304,6 +306,42 @@ export class TouchControls {
     this.set('reload', `${(rl * 100).toFixed(0)}%`, 'width');
     this.set('grenades', String(weapons.grenades));
     this.set('medkits', String(player.medkits));
+  }
+
+  /**
+   * Botones del modo construcción: ✔ construir / ⬆ mejorar / 🔧 reparar sobre la celda elegida y
+   * 💲 vender (dos toques) si hay algo construido.
+   */
+  updateBuildActions() {
+    const g = this.game;
+    const b = g.build;
+    const s = b.structures.get(b.hoverCell);
+    const pts = g.run.points;
+    let main, sub, off;
+    if (s) {
+      const rc = b.repairCostOf(s), uc = b.upgradeCost(s);
+      if (!b.inReachXY(s.cx, s.cz)) { main = '🚶 Acércate'; sub = 'demasiado lejos'; off = true; }
+      else if (rc) { main = '🔧 Reparar'; sub = g.time < s.repairReady ? 'reparando…' : `${rc} pts`; off = pts < rc || g.time < s.repairReady; }
+      else if (uc && !b.upgradeUnlocked(s)) { main = '🔒 Mejorar'; sub = 'en el almacén'; off = true; }
+      else if (uc) { main = '⬆ Mejorar'; sub = `${s.def.levels[s.level + 1].name} · ${uc}`; off = pts < uc; }
+      else { main = '★ Nivel máx.'; sub = s.def.levels[s.level].name; off = true; }
+    } else {
+      const def = b.pieces[b.selected];
+      main = `✔ ${def.icon} Construir`;
+      if (b.hoverReason) { sub = 'aquí no se puede'; off = true; }
+      else { const c = b.placeCost(b.selected, b.hoverCell); sub = `${c} pts`; off = pts < c; }
+    }
+    this.set('baMain', main);
+    this.set('baMainSub', sub);
+    this.toggle('ba-off', !!off);
+    const sell = !!s && !s.auto && b.inReachXY(s.cx, s.cz);
+    this.toggle('ba-sell', sell);
+    if (sell) {
+      const armed = b.sellArmed === s.id;
+      this.toggle('ba-armed', armed);
+      this.set('baSell', armed ? '¿Vender? Toca' : '💲 Vender');
+      this.set('baSellSub', `+${b.sellValue(s)} pts`);
+    }
   }
 
   /** Suelta todo (al pausar o abrir un menú). */

@@ -525,7 +525,6 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
 .tb-use { right: calc(var(--sr) + 14px); bottom: calc(var(--sb) + 160px); width: 60px; height: 60px; font-size: 26px; opacity: 0.55; }
 .touch-layer.can-use .tb-use { opacity: 1; background: rgba(232, 178, 58, 0.85); color: #16181e; animation: use-pulse 1.2s ease-in-out infinite; }
 @keyframes use-pulse { 50% { box-shadow: 0 0 0 7px rgba(232, 178, 58, 0.25); } }
-.tb-sell { right: calc(var(--sr) + 68px); bottom: calc(var(--sb) + 68px); display: none; }
 /* Arriba: pausa a la derecha; construir y noche bajo el estado, a la izquierda */
 .tb-pause { top: calc(var(--st) + 6px); right: calc(var(--sr) + 8px); width: 40px; height: 40px; font-size: 15px; }
 .tb-build { left: calc(var(--sl) + 8px); top: calc(var(--st) + 80px); width: 44px; height: 44px; font-size: 18px; }
@@ -533,7 +532,6 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
 .touch-layer.day .tb-night { display: flex; }
 .touch-layer.no-grenade .tb-grenade, .touch-layer.no-medkit .tb-medkit { opacity: 0.35; }
 /* Modo construcción: fuera los controles de combate, vender en la esquina */
-.touch-layer.building .tb-sell { display: flex; }
 .touch-layer.building .tb-reload, .touch-layer.building .tb-grenade, .touch-layer.building .tb-medkit,
 .touch-layer.building .tb-use, .touch-layer.building .stick-right, .touch-layer.building .tb-night { display: none; }
 /* Tienda abierta: solo moverse y cerrar */
@@ -629,11 +627,14 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
 .touch .touch-layer.shop-open .tb-use { display: none; }
 
 /* Barra de construcción en el móvil: una fila que se desliza */
-.touch .build-bar { transform: translateX(-50%); max-width: calc(100vw - 280px); gap: 4px; }
-.touch .build-cards { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; max-width: 100%; padding-bottom: 2px; scrollbar-width: none; }
-.touch .build-card { flex: none; padding: 3px 7px; }
+.touch .build-bar { left: calc(env(safe-area-inset-left, 0px) + 168px); right: calc(env(safe-area-inset-right, 0px) + 146px); bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); transform: none; width: auto; max-width: none; gap: 4px; }
+.touch .build-cards { gap: 4px; flex-wrap: nowrap; overflow-x: auto; justify-content: safe center; max-width: 100%; padding-bottom: 2px; scrollbar-width: none; }
+.touch .build-card { flex: none; width: 46px; padding: 4px 2px 3px; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.touch .build-card .name { display: none; }
+.touch .build-card.hidden { display: none; }
+.touch .build-card .cost { font-size: 11px; justify-self: auto; }
+.touch .build-card .icon { font-size: 19px; }
 .touch .build-card .key, .touch .build-tab-hint { display: none; }
-.touch .build-card .name { font-size: 10px; }
 .touch .build-info { font-size: 11px; padding: 5px 10px; }
 .touch .build-tab { padding: 3px 9px; font-size: 11px; }
 
@@ -781,3 +782,24 @@ table.records td.ini { font: 800 14px ui-monospace, Consolas, monospace; color: 
   background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.35);
 }
 .mbar-fill { height: 100%; width: 100%; transition: width 0.15s linear; }
+
+/* Modo construcción en el móvil: botones de confirmar (✔ / ⬆ / 🔧) y vender, en la esquina del disparo */
+.build-actions {
+  position: absolute; right: calc(var(--sr) + 10px); bottom: calc(var(--sb) + 10px); width: 128px;
+  display: none; flex-direction: column-reverse; gap: 8px; pointer-events: none;
+}
+.touch-layer.building .build-actions { display: flex; }
+.bact {
+  pointer-events: auto; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 54px; padding: 4px 6px; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.25);
+  background: rgba(16, 18, 24, 0.78); color: var(--hud-fg); font: inherit; -webkit-tap-highlight-color: transparent; user-select: none;
+}
+.bact b { font: 800 14px var(--font); white-space: nowrap; }
+.bact small { font: 600 11px ui-monospace, Consolas, monospace; color: var(--hud-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.bact-main { background: rgba(58, 140, 74, 0.9); border-color: rgba(160, 240, 170, 0.6); min-height: 62px; }
+.bact-main small { color: #e6ffe9; }
+.touch-layer.ba-off .bact-main { background: rgba(60, 62, 68, 0.85); border-color: rgba(255, 255, 255, 0.15); opacity: 0.8; }
+.bact-sell { display: none; background: rgba(120, 40, 34, 0.85); border-color: rgba(255, 150, 140, 0.45); }
+.touch-layer.ba-sell .bact-sell { display: flex; }
+.touch-layer.ba-armed .bact-sell { background: rgba(214, 60, 48, 0.95); animation: use-pulse 0.8s ease-in-out infinite; }
+.bact.down { filter: brightness(1.3); transform: scale(0.97); }

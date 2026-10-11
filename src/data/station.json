@@ -77,16 +77,38 @@
       ],
       "tiles": [
         {
-          "ch": "|",
+          "ch": "#",
           "x": 3,
           "y": 0,
           "h": 3
         },
         {
-          "ch": "|",
+          "ch": "#",
           "x": 6,
           "y": 0,
           "h": 3
+        },
+        {
+          "ch": "|",
+          "x": 0,
+          "y": 3
+        },
+        {
+          "ch": "|",
+          "x": 2,
+          "y": 3,
+          "w": 3
+        },
+        {
+          "ch": "|",
+          "x": 6,
+          "y": 3,
+          "w": 2
+        },
+        {
+          "ch": "|",
+          "x": 9,
+          "y": 3
         }
       ],
       "furniture": [
@@ -99,6 +121,7 @@
         },
         {
           "type": "wc",
+          "variant": "lavabo+x",
           "x": 2,
           "y": 0
         },
@@ -111,11 +134,13 @@
         },
         {
           "type": "wc",
+          "variant": "lavabo+x",
           "x": 5,
           "y": 0
         },
         {
           "type": "wc",
+          "variant": "lavabo-x",
           "x": 7,
           "y": 0
         },
@@ -124,7 +149,8 @@
           "x": 9,
           "y": 0,
           "w": 1,
-          "h": 2
+          "h": 2,
+          "rot": 270
         },
         {
           "type": "banco_madera",
@@ -132,28 +158,140 @@
           "y": 4,
           "w": 1,
           "h": 3
+        },
+        {
+          "type": "mesa_guardia",
+          "x": 0,
+          "y": 6,
+          "w": 2,
+          "h": 1
         }
       ],
       "decor": [
+        {
+          "type": "puerta_reja",
+          "x": 1.5,
+          "z": 3.5,
+          "slide": -1
+        },
+        {
+          "type": "puerta_reja",
+          "x": 5.5,
+          "z": 3.5,
+          "slide": -1
+        },
+        {
+          "type": "puerta_reja",
+          "x": 8.5,
+          "z": 3.5,
+          "slide": 1
+        },
+        {
+          "type": "ventanuco",
+          "wall": "N",
+          "at": 0.9
+        },
+        {
+          "type": "ventanuco",
+          "wall": "N",
+          "at": 8.2
+        },
+        {
+          "type": "lampara_jaula",
+          "wall": "N",
+          "at": 1.9
+        },
+        {
+          "type": "lampara_jaula",
+          "wall": "N",
+          "at": 9.4
+        },
+        {
+          "type": "cartel",
+          "wall": "N",
+          "at": 1.5,
+          "sprite": "pintadas_celda",
+          "w": 0.9,
+          "y": 1.15,
+          "maxLevel": 0,
+          "plain": true
+        },
+        {
+          "type": "cartel",
+          "wall": "N",
+          "at": 8.6,
+          "sprite": "palotes",
+          "w": 0.55,
+          "y": 1.2,
+          "maxLevel": 0,
+          "plain": true
+        },
+        {
+          "type": "cartel",
+          "wall": "N",
+          "at": 1.5,
+          "sprite": "normas_calabozo",
+          "w": 0.55,
+          "y": 1.45,
+          "minLevel": 1
+        },
+        {
+          "type": "cartel",
+          "wall": "N",
+          "at": 8.6,
+          "sprite": "normas_calabozo",
+          "w": 0.55,
+          "y": 1.45,
+          "minLevel": 1
+        },
+        {
+          "type": "manta_suelo",
+          "x": 7.7,
+          "z": 2.4,
+          "maxLevel": 0
+        },
         {
           "type": "medicion_pared",
           "wall": "W",
           "at": 4.6
         },
         {
+          "type": "cartel",
+          "wall": "W",
+          "at": 6.25,
+          "sprite": "no_alimentar",
+          "w": 0.85,
+          "y": 1.75
+        },
+        {
           "type": "camara_seguridad",
-          "wall": "N",
-          "at": 9.6,
+          "wall": "E",
+          "at": 4.15,
           "y": 2.3
         },
         {
           "type": "fluorescente",
-          "wall": "W",
-          "at": 2.0
+          "wall": "E",
+          "at": 5.4
+        },
+        {
+          "type": "extintor",
+          "wall": "E",
+          "at": 3.75,
+          "y": 0.7,
+          "minLevel": 1
+        },
+        {
+          "type": "linea",
+          "x": 5.0,
+          "z": 4.25,
+          "w": 10.0,
+          "d": 0.1,
+          "color": 15382844
         },
         {
           "type": "papeles_suelo",
-          "x": 2.2,
+          "x": 2.4,
           "z": 5.2,
           "n": 3,
           "maxLevel": 0
@@ -161,8 +299,13 @@
         {
           "type": "gotera",
           "x": 1.2,
-          "z": 5.6,
+          "z": 5.4,
           "maxLevel": 0
+        },
+        {
+          "type": "papelera",
+          "x": 2.25,
+          "z": 6.7
         }
       ]
     },
@@ -283,6 +426,34 @@
           "d": 1.6,
           "color": 6983864,
           "minLevel": 1
+        },
+        {
+          "type": "cartel",
+          "wall": "E",
+          "at": 2.7,
+          "sprite": "silencio_archivo",
+          "w": 0.8,
+          "y": 1.85
+        },
+        {
+          "type": "tablon_corcho",
+          "wall": "W",
+          "at": 6.0,
+          "w": 1.0,
+          "y": 1.5
+        },
+        {
+          "type": "reloj",
+          "wall": "E",
+          "at": 5.6,
+          "y": 2.1,
+          "w": 0.34
+        },
+        {
+          "type": "papelera",
+          "x": 1.55,
+          "z": 5.4,
+          "spill": true
         }
       ]
     },
@@ -310,7 +481,9 @@
           "at": 3
         }
       ],
-      "upgrades": [],
+      "upgrades": [
+        "luigi"
+      ],
       "furniture": [
         {
           "type": "cafetera",
@@ -384,6 +557,33 @@
           "type": "fluorescente",
           "wall": "E",
           "at": 5.6
+        },
+        {
+          "type": "ventana",
+          "wall": "N",
+          "at": 5.8,
+          "w": 0.9,
+          "y": 1.6
+        },
+        {
+          "type": "tele_pared",
+          "wall": "E",
+          "at": 3.4,
+          "y": 1.95
+        },
+        {
+          "type": "cartel",
+          "wall": "E",
+          "at": 1.3,
+          "sprite": "turnos_tazas",
+          "w": 0.55,
+          "y": 1.75
+        },
+        {
+          "type": "papelera",
+          "x": 4.1,
+          "z": 6.5,
+          "color": 3893845
         }
       ]
     },
@@ -488,6 +688,34 @@
           "z": 4.6,
           "n": 3,
           "maxLevel": 0
+        },
+        {
+          "type": "cartel",
+          "wall": "E",
+          "at": 2.6,
+          "sprite": "retrato_comisario",
+          "w": 0.62,
+          "y": 1.6
+        },
+        {
+          "type": "cartel",
+          "wall": "W",
+          "at": 2.2,
+          "sprite": "diploma",
+          "w": 0.6,
+          "y": 1.65,
+          "minLevel": 1
+        },
+        {
+          "type": "perchero",
+          "x": 7.55,
+          "z": 6.45
+        },
+        {
+          "type": "papelera",
+          "x": 1.4,
+          "z": 2.6,
+          "color": 5913382
         }
       ]
     },
@@ -537,9 +765,9 @@
           "h": 1,
           "byLevel": [
             "trastos",
-            "armero",
-            "armero",
-            "armero"
+            "armero_cortas",
+            "armero_cortas",
+            "armero_cortas"
           ]
         },
         {
@@ -585,7 +813,7 @@
         {
           "type": "extintor",
           "wall": "W",
-          "at": 2.6
+          "at": 3.6
         },
         {
           "type": "fluorescente",
@@ -603,6 +831,35 @@
           "x": 7.6,
           "z": 5.6,
           "maxLevel": 0
+        },
+        {
+          "type": "panel_armas",
+          "wall": "W",
+          "at": 2.2,
+          "w": 1.4,
+          "y": 1.45
+        },
+        {
+          "type": "chalecos_armeria",
+          "wall": "E",
+          "at": 5.0,
+          "w": 1.3
+        },
+        {
+          "type": "cartel",
+          "wall": "E",
+          "at": 6.55,
+          "sprite": "diana_zombi",
+          "w": 0.5,
+          "y": 1.55
+        },
+        {
+          "type": "linea",
+          "x": 4.5,
+          "z": 3.0,
+          "w": 3.4,
+          "d": 0.1,
+          "color": 15382844
         }
       ]
     },
@@ -764,6 +1021,36 @@
           "d": 3.0,
           "n": 50,
           "minLevel": 2
+        },
+        {
+          "type": "cartel",
+          "wall": "N",
+          "at": 35.0,
+          "sprite": "agente_mes",
+          "w": 0.6,
+          "y": 1.6
+        },
+        {
+          "type": "planta_deco",
+          "x": 0.5,
+          "z": 0.45,
+          "s": 0.9
+        },
+        {
+          "type": "planta_deco",
+          "x": 46.5,
+          "z": 0.45,
+          "s": 0.9
+        },
+        {
+          "type": "papelera",
+          "x": 9.6,
+          "z": 0.35
+        },
+        {
+          "type": "papelera",
+          "x": 30.6,
+          "z": 0.35
         }
       ]
     },
@@ -886,6 +1173,34 @@
           "d": 6.0,
           "color": 7913658,
           "minLevel": 1
+        },
+        {
+          "type": "ventana",
+          "wall": "W",
+          "at": 1.8,
+          "w": 1.0,
+          "y": 1.6
+        },
+        {
+          "type": "cartel",
+          "wall": "W",
+          "at": 3.4,
+          "sprite": "lavese_manos",
+          "w": 0.45,
+          "y": 1.6
+        },
+        {
+          "type": "negatoscopio",
+          "wall": "N",
+          "at": 6.4,
+          "w": 0.7,
+          "y": 1.6
+        },
+        {
+          "type": "papelera",
+          "x": 1.1,
+          "z": 5.9,
+          "color": 13781566
         }
       ]
     },
@@ -1087,6 +1402,30 @@
           "z": 0.5,
           "s": 0.8,
           "minLevel": 2
+        },
+        {
+          "type": "cartel",
+          "wall": "N",
+          "at": 8.7,
+          "sprite": "turno_display",
+          "w": 0.7,
+          "y": 2.15,
+          "glow": true
+        },
+        {
+          "type": "dispensador_turnos",
+          "x": 4.55,
+          "z": 3.3
+        },
+        {
+          "type": "papelera",
+          "x": 0.45,
+          "z": 7.6
+        },
+        {
+          "type": "papelera",
+          "x": 14.55,
+          "z": 7.6
         }
       ]
     },
@@ -1198,6 +1537,25 @@
           "d": 0.12,
           "color": 15382844,
           "minLevel": 1
+        },
+        {
+          "type": "cartel",
+          "wall": "N",
+          "at": 2.3,
+          "sprite": "no_tocar_pruebas",
+          "w": 0.75,
+          "y": 1.75
+        },
+        {
+          "type": "palet",
+          "x": 7.1,
+          "z": 1.4
+        },
+        {
+          "type": "carretilla",
+          "x": 2.0,
+          "z": 1.6,
+          "rot": 20
         }
       ]
     },
@@ -1299,6 +1657,27 @@
           "d": 1.0,
           "color": 7913658,
           "minLevel": 2
+        },
+        {
+          "type": "ventana",
+          "wall": "E",
+          "at": 1.9,
+          "w": 0.9,
+          "h": 0.5,
+          "y": 2.0
+        },
+        {
+          "type": "cartel",
+          "wall": "W",
+          "at": 2.0,
+          "sprite": "aviso_duchas",
+          "w": 0.5,
+          "y": 1.75
+        },
+        {
+          "type": "papelera",
+          "x": 6.3,
+          "z": 1.4
         }
       ]
     },
@@ -1314,7 +1693,8 @@
         "transformador",
         "generador_emergencia",
         "focos",
-        "torreta_tejado"
+        "torreta_tejado",
+        "barriles"
       ],
       "sign": {
         "x": 46.4,

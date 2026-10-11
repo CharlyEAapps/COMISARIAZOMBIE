@@ -276,10 +276,14 @@ export class AudioSystem {
     const bus = { on: (type, fn) => this._unsub.push(this.game.bus.on(type, fn)) };
     const P = () => this.game.player.position;
     bus.on('weapon:fired', ({ id }) => this.playAt(`shot_${id}`, P()));
-    bus.on('weapon:melee', ({ hits }) => { this.playAt('swing', P()); if (hits) this.playAt('melee_hit', P()); });
+    bus.on('weapon:melee', ({ hits, id }) => { this.playAt(id === 'sable' ? 'swing_sable' : 'swing', P()); if (hits) this.playAt('melee_hit', P()); });
+    bus.on('weapon:overheat', () => this.play('overheat'));
+    bus.on('weapon:locked', () => this.play('laser_locked'));
+    bus.on('weapon:cooled', () => this.play('cooled'));
+    bus.on('weapon:deflect', ({ x, z }) => this.play('deflect', x, z));
     bus.on('weapon:reload', () => this.play('reload'));
     bus.on('weapon:reloaded', () => this.play('reloaded'));
-    bus.on('weapon:switched', () => this.play('switch'));
+    bus.on('weapon:switched', ({ id }) => this.play(id === 'sable' ? 'saber_on' : 'switch'));
     bus.on('weapon:empty', () => this.play('empty'));
     bus.on('grenade:thrown', () => this.playAt('grenade_throw', P()));
     bus.on('zombie:hit', ({ zombie }) => this.playAt('hit_flesh', zombie.pos, HIT_OPTS));

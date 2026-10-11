@@ -8,6 +8,7 @@
   "objectives": [
     {
       "id": "kills",
+      "short": "Bajas",
       "text": "Reduce la lista de espera: abate a {n} zombis esta noche",
       "base": 10,
       "perNight": 6,
@@ -15,6 +16,7 @@
     },
     {
       "id": "maxDamage",
+      "short": "Daño máx.",
       "text": "Vuelve de una pieza: recibe menos de {n} de daño esta noche",
       "base": 60,
       "perNight": -4,
@@ -23,6 +25,7 @@
     },
     {
       "id": "combo",
+      "short": "Combo",
       "text": "Productividad: consigue un combo de {n} (RR. HH. está mirando)",
       "base": 8,
       "perNight": 2,

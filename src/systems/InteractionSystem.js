@@ -75,6 +75,11 @@ export class InteractionSystem {
     if (d.requiresPower && !game.power.generator) return { ok: false, reason: 'Sin corriente: repara el transformador' };
     const e = d.effect;
     const p = game.player;
+    // Interacciones de misiones (missions.json): cada misión dice cuándo se pueden usar.
+    if (e.mission) {
+      const r = game.missions?.availability(e.mission, it);
+      if (!r || !r.ok) return r ?? { ok: false, reason: 'Ahora no' };
+    }
     if (e.repairTransformer) {
       const cost = game.build.transformerRepairCost();
       if (!cost) return { ok: false, reason: 'Funciona correctamente' };
@@ -184,9 +189,14 @@ export class InteractionSystem {
     }
     if (e.skipDay) game.dayNight.skipDay();
     if (e.objective) {
-      const o = game.score.pickObjective(game.dayNight.night);
-      msg = `📋 Caso aceptado: ${o.text} (+${o.reward})`;
+      // Pizarra: un caso clásico (contador) o una misión original (missions.json).
+      if (game.missions) msg = game.missions.offerCase(game.dayNight.night);
+      else {
+        const o = game.score.pickObjective(game.dayNight.night);
+        msg = `📋 Caso aceptado: ${o.text} (+${o.reward})`;
+      }
     }
+    if (e.mission) msg = game.missions.interact(e.mission, it);
     if (e.decoy) {
       game.zombies.setDecoy(it.x, it.z, e.decoy, e.decoyRadius);
       game.bus.emit('siren', { id: it.id, seconds: e.decoy });

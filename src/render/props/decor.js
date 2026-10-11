@@ -77,6 +77,7 @@ add('cartel', {
   build(b, fp) {
     const spr = fp.p.sprite, w = fp.p.w ?? 1, cy = fp.p.y ?? 2.0;
     const h = fp.p.h ?? w / spriteAspect(spr);
+    if (fp.p.plain) { b.sprite(spr, 0, cy, 0.006, w, h); return; } // pintado en la pared, sin marco
     backing(b, cy, w, h);
     b.sprite(spr, 0, cy, 0.033, w, h, { screen: !!fp.p.glow });
   },
@@ -311,4 +312,15 @@ add('arbusto', {
 
 add('planta_deco', {
   build(b, fp) { plantInPot(b, 0, 0, fp.p.s ?? 1, fp.rnd, C.terracotta); },
+});
+
+add('papelera', {
+  build(b, fp) {
+    const rnd = fp.rnd, col = fp.p.color ?? 0x5b646e;
+    b.cyl(0, 0, 0, 0.16, 0.13, 0.36, col, 10);
+    b.cyl(0, 0.36, 0, 0.165, 0.165, 0.02, C.iron, 10, { ao: 0 });
+    b.cyl(0, 0.33, 0, 0.14, 0.14, 0.01, 0x2b2e33, 10, { ao: 0 });
+    for (let k = 0; k < 3; k++) b.box((rnd() - 0.5) * 0.12, 0.34 + k * 0.02, (rnd() - 0.5) * 0.12, 0.09, 0.07, 0.08, k % 2 ? C.paper : C.paperD, { ry: rnd() * 3, rx: rnd(), ao: 0.05 });
+    if (fp.p.spill) for (let k = 0; k < 2; k++) b.box(0.25 + k * 0.1, 0.004, (rnd() - 0.5) * 0.3, 0.1, 0.06, 0.08, C.paperD, { ry: rnd() * 3, ao: 0.05 });
+  },
 });

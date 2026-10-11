@@ -94,3 +94,54 @@ export function cardboard(b, x, y, z, w, h, d, ry = 0, color = C.kraft) {
   b.box(x, y + h - 0.004, z, w * 0.18, 0.008, d + 0.004, C.kraftL, { ry, ao: 0 });
   b.box(x, y + h * 0.5, z, w + 0.004, h * 0.12, d * 0.0 + 0.004, C.kraftD, { ry, ao: 0, oz: d / 2 });
 }
+
+// ---------------------------------------------------------------- armas de la armería
+// Perfiles de armas reconocibles hechos con cajas: [u0, u1, v0, v1, grosor, color]; u va de la
+// culata (0) a la boca, v hacia arriba (0 = eje del cañón aprox.). Colores: W madera, M metal
+// pavonado, B negro, O verde oliva, S acero claro.
+const GUN_COL = { W: 0x8a5e3a, M: 0x3a3f46, B: 0x24272c, O: 0x4a5236, S: 0x9aa3ad };
+export const GUNS = {
+  escopeta: [
+    [0, 0.3, -0.05, 0.04, 0.04, 'W'], [0, 0.11, -0.09, -0.05, 0.04, 'W'], [0, 0.02, -0.09, 0.04, 0.045, 'B'],
+    [0.28, 0.36, -0.045, 0.03, 0.035, 'W'], [0.34, 0.52, -0.03, 0.06, 0.045, 'M'], [0.38, 0.45, -0.075, -0.03, 0.012, 'M'],
+    [0.52, 1.0, 0.03, 0.056, 0.03, 'M'], [0.52, 0.88, -0.004, 0.026, 0.03, 'M'], [0.58, 0.78, -0.022, 0.042, 0.045, 'W'],
+    [0.975, 0.99, 0.056, 0.07, 0.012, 'S'],
+  ],
+  fusil: [
+    [0, 0.03, -0.065, 0.07, 0.05, 'B'], [0.03, 0.22, -0.04, 0.06, 0.04, 'B'], [0.2, 0.29, 0.01, 0.05, 0.035, 'B'],
+    [0.28, 0.55, -0.02, 0.07, 0.05, 'M'], [0.34, 0.5, 0.07, 0.1, 0.03, 'B'], [0.36, 0.38, 0.1, 0.13, 0.015, 'B'],
+    [0.3, 0.35, -0.13, -0.02, 0.035, 'B'], [0.42, 0.48, -0.1, -0.02, 0.03, 'B'], [0.435, 0.5, -0.17, -0.1, 0.03, 'B'],
+    [0.55, 0.78, -0.015, 0.06, 0.05, 'O'], [0.74, 0.76, 0.06, 0.11, 0.015, 'B'], [0.78, 0.92, 0.012, 0.034, 0.022, 'M'],
+    [0.9, 0.94, 0.006, 0.04, 0.03, 'B'],
+  ],
+  subfusil: [
+    [0, 0.03, -0.05, 0.05, 0.04, 'B'], [0.03, 0.14, 0.0, 0.016, 0.03, 'M'], [0.03, 0.14, 0.034, 0.05, 0.03, 'M'],
+    [0.14, 0.4, -0.01, 0.07, 0.045, 'B'], [0.18, 0.23, -0.11, -0.01, 0.035, 'B'], [0.28, 0.33, -0.1, -0.01, 0.028, 'M'],
+    [0.3, 0.36, -0.17, -0.1, 0.028, 'M'], [0.36, 0.48, -0.02, 0.06, 0.045, 'B'], [0.48, 0.56, 0.014, 0.034, 0.02, 'M'],
+    [0.36, 0.4, 0.07, 0.1, 0.015, 'B'],
+  ],
+  pistola: [
+    [0, 0.19, 0.025, 0.062, 0.03, 'B'], [0.02, 0.17, 0, 0.025, 0.028, 'M'], [0.004, 0.05, -0.09, 0, 0.032, 'B'],
+    [0.045, 0.095, -0.032, 0, 0.012, 'M'], [0.17, 0.185, 0.062, 0.072, 0.01, 'B'],
+  ],
+  porra: [
+    [0, 0.6, -0.016, 0.016, 0.032, 'B'], [0.12, 0.15, -0.14, -0.016, 0.03, 'B'], [0.11, 0.16, -0.17, -0.14, 0.036, 'B'],
+  ],
+};
+
+/**
+ * Arma de la armería en (x, y, z): y es la altura del eje (v = 0) y x la culata (u = 0).
+ * o.mode: 'side' perfil de cara a +Z (boca hacia +X, o -X con flip), 'up' en vertical con la boca
+ * arriba (perfil de cara a +Z), 'flat' tumbada sobre una mesa (perfil en el plano XZ).
+ * o.s escala; o.color pinta todo de un color (siluetas del tablero de herramientas) y o.t fija el grosor.
+ */
+export function gun(b, kind, x, y, z, o = {}) {
+  const s = o.s ?? 1, f = o.flip ? -1 : 1, mode = o.mode ?? 'side';
+  for (const [u0, u1, v0, v1, th, c] of GUNS[kind]) {
+    const col = o.color ?? GUN_COL[c], t = o.t ?? th * s;
+    const uc = ((u0 + u1) / 2) * s, w = (u1 - u0) * s, h = (v1 - v0) * s;
+    if (mode === 'side') b.box(x + f * uc, y + v0 * s, z, w, h, t, col, { ao: 0.05 });
+    else if (mode === 'up') b.box(x - f * ((v0 + v1) / 2) * s, y + u0 * s, z, h, w, t, col, { ao: 0.05 });
+    else b.box(x + f * uc, y, z - ((v0 + v1) / 2) * s, w, t, h, col, { ao: 0.05 });
+  }
+}

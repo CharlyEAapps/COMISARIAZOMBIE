@@ -10,11 +10,11 @@
         1500
       ],
       "desc": [
-        "Puertas blindadas en las 4 puertas del edificio desde que las compras: se suben solas al amanecer y se bajan al anochecer. Si las rompen, se reponen al anochecer.",
-        "Persianas con +50 % de vida.",
-        "Persianas con el doble de vida."
+        "Persianas blindadas con sensor en las 4 puertas del edificio: desde que las compras están siempre cerradas y se abren solas cuando te acercas (1,5 m). Se cierran en cuanto el hueco queda libre; si te siguen zombis, esperan a que pasen. Los zombis solos no las abren: tienen que romperlas. Si las rompen, se reponen al anochecer.",
+        "Persianas con sensor y +50 % de vida.",
+        "Persianas con sensor y el doble de vida."
       ],
-      "flavor": "Las mismas que tiene el banco de enfrente. El banco ya no está, las persianas sí.",
+      "flavor": "Las mismas que tiene el banco de enfrente, con sensor de presencia. El banco ya no está; el sensor sigue saludando a todo el que pasa.",
       "doorLevel": 1,
       "hpMul": [
         1,
@@ -26,10 +26,11 @@
         "d": 0.34,
         "y": 2.2
       },
-      "msg": "🛡️ Persianas blindadas bajadas en {n} accesos. Ábrelas con {key} si quieres salir.",
-      "msgOpen": "🛡️ Persianas bajadas en {n} accesos (alguna se ha quedado abierta: había alguien en medio).",
-      "msgDay": "🛡️ Persianas blindadas instaladas en {n} accesos. De día están subidas; al anochecer bajan solas (ábrelas con {key}).",
-      "msgUp": "🛡️ Amanece: persianas subidas."
+      "msg": "🛡️ Noche: persianas con sensor en {n} accesos. Se abren solas al acercarte; los zombis tendrán que romperlas.",
+      "msgOpen": "🛡️ Noche: persianas con sensor en {n} accesos (alguna sigue abierta: hay alguien en medio).",
+      "msgDay": "🛡️ Persianas con sensor instaladas en {n} accesos: siempre cerradas, se abren solas cuando te acercas.",
+      "sensorRange": 1.5,
+      "closeDelay": 0.6
     },
     "portones": {
       "icon": "🚧",
@@ -72,7 +73,8 @@
         ]
       ],
       "msg": "🚧 Portones del recinto cerrados en {n} accesos. Ábrelos con {key} si quieres salir.",
-      "msgDay": "🚧 Portones del recinto instalados en los {n} accesos de la valla. De día están abiertos; al anochecer se cierran solos."
+      "msgDay": "🚧 Portones del recinto instalados en los {n} accesos de la valla. De día están abiertos; al anochecer se cierran solos.",
+      "msgUp": "🚧 Amanece: portones del recinto abiertos."
     },
     "camaras": {
       "icon": "📹",
@@ -92,7 +94,7 @@
       ],
       "specialRangeMul": [
         1.6,
-        4.0
+        4
       ],
       "y": 2.35,
       "blinkHz": 1.2,
@@ -168,7 +170,7 @@
         25.5
       ],
       "x": 30.5,
-      "z": 18.0,
+      "z": 18,
       "y": 2.6,
       "spin": 1.6,
       "mastH": 1.4
@@ -327,7 +329,7 @@
       "flavor": "Jaula homologada contra vándalos. Contra vándalos vivos, se entiende.",
       "hpBonus": [
         0.5,
-        1.0,
+        1,
         1.5
       ],
       "dayRepair": [
@@ -341,7 +343,7 @@
         "height": [
           0.9,
           1.5,
-          2.0
+          2
         ]
       }
     },
@@ -356,7 +358,7 @@
       ],
       "flavor": "Arranca a la tercera. Como el comisario los lunes.",
       "seconds": 60,
-      "x": 41.0,
+      "x": 41,
       "z": 10.5,
       "rotDeg": 90,
       "onMsg": "🔋 ¡Ha caído el transformador! El generador de emergencia aguanta la luz {s} s: repáralo.",
@@ -400,15 +402,17 @@
       "name": "Torre de vigilancia",
       "prices": [
         1200,
+        1500,
         1500
       ],
       "desc": [
         "Torreta en lo alto de la torre del patio sur: munición infinita, no se puede destruir y solo dispara fuera del edificio.",
-        "Torreta pesada: más daño y cadencia."
+        "Torreta pesada: más daño y cadencia.",
+        "Torres en los 3 accesos de la valla (oeste, este y sur), cada una con su torreta ligera de munición infinita. Lo que hubieras construido en su sitio se retira y se te devuelve lo invertido."
       ],
-      "flavor": "Licencia de obra pendiente desde 2009. Ya no hay a quién pedirla.",
-      "x": 39.0,
-      "z": 48.0,
+      "flavor": "Licencia de obra pendiente desde 2009. Ya no hay a quién pedirla, así que hemos hecho tres más.",
+      "x": 39,
+      "z": 48,
       "roofY": 3.3,
       "range": 16,
       "spreadDeg": 2.5,
@@ -422,7 +426,104 @@
           "fireRate": 5
         }
       ],
-      "hitY": 1.0
+      "hitY": 1,
+      "gateTowers": {
+        "fromLevel": 3,
+        "size": 2,
+        "spots": [
+          {
+            "x": 9,
+            "z": 14,
+            "rot": 90,
+            "name": "oeste"
+          },
+          {
+            "x": 69,
+            "z": 28,
+            "rot": 270,
+            "name": "este"
+          },
+          {
+            "x": 28,
+            "z": 62,
+            "rot": 180,
+            "name": "sur"
+          }
+        ],
+        "range": 13,
+        "spreadDeg": 3,
+        "levels": [
+          {
+            "damage": 14,
+            "fireRate": 3
+          }
+        ],
+        "flowCost": 100000,
+        "blocksShot": false,
+        "msg": "🎯 Torres de vigilancia en los 3 accesos de la valla. Ya no entra nadie sin que alguien le dispare primero.",
+        "refundMsg": "🎯 Se han retirado {n} construcciones del sitio de las torres: te devolvemos {p} puntos."
+      }
+    },
+    "barriles": {
+      "icon": "🛢️",
+      "name": "Barriles explosivos",
+      "prices": [
+        450,
+        750
+      ],
+      "desc": [
+        "6 barriles rojos repartidos por el parking. Dispárales (o tírales una granada) cuando pasen zombis al lado. Se reponen cada anochecer. Ojo: a ti también te alcanzan.",
+        "10 barriles por el parking. Más barriles, más diversión, más papeleo."
+      ],
+      "flavor": "Gasolina incautada en 2019. Era una prueba de un delito; si explota, ya no hay prueba ni delito.",
+      "spots": [
+        [
+          18,
+          42
+        ],
+        [
+          24,
+          45
+        ],
+        [
+          47,
+          46
+        ],
+        [
+          56,
+          44
+        ],
+        [
+          18,
+          52
+        ],
+        [
+          44,
+          54
+        ],
+        [
+          62,
+          52
+        ],
+        [
+          25,
+          59
+        ],
+        [
+          48,
+          60
+        ],
+        [
+          12,
+          46
+        ]
+      ],
+      "count": [
+        6,
+        10
+      ],
+      "msg": "🛢️ {n} barriles explosivos en el parking. Dispárales cuando haya zombis cerca (y tú lejos).",
+      "nightMsg": "🛢️ Barriles repuestos en el parking: {n}."
     },
     "alarma": {
       "icon": "🚨",
@@ -458,6 +559,77 @@
       "beaconY": 2.6,
       "beaconSize": 0.34,
       "stunSeconds": 3
+    },
+    "luigi": {
+      "icon": "🐕",
+      "name": "Luigi, el chihuahua",
+      "prices": [
+        600,
+        1100
+      ],
+      "desc": [
+        "Luigi va contigo a todas partes. Si un zombi se te acerca a menos de 4 m, corre a morderle (6 de daño cada 0,8 s). No puede morir: los zombis le dan asco. Si se aleja más de 8 m, vuelve contigo.",
+        "Luigi con chaleco: 10 de daño por mordisco y uno de cada cuatro deja al zombi aturdido un momento."
+      ],
+      "flavor": "Pesa 2 kilos, de los cuales 1,9 son mala leche.",
+      "flavors": [
+        "Pesa 2 kilos, de los cuales 1,9 son mala leche.",
+        "Lo adoptamos de la perrera municipal. La perrera nos dio las gracias. Por escrito. Con lágrimas.",
+        "Los zombis no se lo comen: dicen que sabe a rencor.",
+        "Ha mordido a tres comisarios, un alcalde y un cartero. El cartero sigue sin volver.",
+        "Tiembla todo el rato. No es miedo: es que vibra en la frecuencia del odio.",
+        "Su chaleco antibalas es talla XXS. Lo hicimos con un posavasos.",
+        "Muerde tobillos desde 2018. Ahora los tobillos están podridos y le da igual."
+      ],
+      "bed": {
+        "x": 41.6,
+        "z": 14.72,
+        "w": 0.9,
+        "d": 0.62,
+        "plateY": 0.62,
+        "plateZ": 14.66
+      },
+      "radius": 0.2,
+      "followDist": 1.3,
+      "walkSpeed": 4.5,
+      "runSpeed": 8,
+      "threatRange": 4,
+      "leashRange": 8,
+      "teleportRange": 16,
+      "retarget": 0.25,
+      "biteRange": 0.55,
+      "biteInterval": 0.8,
+      "damage": [
+        6,
+        10
+      ],
+      "stunChance": [
+        0,
+        0.25
+      ],
+      "stunSeconds": 1.2,
+      "knockback": 0.04,
+      "yelpChance": 0.15,
+      "yelpSeconds": 0.55,
+      "yelpSpeed": 3.5,
+      "barkSeconds": 0.45,
+      "barkCooldown": 3,
+      "hopSeconds": 0.3,
+      "barks": [
+        "¡Guau!",
+        "¡Grrr!",
+        "¡Yap yap!",
+        "¡Guau guau!"
+      ],
+      "yelps": [
+        "¡Caing!",
+        "¡Kaing kaing!",
+        "¡Ay, ay!"
+      ],
+      "buyMsg": "🐕 Luigi sale de su cama y se viene contigo. Que Dios se apiade de los zombis.",
+      "vestMsg": "🐕 Luigi estrena chaleco. Se lo ha mordido dos veces, pero lo lleva.",
+      "stuckSeconds": 2.5,
+      "trotStride": 9
     }
   }
 }

@@ -1,4 +1,4 @@
-import { C, PI, monitor, keyboard, mug, papers, deskLamp, cardboard } from './common.js';
+import { C, PI, monitor, keyboard, mug, papers, deskLamp, cardboard, phone, gun } from './common.js';
 import { spriteAspect } from './Atlas.js';
 import { STATION, GLOBAL_MAX } from '../../systems/Station.js';
 
@@ -489,5 +489,326 @@ addD('fachada', {
     b.sprite('nivel', x + lw / 2, L.y, 0.043, lw, lh, { screen: lit });
     x += lw + 0.05;
     for (const ch of digits) { b.sprite(`dig_${ch}`, x + dw / 2, L.y, 0.043, dw, dh, { screen: true }); x += dw; }
+  },
+});
+
+// ================================================================ CALABOZOS
+
+/** Color de las rejas con el nivel de los calabozos (el mismo que les pone DespachoRenderer). */
+function barColor(lvl) {
+  const cols = STATION.rooms.find((r) => r.id === 'calabozos')?.barColors ?? ['#3a3d42'];
+  return parseInt(cols[Math.min(lvl, cols.length - 1)].slice(1), 16);
+}
+
+/** Mesa del guardia: libro de registro, llavero, emisora, flexo y monitor de las celdas. */
+addF('mesa_guardia', {
+  build(b, fp) {
+    const w = fp.lw - 0.1, d = fp.ld - 0.2, lvl = fp.level ?? 0, rnd = fp.rnd;
+    b.box(0, 0.72, 0, w, 0.04, d, lvl ? 0x8d97a1 : 0xb9ad8f);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(sx * (w / 2 - 0.05), 0, sz * (d / 2 - 0.05), 0.05, 0.72, 0.05, C.iron);
+    b.box(w / 2 - 0.3, 0.3, 0, 0.45, 0.42, d - 0.1, lvl ? C.steelD : 0x9aa0a8);         // cajonera
+    for (let k = 0; k < 2; k++) b.box(w / 2 - 0.3, 0.35 + k * 0.2, d / 2 - 0.04, 0.12, 0.02, 0.02, C.iron, { ao: 0 });
+    // libro de registro abierto y bolígrafo atado con cuerda
+    b.box(-0.35, 0.76, 0.05, 0.42, 0.03, 0.3, C.redD, { ry: 0.08 });
+    b.box(-0.35, 0.79, 0.05, 0.38, 0.006, 0.27, C.paper, { ry: 0.08, ao: 0 });
+    b.box(-0.35, 0.796, 0.05, 0.004, 0.004, 0.27, C.paperD, { ry: 0.08, ao: 0 });
+    b.box(-0.1, 0.79, 0.12, 0.13, 0.012, 0.012, C.blue, { ry: 0.5, ao: 0 });
+    // llavero de las celdas
+    b.cyl(0.05, 0.76, -0.12, 0.06, 0.06, 0.01, C.yellow, 10, { ao: 0 });
+    for (let k = 0; k < 4; k++) b.box(0.05 + Math.cos(k) * 0.06, 0.765, -0.12 + Math.sin(k) * 0.06, 0.07, 0.01, 0.02, C.yellow, { ry: k, ao: 0 });
+    monitor(b, 0.45, 0.76, -0.15, { screen: 'pantalla_cam', w: 0.36, h: 0.22 });
+    deskLamp(b, -0.75, 0.76, -0.12, 0.6);
+    mug(b, 0.2, 0.76, 0.15, lvl ? C.navy : C.white);
+    if (!lvl) { papers(b, 0.0, 0.76, -0.05, rnd, 4); cardboard(b, 0.62, 0.76, 0.12, 0.2, 0.1, 0.16, 0.4, C.kraftL); } // caja de donuts
+    else phone(b, 0.0, 0.76, -0.05, 0.3, C.steelD);
+  },
+  companions: (fp) => [{ type: 'silla_oficina', lx: -0.2, lz: fp.ld / 2 + 0.12, rel: 180 }],
+});
+
+/**
+ * Puerta de reja corredera de una celda, abierta: corre sobre la reja vecina (p.slide = -1 / 1)
+ * por el lado del pasillo. Nivel 0 oxidada y descolgada; I candado nuevo; II cerradura con piloto.
+ */
+addD('puerta_reja', {
+  build(b, fp) {
+    const lvl = fp.level ?? 0, s = fp.p.slide ?? -1, col = barColor(lvl);
+    const z = 0.14, H = 2.2, W = 0.9;
+    b.box(s * 0.45, 2.24, z, 1.9, 0.06, 0.06, C.iron, { ao: 0 });                         // carril
+    b.push(s * 0.82, 0, z);
+    const tilt = lvl ? 0 : 0.02;
+    for (const y of [0.06, 1.05, H - 0.05]) b.box(0, y, 0, W, 0.06, 0.05, col, { ao: 0, rz: tilt });
+    for (const x of [-W / 2 + 0.03, W / 2 - 0.03]) b.box(x, 0.06, 0, 0.06, H - 0.06, 0.05, col, { ao: 0.05, rz: tilt });
+    for (let k = 1; k < 8; k++) b.box(-W / 2 + k * (W / 8), 0.08, 0, 0.03, H - 0.1, 0.03, col, { ao: 0, rz: tilt });
+    b.box(0, 0.95, 0.02, 0.36, 0.22, 0.012, col, { ao: 0 });                               // bandeja para la comida
+    // cerradura en el canto que cierra (hacia el hueco)
+    const lx = -s * (W / 2 - 0.06);
+    b.box(lx, 0.98, 0.035, 0.12, 0.2, 0.06, lvl ? C.steelD : 0x6b4a33);
+    if (lvl === 1) b.box(lx, 0.86, 0.07, 0.07, 0.08, 0.025, C.yellow, { ao: 0 });         // candado
+    if (lvl >= 2) b.box(lx, 1.06, 0.068, 0.04, 0.03, 0.006, C.green, { layer: 'glow', ao: 0 });
+    for (const x of [-0.3, 0.3]) b.cyl(x, H + 0.0, 0, 0.035, 0.035, 0.04, C.iron, 8, { rx: PI / 2, ao: 0 }); // ruedas
+    b.pop();
+  },
+});
+
+/** Ventanuco alto con barrotes (pared exterior de las celdas). */
+addD('ventanuco', {
+  build(b, fp) {
+    const cy = fp.p.y ?? 2.0, w = 0.62, h = 0.34, lvl = fp.level ?? 0;
+    b.box(0, cy - h / 2 - 0.05, 0.02, w + 0.1, h + 0.1, 0.04, 0x8a8f86, { ao: 0 });
+    b.box(0, cy - h / 2, 0.03, w, h, 0.02, lvl ? 0x9fc8e8 : 0x8aa0aa, { ao: 0 });
+    b.box(0, cy - h / 2, 0.041, w * 0.45, h, 0.004, 0xdbeef8, { ao: 0, rz: 0.0 });        // reflejo
+    for (let k = 0; k < 5; k++) b.box(-w / 2 + (k + 0.5) * (w / 5), cy - h / 2, 0.06, 0.025, h, 0.025, lvl ? C.iron : RUST, { ao: 0 });
+    b.box(0, cy - h / 2 - 0.07, 0.05, w + 0.12, 0.04, 0.08, 0x8a8f86, { ao: 0 });         // alféizar
+  },
+});
+
+/** Plafón enrejado antivandálico (con su luz). */
+addD('lampara_jaula', {
+  build(b, fp) {
+    const y = fp.p.y ?? 2.32;
+    b.box(0, y - 0.02, 0.0, 0.34, 0.12, 0.04, C.iron, { ao: 0 });
+    b.box(0, y, 0.08, 0.26, 0.08, 0.14, C.lampWarm, { layer: 'glow', ao: 0 });
+    for (const x of [-0.12, -0.04, 0.04, 0.12]) b.box(x, y - 0.03, 0.08, 0.015, 0.14, 0.18, C.iron, { ao: 0 });
+    b.box(0, y - 0.03, 0.17, 0.3, 0.14, 0.015, C.iron, { ao: 0 });
+    b.light('lampara', 0, y - 0.25, 0.6, 0xfff3d6);
+  },
+});
+
+/** Manta tirada en el suelo de una celda (nivel 0). */
+addD('manta_suelo', {
+  build(b, fp) {
+    const rnd = fp.rnd;
+    b.box(0, 0.005, 0, 0.7, 0.03, 0.5, 0x7d7f7a, { ry: rnd(), ao: 0.05 });
+    b.box(0.15, 0.03, 0.05, 0.35, 0.05, 0.3, 0x6f716c, { ry: rnd() * 2, ao: 0.05 });
+    b.box(-0.2, 0.004, -0.15, 0.12, 0.012, 0.18, C.paperD, { ry: rnd() * 3, ao: 0 });     // carta a mamá
+  },
+});
+
+
+// ================================================================ ARMERÍA
+
+/**
+ * Tablero de pared con pistolas, porras, grilletes y emisoras sobre sus siluetas pintadas: lo que
+ * falta (nivel bajo) deja a la vista la silueta, como en los talleres.
+ */
+addD('panel_armas', {
+  build(b, fp) {
+    const lvl = fp.level ?? 0, cy = fp.p.y ?? 1.45, w = fp.p.w ?? 1.4, h = 0.95, SIL = 0x3f444c;
+    const fill = [3, 5, 8, 10][Math.min(lvl, 3)];
+    b.box(0, cy - h / 2, 0.015, w, h, 0.03, 0x6c7580, { ao: 0 });
+    b.box(0, cy - h / 2 - 0.03, 0.02, w + 0.06, 0.04, 0.05, C.iron, { ao: 0 });
+    b.box(0, cy + h / 2 - 0.01, 0.02, w + 0.06, 0.04, 0.05, C.iron, { ao: 0 });
+    let n = 0;
+    const put = (kind, x, y, o = {}) => {
+      const has = ((n++ * 7) % 10) < fill;
+      gun(b, kind, x, y, 0.04, has ? o : { ...o, color: SIL, t: 0.004 });
+    };
+    for (let k = 0; k < 4; k++) put('pistola', -w / 2 + 0.12 + k * 0.3, cy + 0.27, { s: 1.25 });
+    put('porra', -w / 2 + 0.1, cy - 0.05, { s: 1.0 });
+    put('porra', -w / 2 + 0.1, cy - 0.28, { s: 1.0 });
+    put('subfusil', 0.02, cy - 0.12, { s: 1.0 });
+    // grilletes y una emisora (siempre: los zombis no se los llevan)
+    for (const dx of [-0.05, 0.05]) b.cyl(0.32 + dx + 0.25, cy - 0.33, 0.045, 0.045, 0.045, 0.012, C.steelL, 8, { rx: PI / 2, ao: 0 });
+    b.box(0.35, cy - 0.42, 0.05, 0.07, 0.17, 0.04, C.black, { ao: 0.05 });
+    b.box(0.37, cy - 0.25, 0.05, 0.012, 0.09, 0.012, C.black, { ao: 0 });
+    b.box(0.35, cy - 0.33, 0.071, 0.04, 0.04, 0.004, lvl ? C.green : C.red, { layer: 'glow', ao: 0 });
+  },
+});
+
+/** Chalecos antibalas con «POLICÍA» y cascos antidisturbios colgados (más cuanto mayor el nivel). */
+addD('chalecos_armeria', {
+  build(b, fp) {
+    const lvl = fp.level ?? 0, w = fp.p.w ?? 1.3, n = [1, 2, 3, 3][Math.min(lvl, 3)];
+    b.box(0, 1.78, 0.1, w, 0.04, 0.04, C.steelD, { ao: 0 });
+    b.box(0, 0.55, 0.13, w, 0.03, 0.24, C.steelD, { ao: 0.05 });                       // balda de los cascos
+    for (let k = 0; k < 3; k++) {
+      const x = -w / 2 + (k + 0.5) * (w / 3);
+      b.box(x, 1.7, 0.05, 0.03, 0.1, 0.1, C.iron, { ao: 0 });                         // gancho
+      if (k >= n) continue;
+      b.box(x, 1.05, 0.12, 0.36, 0.64, 0.12, k === 2 ? 0x2b2e33 : C.navy, { ao: 0.08 });
+      for (const s of [-1, 1]) b.box(x + s * 0.11, 1.62, 0.12, 0.08, 0.1, 0.1, C.navy, { ao: 0 }); // hombreras
+      b.box(x, 1.12, 0.181, 0.28, 0.05, 0.004, 0x2b3a5a, { ao: 0 });                 // velcro
+      b.sprite('policia_chaleco', x, 1.32, 0.182, 0.3, 0.075);
+      b.sphere(x, 0.58, 0.14, 0.26, 0.2, 0.26, k % 2 ? C.navy : 0x2b2e33, 8, { ao: 0.1 });   // casco en la balda
+    }
+  },
+});
+
+// ================================================================ ACABADO DE TODAS LAS SALAS
+
+/**
+ * Pintura del zócalo de cada sala (lo que más ayuda a reconocerlas de un vistazo desde la cámara
+ * del móvil) y color del rodapié.
+ */
+const ROOM_PAINT = {
+  calabozos: [0x8a8f86, 0x3a3d42], archivos: [0xb79a74, 0x5e3d26], descanso: [0xe8c98a, 0x3b7a55],
+  despacho: [0x8a5e3a, 0x4a2f1c], armeria: [0x8a5a52, 0x46201f], pasillo: [0x8fa9d0, 0x1f3260],
+  enfermeria: [0xa8d5ba, 0x2f7d55], recepcion: [0x7f9cc8, 0x1f3260], almacen: [0xc4b08a, 0x5e4a2e],
+  vestuarios: [0x9fcbe0, 0x2f6b8a],
+};
+let DOOR_CELLS = null;
+/** Celdas de puerta del edificio (de todas las salas): huecos del zócalo. */
+function doorCells() {
+  if (DOOR_CELLS) return DOOR_CELLS;
+  DOOR_CELLS = new Set();
+  for (const r of STATION.rooms) {
+    if (!r.rect) continue;
+    const [x0, y0, x1, y1] = r.rect;
+    for (const d of r.doors ?? []) {
+      for (let k = 0; k < (d.w ?? 2); k++) {
+        if (d.wall === 'N' || d.wall === 'S') DOOR_CELLS.add(`${x0 + d.at + k},${d.wall === 'N' ? y0 - 1 : y1 + 1}`);
+        else DOOR_CELLS.add(`${d.wall === 'W' ? x0 - 1 : x1 + 1},${y0 + d.at + k}`);
+      }
+    }
+  }
+  return DOOR_CELLS;
+}
+
+/**
+ * Zócalo pintado, moldura, rodapié y enchufes por las cuatro paredes de una sala (p.room). El
+ * origen es la esquina (x0, y0) de la sala. Nivel 0: pintura desconchada y cables sueltos.
+ */
+addD('acabado_sala', {
+  build(b, fp) {
+    const room = STATION.rooms.find((r) => r.id === fp.p.room);
+    if (!room?.rect) return;
+    const [x0, y0, x1, y1] = room.rect, W = x1 - x0 + 1, H = y1 - y0 + 1;
+    const [paint, skirt] = ROOM_PAINT[room.id] ?? [0xd8cfb8, 0x5e5a52];
+    const lvl = fp.level ?? 0, rnd = fp.rnd, doors = doorCells();
+    const F = 0.35, ZH = 0.9;
+    // Cada pared: celda de muro k (la k-ésima, desde la esquina), si corre en X, posición fija y normal hacia dentro.
+    const walls = [
+      { cell: (k) => [x0 - 1 + k, y0 - 1], n: W + 2, alongX: true, fixed: -F, s: 1, max: W },
+      { cell: (k) => [x0 - 1 + k, y1 + 1], n: W + 2, alongX: true, fixed: H + F, s: -1, max: W },
+      { cell: (k) => [x0 - 1, y0 - 1 + k], n: H + 2, alongX: false, fixed: -F, s: 1, max: H },
+      { cell: (k) => [x1 + 1, y0 - 1 + k], n: H + 2, alongX: false, fixed: W + F, s: -1, max: H },
+    ];
+    let outlet = 0;
+    for (const wl of walls) {
+      // Caja pegada a la pared: u = posición a lo largo, d = grosor hacia dentro.
+      const box = (u, len, y, h, d, col) => {
+        if (wl.alongX) b.box(u, y, wl.fixed + wl.s * d / 2, len, h, d, col, { ao: 0 });
+        else b.box(wl.fixed + wl.s * d / 2, y, u, d, h, len, col, { ao: 0 });
+      };
+      let k = 0;
+      while (k < wl.n) {
+        while (k < wl.n && doors.has(wl.cell(k).join(','))) k++;
+        const a = k;
+        while (k < wl.n && !doors.has(wl.cell(k).join(','))) k++;
+        const s0 = Math.max(a - 1, -F), s1 = Math.min(k - 1, wl.max + F);
+        if (s1 - s0 < 0.05) continue;
+        const u = (s0 + s1) / 2, len = s1 - s0;
+        box(u, len, 0, ZH, 0.006, paint);                          // zócalo pintado
+        box(u, len, ZH, 0.04, 0.014, skirt);                       // moldura
+        box(u, len, 0, 0.1, 0.022, skirt);                         // rodapié
+        if (!lvl) {
+          for (let m = 0; m < Math.floor(len / 2.2); m++) {       // desconchones
+            box(s0 + 0.6 + rnd() * (len - 1.2), 0.12 + rnd() * 0.2, 0.25 + rnd() * 0.45, 0.08 + rnd() * 0.12, 0.009, 0xeee5d3);
+          }
+        }
+        for (let e = s0 + 1.1; e < s1 - 0.5; e += 2.8) {          // enchufes
+          box(e, 0.09, 0.22, 0.09, 0.016, C.white);
+          box(e, 0.02, 0.255, 0.02, 0.022, C.iron);
+          if (!lvl && outlet++ % 2 === 0) {
+            // cable suelto hacia el centro de la sala
+            if (wl.alongX) b.box(e, 0.004, wl.fixed + wl.s * 0.3, 0.02, 0.012, 0.55, C.black, { ao: 0, ry: 0.2 });
+            else b.box(wl.fixed + wl.s * 0.3, 0.004, e, 0.55, 0.012, 0.02, C.black, { ao: 0, ry: 0.2 });
+          }
+        }
+      }
+    }
+  },
+});
+
+// ================================================================ PIEZAS DE DETALLE DE LAS SALAS
+
+/** Ventana con persiana de lamas (rota y torcida en el nivel 0). Va en la cara interior del muro. */
+addD('ventana', {
+  build(b, fp) {
+    const w = fp.p.w ?? 1.0, h = fp.p.h ?? 0.9, cy = fp.p.y ?? 1.55, lvl = fp.level ?? 0;
+    b.box(0, cy - h / 2 - 0.06, 0.02, w + 0.12, h + 0.12, 0.04, C.white, { ao: 0 });
+    b.box(0, cy - h / 2, 0.03, w, h, 0.02, 0x9fc8e8, { ao: 0 });
+    b.box(-w * 0.2, cy - h / 2, 0.041, w * 0.3, h, 0.004, 0xdbeef8, { ao: 0 });
+    b.box(0, cy - h / 2 - 0.08, 0.07, w + 0.16, 0.04, 0.12, C.white, { ao: 0 });         // alféizar
+    const down = lvl ? 0.55 : 0.7, nl = Math.round((h * down) / 0.06);
+    for (let k = 0; k < nl; k++) {
+      const broken = !lvl && k % 4 === 2;
+      b.box(broken ? -w * 0.15 : 0, cy + h / 2 - 0.05 - k * 0.06, 0.07, broken ? w * 0.6 : w - 0.04, 0.035, 0.012, lvl ? 0xeeeae0 : 0xd8d0b8, { ao: 0, rz: broken ? 0.2 : 0, rx: 0.3 });
+    }
+    b.box(0, cy + h / 2 - 0.02, 0.06, w + 0.04, 0.06, 0.06, C.steelL, { ao: 0 });         // cajón de la persiana
+    b.box(w / 2 - 0.06, cy - h / 2 + 0.1, 0.08, 0.008, h * 0.75, 0.008, C.white, { ao: 0 }); // cordón
+  },
+});
+
+/** Televisor de pared con soporte (descanso). */
+addD('tele_pared', {
+  build(b, fp) {
+    const cy = fp.p.y ?? 1.8, lvl = fp.level ?? 0;
+    b.box(0, cy - 0.12, 0.02, 0.2, 0.24, 0.04, C.iron, { ao: 0 });
+    b.box(0, cy - 0.32, 0.12, 0.9, 0.54, 0.06, C.black, { ao: 0.05 });
+    b.sprite(lvl ? 'pantalla_cam' : 'pantalla_radio', 0, cy - 0.05, 0.151, 0.82, 0.46, { screen: true });
+    b.light('pantalla', 0, cy - 0.05, 0.5, 0x8fd0ff);
+  },
+});
+
+/** Perchero de pie con gabardina y gorra. */
+addD('perchero', {
+  build(b) {
+    b.cyl(0, 0, 0, 0.18, 0.2, 0.04, C.woodDD, 10);
+    b.cyl(0, 0.04, 0, 0.025, 0.03, 1.7, C.woodD, 8);
+    for (let k = 0; k < 4; k++) b.box(0, 1.62, 0, 0.3, 0.025, 0.025, C.woodD, { ry: (k * PI) / 4, ao: 0 });
+    b.box(0.1, 0.85, 0.02, 0.32, 0.78, 0.18, 0xb89a6a, { rz: -0.06, ao: 0.08 });        // gabardina
+    b.box(0.1, 1.5, 0.02, 0.12, 0.12, 0.14, 0xb89a6a, { ao: 0 });
+    b.cyl(-0.06, 1.66, 0, 0.13, 0.13, 0.06, C.navy, 10);                                // gorra
+    b.box(-0.06, 1.66, 0.12, 0.2, 0.015, 0.1, C.black, { ao: 0 });
+  },
+});
+
+/** Negatoscopio con una radiografía (enfermería): pantalla luminosa de pared. */
+addD('negatoscopio', {
+  build(b, fp) {
+    const cy = fp.p.y ?? 1.6, w = fp.p.w ?? 0.8, h = w * 0.75;
+    b.box(0, cy - h / 2 - 0.04, 0.02, w + 0.08, h + 0.08, 0.05, C.white, { ao: 0 });
+    b.sprite('radiografia', 0, cy, 0.047, w, h, { screen: true });
+    b.light('pantalla', 0, cy, 0.4, 0xcfe6f6);
+  },
+});
+
+/** Dispensador de turnos de pie con su cartel «Coja número y rece». */
+addD('dispensador_turnos', {
+  build(b) {
+    b.cyl(0, 0, 0, 0.18, 0.2, 0.04, C.iron, 10);
+    b.cyl(0, 0.04, 0, 0.03, 0.03, 0.95, C.steel, 8);
+    b.box(0, 0.95, 0, 0.22, 0.3, 0.16, C.red);
+    b.box(0, 1.0, 0.081, 0.08, 0.02, 0.02, C.black, { ao: 0 });
+    b.box(0, 0.98, 0.1, 0.06, 0.004, 0.05, C.paper, { ao: 0, rx: 0.6 });               // tique
+    b.box(0, 1.27, -0.01, 0.52, 0.18, 0.012, C.iron, { ao: 0 });
+    b.sprite('coja_numero', 0, 1.36, 0.0, 0.5, 0.15);
+  },
+});
+
+/** Palé con cajas de pruebas precintadas (almacén). */
+addD('palet', {
+  build(b, fp) {
+    const rnd = fp.rnd, lvl = fp.level ?? 0;
+    for (let k = 0; k < 3; k++) b.box(0, 0, -0.4 + k * 0.4, 1.0, 0.1, 0.1, C.woodL);
+    for (let k = 0; k < 5; k++) b.box(-0.4 + k * 0.2, 0.1, 0, 0.16, 0.025, 0.95, C.wood, { ao: 0.05 });
+    for (let k = 0; k < (lvl ? 4 : 2); k++) {
+      const x = k % 2 ? 0.22 : -0.22, y = 0.125 + (k >> 1) * 0.34;
+      cardboard(b, x, y, (rnd() - 0.5) * 0.2, 0.4, 0.34, 0.5, (rnd() - 0.5) * 0.2);
+      b.box(x, y + 0.17, 0.26, 0.4, 0.04, 0.004, C.yellow, { ao: 0 });                 // precinto
+    }
+  },
+});
+
+/** Carretilla de mano (almacén). */
+addD('carretilla', {
+  build(b) {
+    for (const s of [-1, 1]) {
+      b.box(s * 0.2, 0.08, 0, 0.04, 1.2, 0.04, C.red, { rx: -0.25, ao: 0 });
+      b.cyl(s * 0.24, 0.1, -0.05, 0.1, 0.1, 0.05, C.black, 10, { rz: PI / 2, ao: 0 });
+    }
+    b.box(0, 0, 0.12, 0.44, 0.03, 0.24, C.steelD);
+    b.box(0, 1.15, -0.28, 0.44, 0.04, 0.04, C.red, { ao: 0 });
   },
 });

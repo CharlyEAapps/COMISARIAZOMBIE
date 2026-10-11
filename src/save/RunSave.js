@@ -41,6 +41,7 @@ export function captureRun(game) {
       })),
     },
     despacho: game.despacho?.getState?.() ?? null,
+    story: game.story?.getState?.() ?? null, // historia por radio: final visto y llamadas ya oídas
     runStats: meta.runStats ? JSON.parse(JSON.stringify(meta.runStats)) : null,
   };
 }
@@ -122,6 +123,7 @@ export function restoreRun(game, d) {
   if (tr && d.build?.transformerHp !== null && d.build?.transformerHp !== undefined) tr.hp = clamp(num(d.build.transformerHp), 0, tr.maxHp);
 
   if (d.runStats && meta.runStats) Object.assign(meta.runStats, d.runStats);
+  if (d.story && game.story?.setState) game.story.setState(d.story);
 
   dayNight.night = Math.max(1, Math.floor(num(d.night, 1)));
   dayNight.enter(PHASE.DAY);

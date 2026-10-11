@@ -8,6 +8,7 @@ import { createAtlasTexture } from './props/Atlas.js';
 import {
   structureGeometry, doorLeafGeometry, doorFrameGeometry, doorSignGeometry, mineLightGeometry,
   structureGhostGeometry, transformerDamageGeometry, turretHeadGeometry, floodLensGeometry, STRUCTURE_MATERIAL_OPTIONS,
+  structureJoinGeometry, joinShape, JOIN_TYPES,
 } from './StructureModels.js';
 
 // Página de desarrollo: todas las piezas de construcción y trampas en fila sobre un suelo de baldosa,
@@ -24,7 +25,7 @@ const lightMat = new THREE.MeshBasicMaterial({ vertexColors: true });
 const signMat = new THREE.MeshStandardMaterial({ map: createAtlasTexture(), roughness: 0.7, alphaTest: 0.4, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
 
 // ---------------------------------------------------------------- suelo (damero de baldosas, como el MapRenderer)
-const X0 = -2, X1 = 70, Z0 = -3, Z1 = 5;
+const X0 = -2, X1 = 80, Z0 = -3, Z1 = 6;
 {
   const RES = 2, tw = (X1 - X0) * RES, th = (Z1 - Z0) * RES;
   const data = new Uint8Array(tw * th * 4);
@@ -132,16 +133,24 @@ for (let l = 0; l < 2; l++) { place('valla', l); cell += 2; }
 place('generador', 0); cell += 2;
 for (let l = 0; l < 2; l++) { place('torreta', l); cell += 2; }
 place('foco', 0); cell += 2;
-// Filas continuas para comprobar que se unen sin huecos (valla, alambre) y una valla rotada 90° (columna en Z)
+// Uniones: cada pieza que se une, en un trazado con esquina, T y cruz (como las dibuja el juego).
 {
-  const rowStart = cell;
-  for (let k = 0; k < 3; k++) place('valla', 0, rowStart + k + 0.5, k === 1);
-  for (let k = 0; k < 3; k++) place('valla', 1, rowStart + 3.5 + k, k === 1);
-  for (let k = 0; k < 3; k++) place('alambre', 1, rowStart + 7 + k + 0.5, k === 1);
-  for (let k = 0; k < 3; k++) {            // columna en Z: la pieza se gira 90° en Y
-    const col = place('valla', 1, rowStart + 11.5, k === 1);
-    col.position.z = cellZ + k;
-    col.rotation.y = Math.PI / 2;
+  const PATTERN = ['XXX.', 'X.XX', 'XXX.']; // fila en T, cruz y esquinas
+  let x0 = 32;
+  for (const type of JOIN_TYPES) {
+    build.pieces[type].levels.forEach((lv, level) => {
+      const on = (i, j) => PATTERN[j]?.[i] === 'X';
+      for (let j = 0; j < PATTERN.length; j++) for (let i = 0; i < PATTERN[j].length; i++) {
+        if (!on(i, j)) continue;
+        const mask = (on(i + 1, j) ? 1 : 0) | (on(i, j + 1) ? 2 : 0) | (on(i - 1, j) ? 4 : 0) | (on(i, j - 1) ? 8 : 0);
+        const js = joinShape(mask);
+        const m = addMesh(scene, structureJoinGeometry(type, level, js.shape), solidMat);
+        m.position.set(x0 + i + 0.5, 0, cellZ + 2 + j);
+        m.rotation.y = js.rot;
+      }
+      addLabel(`${build.pieces[type].name} · ${lv.name} (uniones)`, x0 + 2, build.pieces[type].height + 0.3, cellZ + 2);
+      x0 += 5;
+    });
   }
 }
 cell = afterTraps;
@@ -186,7 +195,7 @@ const VIEWS = {
   'Vallas': { target: [39.5, 0.8, 0.5], dist: 8, pitch: 40 },
   'Generador y torretas': { target: [45, 0.7, 0.5], dist: 9, pitch: 42 },
   'Foco': { target: [48.5, 1.2, 0.5], dist: 7, pitch: 30 },
-  'Filas continuas': { target: [56, 0.8, 0.5], dist: 18, pitch: 42 },
+  'Uniones (esquinas y T)': { target: [54, 0.6, 3.5], dist: 26, pitch: 52 },
   'Cámara del juego (60°)': { target: [5, 0.6, 0.5], dist: 16, pitch: 60 },
 };
 function setView(name, azimuthDeg = 0) {

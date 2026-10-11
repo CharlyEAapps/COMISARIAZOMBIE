@@ -6,6 +6,7 @@ import { TYPES, LEVEL_ROOMS } from './props/PropFactory.js';
 import { ROOM_BY_ID } from '../systems/Station.js';
 import { bakeBuilder } from './PropRenderer.js';
 import { UPGRADES } from '../systems/Despacho.js';
+import { LuigiRenderer } from './LuigiRenderer.js';
 
 const DEG = Math.PI / 180;
 const UP = new THREE.Vector3(0, 1, 0);
@@ -13,6 +14,15 @@ const UP = new THREE.Vector3(0, 1, 0);
 const STEEL = 0x8d97a1, STEEL_D = 0x4f5862, IRON = 0x30353b, YEL = 0xf2c230, BLK = 0x2a2d31;
 const CONC = 0xbab8ae, CONC_D = 0x9e9c93, SAND = 0xd9c7a0;
 const LED_ON = new THREE.Color(1.6, 0.15, 0.1);
+const BED = 0x9c2f3a, BED_D = 0x6e1f29, CUSHION = 0xe9dcc4, WOOD = 0x8a5a33, BONE = 0xf3ecd8;
+
+// Letras de 3×5 "píxeles" (filas de arriba abajo) para la placa de la cama de Luigi.
+const GLYPHS = {
+  L: ['100', '100', '100', '100', '111'],
+  U: ['101', '101', '101', '101', '111'],
+  I: ['111', '010', '010', '010', '111'],
+  G: ['111', '100', '101', '101', '111'],
+};
 
 // Lo que se ve de las reformas del despacho del jefe. Las SALAS (muebles, carteles con estrellas,
 // fachada con el nivel global) las reconstruye PropRenderer.setRoomLevel cuando cambia su nivel;
@@ -50,6 +60,24 @@ export class DespachoRenderer {
     this.turretHeads = [0, 1].map((l) => mesh(Models.turretHeadGeometry(l)));
     for (const m of this.turretBases) m.position.set(R.cx, R.baseY, R.cz);
     for (const m of this.turretHeads) m.position.set(R.cx, R.def.headHeight, R.cz);
+    // Torretas ligeras de las torres de los accesos (nivel III): comparten geometría.
+    this.gateBases = d.gateTurrets.map((t) => {
+      const m = new THREE.Mesh(this.turretBases[0].geometry, this.material);
+      m.castShadow = true; m.visible = false;
+      m.position.set(t.cx, t.baseY, t.cz);
+      this.group.add(m);
+      return m;
+    });
+    this.gateHeads = d.gateTurrets.map((t) => {
+      const m = new THREE.Mesh(this.turretHeads[0].geometry, this.material);
+      m.castShadow = true; m.visible = false;
+      m.position.set(t.cx, t.def.headHeight, t.cz);
+      this.group.add(m);
+      return m;
+    });
+
+    // Luigi, el chihuahua (mejora de la sala de descanso).
+    this.luigi = new LuigiRenderer(game, this.group);
 
     // Generador de emergencia junto al transformador.
     const G = UPGRADES.generador_emergencia;
@@ -129,6 +157,22 @@ export class DespachoRenderer {
     const tl = d.level('transformador');
     if (tl) { any = true; this.transformerCage(b, tl); }
 
+    // Torres de vigilancia de los accesos de la valla (torre de vigilancia III).
+    if (d.towersUp) {
+      const GT = UPGRADES.torreta_tejado.gateTowers;
+      for (const sp of GT.spots) {
+        const x = sp.x + GT.size / 2, z = sp.z + GT.size / 2;
+        b.root(d.wx(x), 0, d.wz(z), sp.rot * DEG);
+        const seed = (sp.x * 73856093) ^ (sp.z * 19349663);
+        TYPES.torre_vigilancia.build(b, { type: 'torre_vigilancia', lw: GT.size, ld: GT.size, rot: sp.rot, seed, rnd: rng(seed), p: {} });
+      }
+      any = true;
+    }
+
+    // Cama de Luigi en la sala de descanso (siempre: sin la mejora, la cama espera).
+    this.dogBed(b);
+    any = true;
+
     if (d.has('generador_emergencia')) {
       // Cable del generador al transformador.
       const G = UPGRADES.generador_emergencia;
@@ -194,6 +238,40 @@ export class DespachoRenderer {
     if (any) {
       const baked = bakeBuilder(b, game.props.materials, this.staticGroup);
       this.staticGeos.push(...baked.geometries);
+    }
+  }
+
+  /** Cama de Luigi: cesta roja con cojín, hueso y una placa con su nombre en la pared. */
+  dogBed(b) {
+    const d = this.game.despacho;
+    const B = UPGRADES.luigi.bed;
+    const w = B.w, dd = B.d;
+    b.root(d.wx(B.x), 0, d.wz(B.z + dd / 2), 0);
+    b.box(0, 0, 0, w, 0.06, dd, BED_D, { ao: 0.2 });
+    b.box(0, 0.06, 0, w - 0.16, 0.06, dd - 0.16, CUSHION, { ao: 0.25 });
+    // Borde acolchado (más alto detrás).
+    b.box(0, 0.06, -dd / 2 + 0.05, w, 0.16, 0.1, BED, { ao: 0.1 });
+    b.box(0, 0.06, dd / 2 - 0.04, w, 0.08, 0.08, BED, { ao: 0.1 });
+    for (const s of [-1, 1]) b.box(s * (w / 2 - 0.05), 0.06, 0, 0.1, 0.12, dd, BED, { ao: 0.1 });
+    // Hueso de juguete.
+    b.box(0.18, 0.12, 0.06, 0.16, 0.03, 0.035, BONE, { ry: 0.5, ao: 0 });
+    for (const s of [-1, 1]) b.box(0.18 + s * 0.07 * Math.cos(0.5), 0.12, 0.06 - s * 0.07 * Math.sin(0.5), 0.05, 0.04, 0.06, BONE, { ry: 0.5, ao: 0 });
+    // Placa de madera en la pared norte con "LUIGI" en letras de bloques.
+    const name = 'LUIGI';
+    const px = 0.03, gap = px, letterW = px * 3;
+    const textW = name.length * letterW + (name.length - 1) * gap;
+    const zWall = B.plateZ - (B.z + dd / 2); // cara interior del muro norte
+    const y0 = B.plateY;
+    b.box(0, y0 - 0.05, zWall, textW + 0.12, 0.25, 0.03, WOOD, { ao: 0.1 });
+    let x = -textW / 2 + px / 2;
+    for (const ch of name) {
+      const rows = GLYPHS[ch];
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 3; c++) {
+          if (rows[r][c] === '1') b.box(x + c * px, y0 + (4 - r) * px, zWall + 0.02, px, px, 0.012, CUSHION, { ao: 0 });
+        }
+      }
+      x += letterW + gap;
     }
   }
 
@@ -269,11 +347,16 @@ export class DespachoRenderer {
     }
     const tl = d.level('torreta_tejado');
     for (let l = 0; l < 2; l++) {
-      const on = tl === l + 1;
+      const on = tl > 0 && d.roofTurret.level === l;
       this.turretBases[l].visible = on;
       this.turretHeads[l].visible = on;
       if (on) this.turretHeads[l].rotation.y = d.roofTurret.yaw;
     }
+    for (let n = 0; n < this.gateHeads.length; n++) {
+      this.gateBases[n].visible = this.gateHeads[n].visible = d.towersUp;
+      if (d.towersUp) this.gateHeads[n].rotation.y = d.gateTurrets[n].yaw;
+    }
+    this.luigi.update();
     this.generator.visible = d.has('generador_emergencia');
     const focos = d.has('focos');
     this.focos.visible = this.lenses.visible = focos;
@@ -284,6 +367,7 @@ export class DespachoRenderer {
   }
 
   dispose() {
+    this.luigi.dispose();
     this.game.scene.remove(this.group);
     for (const g of [...this.geos, ...this.staticGeos]) g.dispose();
     this.material.dispose();

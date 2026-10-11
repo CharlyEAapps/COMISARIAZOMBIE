@@ -57,7 +57,8 @@ describe('Comisaría por salas: datos (station.json)', () => {
 
   it('nivel de sala y global: suma de sus mejoras', () => {
     const rec = ROOMS_LIST.find((r) => r.id === 'patio');
-    expect(roomMaxLevel(rec)).toBe(10);
+    expect(roomMaxLevel(rec)).toBe(13);
+    expect(roomMaxLevel(ROOMS_LIST.find((r) => r.id === 'descanso'))).toBe(2); // Luigi
     expect(roomLevel(rec, { transformador: 2, focos: 1, muros: 2 })).toBe(3);
     expect(globalLevel({ transformador: 2, focos: 1, muros: 2 })).toBe(5);
   });

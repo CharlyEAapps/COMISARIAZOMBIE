@@ -19,7 +19,7 @@ De día preparas la comisaría; al anochecer suena la sirena y llega la horda. A
 | Ratón | Apuntar (la cámara se adelanta hacia el cursor) |
 | Clic izquierdo | Disparar |
 | R | Recargar |
-| 1-7 | Cambiar de arma (pistola, escopeta, subfusil, fusil, rifle de precisión, táser, porra) |
+| 1-0 | Cambiar de arma (pistola, escopeta, subfusil, fusil, rifle de precisión, táser, porra, rifle láser, lanzallamas, sable láser) |
 | G | Lanzar granada hacia el cursor |
 | Shift | Correr (gasta resistencia) |
 | E (mantener) | Interactuar con lo que tengas delante |

@@ -144,79 +144,98 @@ function finish(b) {
   return g;
 }
 
-// ---------------------------------------------------------------- barricadas
+// ---------------------------------------------------------------- piezas que se unen (barricadas, sacos, valla, alambre)
+//
+// Las piezas lineales se componen de un NODO (poste en el centro de la celda) y de BRAZOS que van
+// del centro al borde de la celda (x de 0 a 0,5) hacia cada vecino con el que se unen. Un brazo
+// "unido" llega justo al borde y continúa en el brazo de la celda vecina (postes compartidos y
+// tramos continuos); uno "suelto" remata la pieza antes del borde. Cada forma (suelta, final,
+// recta, esquina, T y cruz) es una geometría que el renderer gira en pasos de 90°.
 
 const WOOD = [0xc98f55, 0xb8844c, 0xd6a066, 0xa87440, 0xc4894f];
+const WOOD_POST = 0x8a5e3a, WOOD_DARK = 0x7a4f2c;
 const NAIL = 0x474b52, NAIL_TIP = 0xb7bdc4;
+const SHEET = 0x9aa4ae, SHEET_D = 0x838d97, SHEET_L = 0xaab3bc, STEEL_D = 0x4f5862, STEEL_M = 0x5b646e;
+const YEL = 0xf2c230, BLK = 0x2a2d31;
+/** Fin de un brazo: unido (llega al borde) o suelto (remate algo antes). */
+const armEnd = (joined, open = 0.46) => (joined ? 0.5 : open);
+/** Formas rectas (llevan puntales y carteles en el nodo); las demás son uniones. */
+const STRAIGHT = new Set(['I', 'end', 'line']);
 
-/** Barricada de madera: tablones horizontales, aspa de tablones claveteados y puntales. */
-function barricadaMadera(b) {
-  const r = rng(101);
-  const H = 1.35;
-  for (const sx of [-1, 1]) {
-    b.box(sx * 0.41, 0, 0, 0.14, 0.11, 0.94, 0x7a4f2c);                         // patín
-    b.box(sx * 0.41, 0, 0, 0.12, H, 0.2, 0x8a5e3a);                             // poste
-    b.box(sx * 0.41, 0.07, 0.43, 0.08, 0.9, 0.07, 0x7a4f2c, { rx: -0.35 });     // puntal +Z
-    b.box(sx * 0.41, 0.07, -0.43, 0.08, 0.9, 0.07, 0x7a4f2c, { rx: 0.35 });     // puntal -Z
-  }
-  const ang = Math.atan2(1.12, 0.78);
-  const len = Math.hypot(1.12, 0.78) + 0.04;
-  for (const side of [-1, 1]) {
-    const zH = side * 0.135;
-    for (let k = 0; k < 6; k++) {
-      const l = 0.9 + r() * 0.06, cx = (r() - 0.5) * 0.04;
-      b.box(cx, 0.04 + k * 0.215, zH, l, 0.19, 0.07, WOOD[(k + (side > 0 ? 0 : 2)) % WOOD.length]);
-      for (const sx of [-1, 1]) cone(b, sx * 0.41 + (r() - 0.5) * 0.02, 0.135 + k * 0.215, zH + side * 0.035, 0.022, 0.03, 5, NAIL, NAIL_TIP, { axis: side > 0 ? '+z' : '-z' });
-    }
-    const zD = side * 0.2;
-    for (const dir of [-1, 1]) {
-      b.box(0, 0.68, zD, 0.12, len, 0.05, dir > 0 ? 0xb07a45 : 0xc58a50, { rz: dir * (Math.PI / 2 - ang), oy: -len / 2, ao: 0.1 });
-      // clavos en los extremos y en el cruce
-      const ex = Math.cos(ang) * (len / 2 - 0.1), ey = Math.sin(ang) * (len / 2 - 0.1);
-      for (const s of [-1, 1]) cone(b, -s * dir * ex, 0.68 + s * ey, zD + side * 0.025, 0.022, 0.03, 5, NAIL, NAIL_TIP, { axis: side > 0 ? '+z' : '-z' });
-    }
-    cone(b, 0, 0.68, zD + side * 0.025, 0.026, 0.035, 5, NAIL, NAIL_TIP, { axis: side > 0 ? '+z' : '-z' });
-  }
+/** Diagonal de (x0, y0) a (x1, y1) en el plano XY (caja de sección w × d centrada en z). */
+function brace(b, x0, y0, x1, y1, z, w, d, color, ao = 0.1) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+  b.box((x0 + x1) / 2, (y0 + y1) / 2, z, w, len, d, color, { rz: -Math.atan2(dx, dy), oy: -len / 2, ao });
 }
 
-const SHEET = 0x9aa4ae, SHEET_D = 0x838d97, STEEL_D = 0x4f5862;
-const YEL = 0xf2c230, BLK = 0x2a2d31;
+/** Puntales y patín perpendiculares a la pieza (solo en las formas rectas). */
+function struts(b, color, skidColor, h = 0.9, w = 0.08) {
+  b.box(0, 0, 0, 0.16, 0.1, 0.94, skidColor);
+  b.box(0, 0.07, 0.43, w, h, 0.07, color, { rx: -0.35 });
+  b.box(0, 0.07, -0.43, w, h, 0.07, color, { rx: 0.35 });
+}
 
-/** Barricada de chapa: bastidor de acero, planchas onduladas remachadas y franja de peligro. */
-function barricadaMetal(b) {
-  const H = 1.35;
-  for (const sx of [-1, 1]) {
-    b.box(sx * 0.41, 0, 0, 0.14, 0.1, 0.94, STEEL_D);                                         // patín
-    b.box(sx * 0.41, 0, 0, 0.11, H, 0.22, 0x5b646e);                                          // poste
-    b.box(sx * 0.41, 0.06, 0.43, 0.07, 0.9, 0.06, STEEL_D, { rx: -0.35 });                    // puntales
-    b.box(sx * 0.41, 0.06, -0.43, 0.07, 0.9, 0.06, STEEL_D, { rx: 0.35 });
-  }
+// ---------------------------------------------------------------- barricadas
+
+/** Madera: poste cuadrado con sombrerete; tablones por las dos caras, diagonal y tabla de remate. */
+function maderaNode(b, shape) {
+  b.box(0, 0, 0, 0.28, 1.38, 0.28, WOOD_POST);
+  b.box(0, 1.38, 0, 0.32, 0.05, 0.32, WOOD_DARK, { ao: 0 });
+  for (const s of [-1, 1]) b.box(s * 0.142, 0.3, 0, 0.012, 0.05, 0.2, 0x6b4426, { ao: 0 }); // vetas
+  if (STRAIGHT.has(shape)) struts(b, WOOD_DARK, 0x6b4426);
+}
+function maderaArm(b, joined, seed) {
+  const r = rng(101 + seed * 17);
+  const xe = armEnd(joined, 0.47);
   for (const side of [-1, 1]) {
-    const zs = side * 0.12;
-    b.box(0, 0.1, zs, 0.84, 1.05, 0.04, SHEET, { ao: 0.1 });                                   // plancha
+    const z = side * 0.1;
     for (let k = 0; k < 6; k++) {
-      b.box(-0.35 + k * 0.14, 0.12, zs + side * 0.028, 0.065, 1.0, 0.024, k % 2 ? SHEET_D : 0xaab3bc, { ao: 0.05 }); // ondas
+      const x1 = joined ? xe : xe - r() * 0.05;
+      b.box(x1 / 2, 0.04 + k * 0.215, z, x1, 0.19, 0.07, WOOD[(k + seed + (side > 0 ? 0 : 2)) % WOOD.length]);
+      cone(b, 0.2 + (r() - 0.5) * 0.04, 0.135 + k * 0.215, z + side * 0.035, 0.02, 0.028, 4, NAIL, NAIL_TIP, { axis: side > 0 ? '+z' : '-z' });
     }
-    // remaches
-    for (const sx of [-1, 1]) for (const yy of [0.16, 0.5, 0.84, 1.1]) {
-      cone(b, sx * 0.4, yy, zs + side * 0.02, 0.026, 0.03, 5, 0x6a737d, 0xc9d0d6, { axis: side > 0 ? '+z' : '-z' });
-    }
+    // diagonal claveteada: del pie del poste a lo alto del borde (en fila forma un zigzag)
+    brace(b, 0.12, 0.12, xe - 0.08, 1.22, side * 0.16, 0.11, 0.045, side > 0 ? 0xb07a45 : 0xc58a50);
   }
-  // viga superior con franjas de peligro (arriba y en las dos caras)
-  b.box(0, 1.17, 0, 0.96, 0.18, 0.3, STEEL_D);
-  const sl = 0.08;
-  for (let k = 0; k < 4; k++) {
-    const x0 = -0.4 + k * 0.22;
-    const para = (lo, hi) => [[x0, lo], [x0 + 0.09, lo], [x0 + 0.09 + sl, hi], [x0 + sl, hi]];
-    extrude(b, para(-0.15, 0.15), 'xz', 1.346, 1.352, YEL, { ao: 0 });
-    for (const side of [-1, 1]) {
-      extrude(b, para(1.18, 1.34), 'xy', side > 0 ? 0.15 : -0.156, side > 0 ? 0.156 : -0.15, YEL, { ao: 0 });
-    }
+  b.box(xe / 2, 1.33, 0, xe, 0.07, 0.32, 0xb8844c, { ao: 0.05 }); // tabla de remate
+  if (!joined) b.box(xe - 0.03, 0, 0, 0.08, 1.3, 0.3, WOOD_DARK); // listón de cierre
+}
+
+/** Chapa: poste de acero con placa, plancha ondulada, viga con franjas de peligro y zócalo. */
+function metalNode(b, shape) {
+  b.box(0, 0, 0, 0.34, 0.04, 0.34, 0x3f464e, { ao: 0.1 });
+  b.box(0, 0.04, 0, 0.24, 1.32, 0.24, STEEL_M);
+  for (const s of [-1, 1]) b.box(s * 0.1, 0.04, 0, 0.04, 1.32, 0.26, 0x4a525b, { ao: 0.1 }); // alas del perfil
+  b.box(0, 1.36, 0, 0.28, 0.04, 0.28, BLK, { ao: 0 });
+  if (STRAIGHT.has(shape)) struts(b, STEEL_D, 0x3f464e, 0.9, 0.07);
+}
+function metalArm(b, joined) {
+  const xe = armEnd(joined, 0.47);
+  b.box(xe / 2, 0, 0, xe, 0.1, 0.22, STEEL_D);                                    // zócalo
+  b.box(xe / 2, 0.1, 0, xe, 1.06, 0.05, SHEET, { ao: 0.1 });                     // plancha
+  for (let k = 0; k < 4; k++) {                                                  // ondas (periodo 0,125: siguen en la vecina)
+    const x = 0.0625 + k * 0.125;
+    if (x > xe - 0.03) break;
+    for (const s of [-1, 1]) b.box(x, 0.12, s * 0.035, 0.06, 1.02, 0.024, k % 2 ? SHEET_D : SHEET_L, { ao: 0.05 });
   }
+  for (const s of [-1, 1]) for (const y of [0.2, 0.62, 1.04]) {
+    cone(b, 0.25, y, s * 0.047, 0.024, 0.026, 4, 0x6a737d, 0xc9d0d6, { axis: s > 0 ? '+z' : '-z' });
+  }
+  b.box(xe / 2, 1.16, 0, xe, 0.18, 0.26, STEEL_D);                               // viga
+  const sl = 0.07;
+  for (let k = 0; k < 2; k++) {                                                  // franjas (periodo 0,25)
+    const x0 = 0.03 + k * 0.25;
+    if (x0 + 0.1 + sl > xe + 0.01) break;
+    const para = (lo, hi) => [[x0, lo], [x0 + 0.1, lo], [x0 + 0.1 + sl, hi], [x0 + sl, hi]];
+    extrude(b, para(-0.13, 0.13), 'xz', 1.34, 1.346, YEL, { ao: 0 });
+    for (const s of [-1, 1]) extrude(b, para(1.17, 1.33), 'xy', s > 0 ? 0.13 : -0.136, s > 0 ? 0.136 : -0.13, YEL, { ao: 0 });
+  }
+  if (!joined) b.box(xe - 0.03, 0, 0, 0.07, 1.36, 0.26, STEEL_M);                // perfil de cierre
 }
 
 const CONC = 0xbab8ae, CONC_D = 0xa4a299;
 const JB_PTS = [[0.46, 0], [0.46, 0.1], [0.33, 0.42], [0.2, 1.0], [0.17, 1.35]];
+const JB_BAND = [0.56, 0.98];
 function jbHalf(y) {
   for (let i = 0; i < JB_PTS.length - 1; i++) {
     const [w0, y0] = JB_PTS[i], [w1, y1] = JB_PTS[i + 1];
@@ -225,54 +244,130 @@ function jbHalf(y) {
   return JB_PTS[JB_PTS.length - 1][0];
 }
 
-/** Barrera de hormigón tipo "jersey" con franjas rojas y blancas. */
-function barricadaHormigon(b) {
+/**
+ * Hormigón: barrera "jersey". En las uniones, el nodo es una columna con el mismo perfil en sus
+ * cuatro caras (un pelo más estrecha para no pelearse con los brazos que la atraviesan).
+ */
+function hormigonNode(b, shape) {
+  if (STRAIGHT.has(shape)) return;
+  const L = b.layers.solid;
+  const ys = [0, 0.1, 0.42, JB_BAND[0], JB_BAND[1], 1.0, 1.35];
+  const band = (y0, y1) => y0 >= JB_BAND[0] - 1e-6 && y1 <= JB_BAND[1] + 1e-6;
+  const S = 0.996;
+  for (let i = 0; i < ys.length - 1; i++) {
+    const ya = ys[i], yb = ys[i + 1], wa = jbHalf(ya) * S, wb = jbHalf(yb) * S;
+    const col = lin(band(ya, yb) ? 0xd24a3e : CONC);
+    const ca = shade(col, ya, 0, 1.35, 0.2), cb = shade(col, yb, 0, 1.35, 0.2);
+    for (const [ax, az] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
+      // cara con normal (ax, 0, az): esquinas a ±w en la dirección perpendicular
+      const px = -az, pz = ax;
+      const p0 = [ax * wa + px * wa, ya, az * wa + pz * wa], p1 = [ax * wa - px * wa, ya, az * wa - pz * wa];
+      const q0 = [ax * wb + px * wb, yb, az * wb + pz * wb], q1 = [ax * wb - px * wb, yb, az * wb - pz * wb];
+      tri(L, p0, p1, q1, ca, ca, cb, [ax, 0.3, az]);
+      tri(L, p0, q1, q0, ca, cb, cb, [ax, 0.3, az]);
+    }
+  }
+  const w = jbHalf(1.35) * S, ct = lin(0xcfcdc3);
+  tri(L, [-w, 1.35, -w], [w, 1.35, -w], [w, 1.35, w], ct, ct, ct, [0, 1, 0]);
+  tri(L, [-w, 1.35, -w], [w, 1.35, w], [-w, 1.35, w], ct, ct, ct, [0, 1, 0]);
+}
+function hormigonArm(b, joined) {
+  const xe = armEnd(joined, 0.48);
   const pts = [...JB_PTS.map(([w, y]) => [w, y]), ...JB_PTS.slice().reverse().map(([w, y]) => [-w, y])];
-  extrude(b, pts, 'zy', -0.48, 0.48, CONC, { ao: 0.2 });
-  // franja de colores sobre la pendiente (8 tramos de 12 cm)
-  const y0 = 0.56, y1 = 0.98, e = 0.006;
-  for (let k = 0; k < 8; k++) {
-    const xa = -0.48 + k * 0.12;
-    extrude(b, [[-jbHalf(y0) - e, y0], [jbHalf(y0) + e, y0], [jbHalf(y1) + e, y1], [-jbHalf(y1) - e, y1]], 'zy', xa, xa + 0.12, k % 2 ? 0xf2efe6 : 0xd24a3e, { ao: 0.08, y0: 0, y1: 1.35 });
-  }
-  // reflectores amarillos arriba y ranuras de horquilla en la base
-  for (const sx of [-1, 1]) b.box(sx * 0.3, 1.35, 0, 0.12, 0.012, 0.1, YEL, { ao: 0 });
-  for (const side of [-1, 1]) for (const sx of [-1, 1]) {
-    b.box(sx * 0.27, 0.16, side * (jbHalf(0.16) - 0.002), 0.2, 0.09, 0.012, CONC_D, { ao: 0 });
-  }
-  b.box(0, 1.28, 0, 0.96, 0.02, 0.36, 0xcfcdc3, { ao: 0 }); // brillo del borde superior
+  extrude(b, pts, 'zy', 0, xe, CONC, { ao: 0.2 });
+  // franja roja junto al centro y blanca junto al borde: en fila alternan cada 0,5 m
+  const [y0, y1] = JB_BAND, e = 0.006;
+  const stripe = (xa, xb, c) => extrude(b, [[-jbHalf(y0) - e, y0], [jbHalf(y0) + e, y0], [jbHalf(y1) + e, y1], [-jbHalf(y1) - e, y1]], 'zy', xa, xb, c, { ao: 0.08, y0: 0, y1: 1.35 });
+  stripe(0, 0.25, 0xd24a3e);
+  stripe(0.25, xe, 0xf2efe6);
+  b.box(0.25, 1.35, 0, 0.12, 0.012, 0.1, YEL, { ao: 0 });                         // reflector
+  for (const s of [-1, 1]) b.box(0.25, 0.16, s * (jbHalf(0.16) - 0.002), 0.2, 0.09, 0.012, CONC_D, { ao: 0 }); // ranura de horquilla
+  b.box(xe / 2, 1.28, 0, xe, 0.02, 0.36, 0xcfcdc3, { ao: 0 });                   // brillo del canto
 }
 
 // ---------------------------------------------------------------- sacos de arena
 
 const SACK_BEIGE = [0xd9c7a0, 0xcdb88d, 0xe2d2ae, 0xd3bf94];
 const SACK_GREEN = [0x6e7a4a, 0x5f6b3f];
-const SACK_TIE = 0x8f7c55;
+/** Hiladas por nivel: filas (z), fondo y alto de cada saco; proporción de sacos verdes. */
+const SACK_LV = [
+  { rows: [-0.215, 0.215], dep: 0.43, h: 0.42, courses: 2, green: 0 },
+  { rows: [-0.225, 0.225], dep: 0.46, h: 0.3, courses: 3, green: 0.4 },
+];
 
-/** Sacos apilados en hiladas alternas (a lo largo de Z / a lo largo de X). */
-function sacos(b, level) {
-  const r = rng(300 + level);
-  const courses = level === 0 ? 2 : 3;
-  const h = level === 0 ? 0.42 : 0.34;
-  const top = level === 0 ? 0.8 : 0.86;
-  const seg = level === 0 ? 8 : 7;
-  const step = (top - h) / (courses - 1);
-  const green = level === 0 ? [] : [1, 4, 6];
-  let n = 0;
-  const sack = (x, y0, z, len, dep, rot, tieSign) => {
-    const isGreen = green.includes(n);
-    const col = isGreen ? SACK_GREEN[n % 2] : SACK_BEIGE[(n * 3 + 1) % SACK_BEIGE.length];
-    n++;
-    b.sphere(x, y0, z, len, h, dep, col, seg, { ry: rot, ao: 0.22 });
-    b.box(x, y0 + h * 0.06, z, len * 0.86, h * 0.44, dep * 0.86, col, { ry: rot, ao: 0.22 });   // cuerpo del saco: rellena los huecos entre elipsoides
-    b.box(x, y0 + h * 0.32, z, 0.07, h * 0.34, dep * 0.4, isGreen ? 0x434b2a : SACK_TIE, { ry: rot, ox: tieSign * (len / 2 - 0.025), ao: 0.05 });
-  };
-  for (let c = 0; c < courses; c++) {
-    const y0 = c * step;
-    if (c % 2 === 0) {
-      for (const sx of [-1, 1]) sack(sx * 0.25 + (r() - 0.5) * 0.01, y0, (r() - 0.5) * 0.01, 0.98, 0.5, Math.PI / 2 + (r() - 0.5) * 0.04, sx);
-    } else {
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) sack(sx * 0.25, y0, sz * 0.25, 0.5, 0.5, (r() - 0.5) * 0.1, sx);
+/**
+ * Saco de arena a lo largo de X entre x0 y x1: sección de almohada (hexágono achatado), extremos
+ * redondeados (capA/capB) o cortados en plano para continuar en el saco de la celda vecina.
+ */
+function sack(b, x0, x1, zc, y0, h, dep, color, capA = true, capB = true) {
+  const L = b.layers.solid, col = lin(color);
+  const SEG = 6, a = dep / 2, c = h / 2, yc = y0 + c;
+  const sec = [];
+  for (let k = 0; k < SEG; k++) {
+    const t = (k / SEG) * Math.PI * 2;
+    sec.push([Math.cos(t), Math.sin(t) / 0.866]);
+  }
+  const e = Math.min(0.07, (x1 - x0) / 4), TAPER = 0.6;
+  const rings = [];
+  if (capA) rings.push([x0, TAPER]);
+  rings.push([capA ? x0 + e : x0, 1]);
+  rings.push([capB ? x1 - e : x1, 1]);
+  if (capB) rings.push([x1, TAPER]);
+  const P = (x, s, k) => [x, yc + sec[k][1] * c * s, zc + sec[k][0] * a * s];
+  const C = (p) => shade(col, p[1], y0, y0 + h, 0.22);
+  for (let r = 0; r < rings.length - 1; r++) {
+    const [xa, sa] = rings[r], [xb, sb] = rings[r + 1];
+    for (let k = 0; k < SEG; k++) {
+      const k2 = (k + 1) % SEG;
+      if (sec[k][1] < -0.5 && sec[k2][1] < -0.5) continue; // cara de abajo: apoyada
+      const p0 = P(xa, sa, k), p1 = P(xa, sa, k2), q0 = P(xb, sb, k), q1 = P(xb, sb, k2);
+      const hint = [0, (sec[k][1] + sec[k2][1]) / 2, (sec[k][0] + sec[k2][0]) / 2];
+      tri(L, p0, p1, q1, C(p0), C(p1), C(q1), hint);
+      tri(L, p0, q1, q0, C(p0), C(q1), C(q0), hint);
+    }
+  }
+  for (const [end, sgn] of [[0, -1], [rings.length - 1, 1]]) {
+    const [x, s] = rings[end];
+    const capped = sgn < 0 ? capA : capB;
+    const ctr = [x + sgn * (capped ? 0.012 : 0), yc, zc];
+    for (let k = 0; k < SEG; k++) {
+      const p = P(x, s, k), q = P(x, s, (k + 1) % SEG);
+      tri(L, ctr, p, q, C(ctr), C(p), C(q), [sgn, 0, 0]);
+    }
+  }
+}
+
+/**
+ * Sacos en aparejo: las hiladas pares van de 0 a 0,5 en cada brazo; las impares empiezan en 0,25
+ * y, si el brazo está unido, acaban cortadas en el borde para seguir en la celda vecina (así las
+ * juntas de una hilada caen a mitad de los sacos de la otra).
+ */
+function sacosColor(r, lv) {
+  return r() < SACK_LV[lv].green ? SACK_GREEN[(r() * 2) | 0] : SACK_BEIGE[(r() * SACK_BEIGE.length) | 0];
+}
+function sacosNode(b, shape, lv) {
+  const S = SACK_LV[lv], r = rng(300 + lv * 7 + shape.length);
+  const straight = STRAIGHT.has(shape);
+  for (let c = 0; c < S.courses; c++) {
+    const y0 = c * S.h * 0.94;
+    if (c % 2 === 1) {
+      for (const z of S.rows) sack(b, -0.25, 0.25, z, y0, S.h, S.dep, sacosColor(r, lv));
+    } else if (!straight) {
+      // en las uniones, sacos cruzados tapan el centro (aparejo de esquina)
+      for (const z of S.rows) sack(b, -0.25, 0.25, z * 0.98, y0, S.h * 0.98, S.dep, sacosColor(r, lv));
+      if (shape === 'L') sack(b, -0.42, 0, S.rows[0], y0, S.h, S.dep, sacosColor(r, lv));
+    }
+  }
+}
+function sacosArm(b, joined, lv, seed) {
+  const S = SACK_LV[lv], r = rng(330 + lv * 11 + seed * 5);
+  const xe = armEnd(joined, 0.48);
+  for (let c = 0; c < S.courses; c++) {
+    const y0 = c * S.h * 0.94;
+    for (const z of S.rows) {
+      const jz = (r() - 0.5) * 0.02;
+      if (c % 2 === 0) sack(b, 0.005, xe - 0.013, z + jz, y0, S.h, S.dep, sacosColor(r, lv));
+      else sack(b, 0.25, xe, z + jz * 0.3, y0, S.h, S.dep, sacosColor(r, lv), true, !joined);
     }
   }
 }
@@ -506,12 +601,16 @@ function cylStripe(b, r, y0, y1, a0, a1, shift, color, sub = 2) {
   }
 }
 
-/** Rollo helicoidal de alambre a lo largo de X (de -0,49 a 0,49): tubo triangular de radio `wr` + púas. */
-function coilTube(b, cy, cz, r, turns, segPer, wr, color, barbColor, phase = 0, barbEvery = 3) {
+/**
+ * Rollo helicoidal de alambre a lo largo de X (de x0 a x1): tubo triangular de radio `wr` + púas.
+ * Con la fase en π/2 el rollo pasa por arriba en x0; si además las vueltas son múltiplo de 0,5,
+ * los brazos girados 180° (o 90°) de las celdas vecinas empalman sin salto.
+ */
+function coilTube(b, cy, cz, r, turns, segPer, wr, color, barbColor, phase = 0, barbEvery = 3, x0 = -0.49, x1 = 0.49) {
   const L = b.layers.solid, col = lin(color);
-  const n = Math.round(turns * segPer);
+  const n = Math.max(2, Math.round(turns * segPer));
   const frame = (i) => {
-    const t = i / n, x = -0.49 + 0.98 * t, th = phase + t * turns * Math.PI * 2;
+    const t = i / n, x = x0 + wr + (x1 - x0 - 2 * wr) * t, th = phase + t * turns * Math.PI * 2;
     const e1 = [0, Math.sin(th), Math.cos(th)];
     const c = [x, cy + r * e1[1], cz + r * e1[2]];
     const ring = [];
@@ -532,7 +631,7 @@ function coilTube(b, cy, cz, r, turns, segPer, wr, color, barbColor, phase = 0, 
       tri(L, p0, p1, q1, cs(p0), cs(p1), cs(q1), mid);
       tri(L, p0, q1, q0, cs(p0), cs(q1), cs(q0), mid);
     }
-    if (barbEvery && i % barbEvery === 0) {
+    if (barbEvery && i % barbEvery === 0 && i < n && cur.e1[1] > -0.3) { // sin púas hacia el suelo
       spike(b, cur.c, norm3([i % 2 ? 0.5 : -0.5, cur.e1[1], cur.e1[2]]), wr * 1.1, 0.05, 3, barbColor, 0xdfe5ea);
     }
     prev = cur;
@@ -541,25 +640,32 @@ function coilTube(b, cy, cz, r, turns, segPer, wr, color, barbColor, phase = 0, 
 
 // ---------------------------------------------------------------- alambre de espino
 
-/** Alambre de espino (nivel 0: piquetas de madera cruzadas) y concertina (nivel 1: tres rollos sobre piquetas de acero). */
-function alambre(b, level) {
+/** Piqueta: de madera cruzada (nivel 0) o de acero en estrella con capuchón (nivel 1). */
+function alambreStake(b, x, level) {
   if (level === 0) {
-    for (const sx of [-1, 1]) {
-      for (const t of [-1, 1]) b.box(sx * 0.4, 0, 0, 0.065, 0.5, 0.065, WOOD[(t + 3) % WOOD.length], { rx: t * 0.22, ao: 0.18 });
-      b.box(sx * 0.4, 0.27, 0, 0.075, 0.035, 0.1, 0x5b646e, { ao: 0 });                // abrazadera
-    }
-    coilTube(b, 0.265, 0, 0.215, 6, 6, 0.011, 0x6c747d, 0x2b2f35, 0.4, 3);
+    for (const t of [-1, 1]) b.box(x, 0, 0, 0.065, 0.5, 0.065, WOOD[(t + 3) % WOOD.length], { rx: t * 0.22, ao: 0.18 });
+    b.box(x, 0.27, 0, 0.075, 0.035, 0.1, 0x5b646e, { ao: 0 });                    // abrazadera
   } else {
-    for (const sx of [-1, 1]) {
-      b.box(sx * 0.4, 0, 0, 0.05, 0.54, 0.014, 0x3a424b, { ao: 0.15 });              // piqueta en estrella (dos chapas)
-      b.box(sx * 0.4, 0, 0, 0.014, 0.54, 0.05, 0x3a424b, { ao: 0.15 });
-      b.box(sx * 0.4, 0, 0, 0.09, 0.025, 0.09, 0x2f353c, { ao: 0.1 });               // pletina de apoyo
-      b.box(sx * 0.4, 0.5, 0, 0.056, 0.045, 0.056, YEL, { ao: 0 });                  // capuchón amarillo
-    }
-    coilTube(b, 0.165, -0.165, 0.15, 4, 6, 0.011, 0xb9c2ca, 0x4f5862, 0.2, 3);
-    coilTube(b, 0.165, 0.165, 0.15, 4, 6, 0.011, 0xc7cfd6, 0x4f5862, 2.6, 3);
-    coilTube(b, 0.355, 0, 0.14, 3.5, 6, 0.011, 0xdde3e8, 0x4f5862, 1.4, 3);
+    b.box(x, 0, 0, 0.05, 0.54, 0.014, 0x3a424b, { ao: 0.15 });                    // dos chapas en estrella
+    b.box(x, 0, 0, 0.014, 0.54, 0.05, 0x3a424b, { ao: 0.15 });
+    b.box(x, 0, 0, 0.09, 0.025, 0.09, 0x2f353c, { ao: 0.1 });                     // pletina de apoyo
+    b.box(x, 0.5, 0, 0.056, 0.045, 0.056, YEL, { ao: 0 });                        // capuchón amarillo
   }
+}
+/** Alambre de espino (nivel 0) y concertina de tres rollos (nivel 1): piqueta en el centro y rollos por brazo. */
+function alambreNode(b, shape, level) {
+  alambreStake(b, 0, level);
+}
+function alambreArm(b, joined, level) {
+  const xe = armEnd(joined, 0.47), P = Math.PI / 2;
+  if (level === 0) {
+    coilTube(b, 0.265, 0, 0.215, 3, 6, 0.011, 0x6c747d, 0x2b2f35, P, 3, 0, xe);
+  } else {
+    coilTube(b, 0.165, -0.165, 0.15, 2, 6, 0.011, 0xb9c2ca, 0x4f5862, P, 3, 0, xe);
+    coilTube(b, 0.165, 0.165, 0.15, 2, 6, 0.011, 0xc7cfd6, 0x4f5862, P, 3, 0, xe);
+    coilTube(b, 0.355, 0, 0.14, 1.5, 6, 0.011, 0xdde3e8, 0x4f5862, P, 3, 0, xe);
+  }
+  if (!joined) alambreStake(b, 0.42, level);
 }
 
 // ---------------------------------------------------------------- barril explosivo
@@ -598,7 +704,7 @@ function barril(b) {
 
 // ---------------------------------------------------------------- valla electrificada
 
-const FENCE_POST = 0x8d97a1, FENCE_POST_D = 0x5b646e, FENCE_WIRE = 0xc5ccd3, INSUL = 0xf2c230, INSUL_TIP = 0xffe27a;
+const FENCE_POST = 0x8d97a1, FENCE_POST_D = 0x5b646e, FENCE_WIRE = 0xc5ccd3, INSUL = 0xf2c230;
 const BOLT = [[0.015, 0.205], [-0.04, 0.115], [-0.005, 0.115], [-0.025, 0.04], [0.045, 0.14], [0.01, 0.14], [0.05, 0.205]];
 
 /** Cartel de peligro eléctrico (triángulo amarillo con borde negro y rayo) en la cara `s` (±1), desde z = zs hacia fuera, centrado en x = dx. */
@@ -610,41 +716,60 @@ function boltSign(b, s, zs, y0, dx = 0) {
   extrude(b, BOLT.map(([u, v]) => [u * s + dx, y0 + v]), 'xy', ...w(0.01, 0.014), 0x1f2328, { ao: 0 });
 }
 
-/** Valla electrificada: panel de 1 m (postes en x = ±0,5), hilos horizontales sobre aisladores amarillos y cartel de rayo. */
-function valla(b, level) {
+/** Medidas de la valla por nivel (poste, alto, hilos). */
+function vallaDims(level) {
   const r1 = level === 1;
   const pw = r1 ? 0.1 : 0.08, pd = r1 ? 0.11 : 0.09;
-  const H = r1 ? 1.46 : 1.56, px = 0.5 - pw / 2;
-  const zf = pd / 2 + 0.03;
-  for (const sx of [-1, 1]) {
-    b.box(sx * px, 0, 0, pw, H, pd, r1 ? FENCE_POST_D : FENCE_POST, { ao: 0.16 });             // poste
-    b.box(sx * px, 0, 0, pw, 0.05, pd + 0.08, 0x3f464e, { ao: 0.1 });                          // placa de anclaje
-    b.box(sx * px, H, 0, pw + 0.012, 0.04, pd + 0.012, r1 ? BLK : 0x4f5862, { ao: 0 });        // remate
+  return {
+    r1, pw, pd, H: r1 ? 1.46 : 1.56, zf: pd / 2 + 0.03,
+    rows: r1 ? [0.3, 0.55, 0.8, 1.05, 1.3] : [0.35, 0.65, 0.95, 1.25, 1.5],
+    ang: 0.7, len: 0.14,
+  };
+}
+
+/** Poste compartido en el centro de la celda (con el remate de púas en el nivel 1) y carteles en los tramos rectos. */
+function vallaNode(b, shape, level) {
+  const { r1, pw, pd, H, zf, ang, len } = vallaDims(level);
+  b.box(0, 0, 0, pw, H, pd, r1 ? FENCE_POST_D : FENCE_POST, { ao: 0.16 });
+  b.box(0, 0, 0, pw + 0.08, 0.05, pd + 0.08, 0x3f464e, { ao: 0.1 });               // placa de anclaje
+  for (const s of [-1, 1]) b.box(s * (pw / 2 + 0.03), 0.05, 0, 0.03, 0.012, 0.03, 0x8a929b, { ao: 0 }); // pernos
+  b.box(0, H, 0, pw + 0.012, 0.04, pd + 0.012, r1 ? BLK : 0x4f5862, { ao: 0 });   // remate
+  for (const y of vallaDims(level).rows) b.box(0, y - 0.025, 0, pw + 0.03, 0.05, 2 * zf, INSUL, { ao: 0 }); // aisladores
+  if (r1) for (const s of [-1, 1]) b.box(0, H + 0.02, 0, 0.04, len, 0.03, FENCE_POST_D, { rx: s * ang, ao: 0.05 });
+  if (STRAIGHT.has(shape)) {
+    const sy = r1 ? 0.66 : 0.74, zs = zf + 0.004;
+    boltSign(b, 1, zs, sy, -0.25);   // desfasados en X para que no se solapen al verlos a través de la malla
+    boltSign(b, -1, zs, sy, 0.25);
   }
-  const rows = r1 ? [0.3, 0.55, 0.8, 1.05, 1.3] : [0.35, 0.65, 0.95, 1.25, 1.5];
+}
+/** Hilos del poste al borde de la celda sobre aisladores amarillos (doble malla y púas en el nivel 1). */
+function vallaArm(b, joined, level) {
+  const { r1, pw, H, zf, rows, ang, len } = vallaDims(level);
+  const xe = armEnd(joined, 0.47), x0 = pw / 2;
   for (const y of rows) {
     for (const s of [-1, 1]) {
-      for (const sx of [-1, 1]) cone(b, sx * px, y, s * pd / 2, 0.028, 0.03, 4, INSUL, INSUL_TIP, { axis: s > 0 ? '+z' : '-z', rot: Math.PI / 4 });
-      b.box(0, y - 0.006, s * zf, 2 * px, 0.012, 0.012, FENCE_WIRE, { ao: 0.05 });
+      b.box((x0 + xe) / 2, y - 0.006, s * zf, xe - x0, 0.012, 0.012, FENCE_WIRE, { ao: 0.05 });
     }
   }
-  if (!r1) {
-    for (const s of [-1, 1]) b.box(0, 0.3, s * (zf - 0.004), 0.016, 1.25, 0.016, 0x59626d, { ao: 0.05 });   // separador central
-  } else {
-    // doble malla: montantes finos en las dos caras
-    for (const s of [-1, 1]) for (const x of [-0.27, 0, 0.27]) b.box(x, 0.28, s * (zf + 0.012), 0.014, 1.04, 0.012, 0x59626d, { ao: 0.05 });
-    // remate de alambre: brazos inclinados y dos hilos con púas
-    const ang = 0.7, len = 0.14;
-    for (const sx of [-1, 1]) for (const s of [-1, 1]) b.box(sx * px, H + 0.02, 0, 0.04, len, 0.03, FENCE_POST_D, { rx: s * ang, ao: 0.05 });
+  // varillas separadoras (nivel 0) o montantes de la doble malla (nivel 1)
+  for (const s of [-1, 1]) {
+    for (const x of [0.27]) {
+      if (x > xe - 0.04) continue;
+      b.box(x, r1 ? 0.28 : 0.3, s * (zf + (r1 ? 0.012 : -0.004)), r1 ? 0.014 : 0.016, r1 ? 1.04 : 1.25, r1 ? 0.012 : 0.016, 0x59626d, { ao: 0.05 });
+    }
+  }
+  if (r1) {
     const ty = H + 0.02 + len * Math.cos(ang), tz = len * Math.sin(ang);
     for (const s of [-1, 1]) {
-      b.box(0, ty - 0.006, s * tz, 2 * px, 0.012, 0.012, FENCE_WIRE, { ao: 0.05 });
-      for (let k = 0; k < 6; k++) spike(b, [-0.35 + k * 0.14, ty, s * tz], norm3([0, 1, s * 0.7]), 0.012, 0.045, 3, 0x4f5862, 0xdfe5ea);
+      b.box(xe / 2, ty - 0.006, s * tz, xe, 0.012, 0.012, FENCE_WIRE, { ao: 0.05 });
+      for (let k = 0; k < 3; k++) spike(b, [0.08 + k * 0.15, ty, s * tz], norm3([0, 1, s * 0.7]), 0.012, 0.045, 3, 0x4f5862, 0xdfe5ea);
     }
   }
-  const sy = r1 ? 0.66 : 0.74, zs = zf + 0.004;
-  boltSign(b, 1, zs, sy, -0.17);   // los dos carteles desfasados en X para que no se solapen al verlos a través de la malla
-  boltSign(b, -1, zs, sy, 0.17);
+  if (!joined) {
+    // tensor de final de tramo
+    b.box(xe - 0.02, 0, 0, 0.05, H - 0.1, 0.06, r1 ? FENCE_POST_D : FENCE_POST, { ao: 0.12 });
+    b.box(xe - 0.02, 0, 0, 0.09, 0.04, 0.12, 0x3f464e, { ao: 0.1 });
+  }
 }
 
 // ---------------------------------------------------------------- generador
@@ -797,6 +922,99 @@ function foco(b) {
   floodProjector(b, -1);
 }
 
+// ---------------------------------------------------------------- uniones (API)
+
+/** Piezas que se unen con sus vecinas: nodo (poste) y brazo (del centro al borde, a lo largo de +X). */
+const JOINERS = {
+  barricada: {
+    node: (b, shape, lv) => [maderaNode, metalNode, hormigonNode][lv](b, shape),
+    arm: (b, joined, lv, seed) => [maderaArm, metalArm, hormigonArm][lv](b, joined, seed),
+  },
+  sacos: { node: sacosNode, arm: sacosArm },
+  valla: { node: vallaNode, arm: (b, joined, lv) => vallaArm(b, joined, lv) },
+  alambre: { node: alambreNode, arm: (b, joined, lv) => alambreArm(b, joined, lv) },
+};
+/** Tipos que se unen en esquinas y en T (el renderer elige forma y giro por sus vecinos). */
+export const JOIN_TYPES = Object.freeze(Object.keys(JOINERS));
+/**
+ * Formas de unión. Los brazos se dan como [ángulo, unido]: ángulo 0 = +X (este); -π/2 = +Z (sur);
+ * π = -X (oeste); π/2 = -Z (norte). Máscaras canónicas con los bits E=1, S=2, W=4, N=8.
+ */
+const SHAPES = {
+  I: { mask: 0, arms: [[0, false], [Math.PI, false]] },
+  end: { mask: 1, arms: [[0, true], [Math.PI, false]] },
+  line: { mask: 5, arms: [[0, true], [Math.PI, true]] },
+  L: { mask: 3, arms: [[0, true], [-Math.PI / 2, true]] },
+  T: { mask: 7, arms: [[0, true], [-Math.PI / 2, true], [Math.PI, true]] },
+  X: { mask: 15, arms: [[0, true], [-Math.PI / 2, true], [Math.PI, true], [Math.PI / 2, true]] },
+};
+export const JOIN_SHAPES = Object.freeze(Object.keys(SHAPES));
+export const JOIN_BITS = Object.freeze({ E: 1, S: 2, W: 4, N: 8 });
+
+/** Gira una máscara un paso de +90° en Y (E→N→W→S→E). */
+const rotMask = (m) => ((m >> 1) | ((m & 1) << 3)) & 15;
+const SHAPE_OF = new Array(16);
+for (const [name, s] of Object.entries(SHAPES)) {
+  let m = s.mask;
+  for (let k = 0; k < 4; k++) {
+    if (!SHAPE_OF[m]) SHAPE_OF[m] = { shape: name, index: JOIN_SHAPES.indexOf(name), rot: (k * Math.PI) / 2 };
+    m = rotMask(m);
+  }
+}
+/**
+ * Forma y giro (radianes, en Y) para una máscara de vecinos unidos (E=1, S=2, W=4, N=8).
+ * @returns {{ shape: string, index: number, rot: number }}
+ */
+export function joinShape(mask) {
+  return SHAPE_OF[mask & 15];
+}
+
+/** Funde geometrías no indexadas (position, normal, color) en una sola y libera las piezas. */
+function mergeParts(parts) {
+  let n = 0;
+  for (const g of parts) n += g.attributes.position.count;
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  let o = 0;
+  for (const g of parts) {
+    pos.set(g.attributes.position.array, o * 3);
+    nor.set(g.attributes.normal.array, o * 3);
+    col.set(g.attributes.color.array, o * 3);
+    o += g.attributes.position.count;
+    g.dispose();
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  out.computeBoundingBox();
+  return out;
+}
+
+/**
+ * Geometría de una pieza que se une con sus vecinas, en su forma canónica (sin girar):
+ * 'I' suelta a lo largo de X, 'end' unida al este, 'line' este-oeste, 'L' este y sur,
+ * 'T' este, sur y oeste, 'X' las cuatro. El giro para cada celda lo da joinShape(mask).
+ */
+export function structureJoinGeometry(type, level, shape) {
+  const J = JOINERS[type], S = SHAPES[shape];
+  if (!J) throw new Error(`structureJoinGeometry: "${type}" no se une`);
+  if (!S) throw new Error(`structureJoinGeometry: forma desconocida "${shape}"`);
+  const lv = Math.max(0, Math.min(build.pieces[type].levels.length - 1, level | 0));
+  const parts = [];
+  const part = (fn, ang) => {
+    const b = new PropBuilder();
+    b.root(0, 0, 0);
+    fn(b);
+    const g = b.toGeometry('solid');
+    if (!g) return;
+    if (ang) g.rotateY(ang);
+    parts.push(g);
+  };
+  part((b) => J.node(b, shape, lv));
+  S.arms.forEach(([ang, joined], k) => part((b) => J.arm(b, joined, lv, k), ang));
+  return mergeParts(parts);
+}
+
 // ---------------------------------------------------------------- API pública
 
 /**
@@ -806,7 +1024,8 @@ function foco(b) {
  * @returns {THREE.BufferGeometry} no indexada; position + normal + color (lineal), sin uv.
  *   Coordenadas locales de la celda (centro en 0,0,0; base en y=0); la pieza corre a lo largo de X.
  *   La mina incluye el piloto rojo como color; para que brille, superponer mineLightGeometry().
- *   alambre/valla corren a lo largo de X (panel fino en Z): en una columna (eje Z) rotar 90° en Y.
+ *   barricada/sacos/alambre/valla devuelven la pieza SUELTA a lo largo de X; en el mapa se dibujan
+ *   con structureJoinGeometry(type, level, forma) y el giro de joinShape(máscara de vecinos).
  *   torreta devuelve SOLO la base (hasta y = 0,9): la cabeza giratoria es turretHeadGeometry(level), a y = headHeight.
  *   foco: los cristales de los proyectores se pueden hacer brillar superponiendo floodLensGeometry().
  */
@@ -815,17 +1034,14 @@ export function structureGeometry(type, level = 0) {
   if (!def) throw new Error(`structureGeometry: tipo desconocido "${type}"`);
   const lv = Math.max(0, Math.min(def.levels.length - 1, level | 0));
   if (type === 'puerta') return doorGeometry(lv, 'all');
+  if (JOINERS[type]) return structureJoinGeometry(type, lv, 'I'); // pieza suelta (en el mapa se une con sus vecinas)
   const b = new PropBuilder();
   b.root(0, 0, 0);
   switch (type) {
-    case 'barricada': [barricadaMadera, barricadaMetal, barricadaHormigon][lv](b); break;
-    case 'sacos': sacos(b, lv); break;
     case 'pinchos': pinchos(b, lv); break;
     case 'cepo': cepo(b, lv); break;
     case 'mina': mina(b); break;
-    case 'alambre': alambre(b, lv); break;
     case 'barril': barril(b); break;
-    case 'valla': valla(b, lv); break;
     case 'generador': generador(b); break;
     case 'torreta': torretaBase(b, lv); break;
     case 'foco': foco(b); break;

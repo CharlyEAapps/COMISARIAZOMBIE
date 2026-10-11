@@ -288,5 +288,55 @@
     "effect": {
       "reloadTurret": true
     }
+  },
+  "mision_fusibles": {
+    "label": "Cambiar los fusibles",
+    "hold": 3,
+    "cooldown": 1,
+    "radius": 1.4,
+    "marker": true,
+    "effect": {
+      "mission": "fuses"
+    }
+  },
+  "mision_caja": {
+    "label": "Coger la caja de pruebas",
+    "hold": 1.2,
+    "cooldown": 0.5,
+    "radius": 1.5,
+    "marker": true,
+    "effect": {
+      "mission": "pickBox"
+    }
+  },
+  "mision_entrega": {
+    "label": "Entregar las pruebas en el almacén",
+    "hold": 1,
+    "cooldown": 0.5,
+    "radius": 1.6,
+    "marker": true,
+    "effect": {
+      "mission": "deliverBox"
+    }
+  },
+  "mision_gato": {
+    "label": "Atrapar a Bigotes",
+    "hold": 1.4,
+    "cooldown": 0.5,
+    "radius": 1.5,
+    "marker": true,
+    "effect": {
+      "mission": "catchCat"
+    }
+  },
+  "mision_coche": {
+    "label": "Remendar el coche con cinta americana",
+    "hold": 2.5,
+    "cooldown": 0.5,
+    "radius": 2.2,
+    "marker": true,
+    "effect": {
+      "mission": "repairCar"
+    }
   }
 }

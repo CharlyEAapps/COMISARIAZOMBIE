@@ -283,7 +283,7 @@ export class BuildSystem {
       const i = c % grid.w, j = (c / grid.w) | 0;
       if (!grid.isStaticWalkable(i, j)) return 'No se puede construir ahí';
       if (this.structures.has(c)) return cells.length > 1 ? 'El hueco ya está ocupado' : 'Ya hay algo construido';
-      if (NO_BUILD_CHARS.has(grid.chars[c])) return 'Zona reservada';
+      if (NO_BUILD_CHARS.has(grid.chars[c]) || this.game.despacho?.isReserved(c)) return 'Zona reservada';
       sx += grid.centerX(i); sz += grid.centerZ(j);
     }
     if (!this.inReachXY(sx / cells.length, sz / cells.length)) return 'Demasiado lejos';
@@ -815,7 +815,7 @@ export class BuildSystem {
   sellAction(s) {
     if (!this.inReachXY(s.cx, s.cz)) return;
     if (s.auto) {
-      this.game.hud?.toast('🛡️ Las persianas son de la comisaría: no se venden', 2);
+      this.game.hud?.toast(s.type === 'barril' ? '🛢️ Los barriles son de la comisaría: no se venden' : '🛡️ Las persianas son de la comisaría: no se venden', 2);
       return;
     }
     if (this.sellArmed === s.id && this.game.time < this.sellArmedUntil) {

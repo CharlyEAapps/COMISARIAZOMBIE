@@ -30,6 +30,9 @@ export const WEAPON_SPECS = Object.freeze({
   francotirador: { muzzle: [0, 0.035, 0.80], support: [0, -0.04, 0.30], length: 1.16 },
   taser:         { muzzle: [0, 0.04, 0.216], support: null, length: 0.27 },
   porra:         { muzzle: [0, 0, 0.585], support: null, length: 0.665 },
+  laser:         { muzzle: [0, 0.04, 0.72], support: [0, -0.03, 0.33], length: 0.96 },
+  lanzallamas:   { muzzle: [0, 0.035, 0.67], support: [0, -0.04, 0.32], length: 0.88 },
+  sable:         { muzzle: [0, 0, 0.92], support: null, length: 1.04 },
 });
 
 // ---------------------------------------------------------------- paleta
@@ -43,6 +46,12 @@ const WOOD2 = 0x7a4a27;
 const OLIVE = 0x5d6b38;
 const OLIVE2 = 0x48552b;
 const YEL = 0xf2c418;
+const WHT = 0xe3e7ee;     // carcasa blanca del rifle láser
+const LBLU = 0x5fa8d3;
+const RED = 0xc8372d;     // rojo bombero del lanzallamas
+const STEEL = 0xaab2bc;
+const CYAN = 0x6fe3ff;    // hoja del sable
+const BLADE = 0xe4fcff;
 
 // ---------------------------------------------------------------- utilidades
 
@@ -53,6 +62,11 @@ function bx(b, x, y, z, w, h, d, color, rx = 0) {
 /** Cilindro/cono con eje Z: base en z0 (radio rBack), extremo en z0 + len (radio rFront). */
 function cylZ(b, x, y, z0, rFront, rBack, len, color, seg = 8) {
   b.cyl(x, y, z0, rFront, rBack, len, color, seg, { rx: Math.PI / 2, ao: 0.1 });
+}
+
+/** Igual que cylZ pero en la capa 'glow' (sin iluminación: se pinta aditivo aparte, ver weaponGlowGeometry). */
+function glowZ(b, x, y, z0, rFront, rBack, len, color, seg = 8) {
+  b.cyl(x, y, z0, rFront, rBack, len, color, seg, { rx: Math.PI / 2, ao: 0, layer: 'glow' });
 }
 
 function finish(b) {
@@ -193,15 +207,100 @@ function porra(b) {
   cylZ(b, 0, 0, 0.57, 0.016, 0.016, 0.015, LGRY);               // punta
 }
 
-const BUILDERS = { pistola, escopeta, subfusil, fusil, francotirador, taser, porra };
+function laser(b) {
+  // culata ligera y empuñadura
+  bx(b, 0, -0.005, -0.15, 0.04, 0.09, 0.14, DGRY);
+  bx(b, 0, -0.012, -0.225, 0.046, 0.11, 0.02, BLK);
+  bx(b, 0, -0.06, -0.02, 0.04, 0.12, 0.05, BLK, 0.25);
+  // carcasa blanca con franjas azules y célula de energía bajo el cajón
+  bx(b, 0, 0.03, 0.08, 0.058, 0.095, 0.3, WHT);
+  bx(b, 0, 0.0795, 0.08, 0.036, 0.008, 0.22, MGRY);             // raíl
+  bx(b, 0.0305, 0.035, 0.1, 0.004, 0.03, 0.16, LBLU);           // franja lateral
+  bx(b, -0.0305, 0.035, 0.1, 0.004, 0.03, 0.16, LBLU);
+  bx(b, 0, -0.07, 0.13, 0.034, 0.075, 0.11, LBLU);              // célula de energía
+  bx(b, 0, -0.112, 0.13, 0.038, 0.01, 0.116, BLK);
+  bx(b, 0, -0.03, 0.06, 0.016, 0.008, 0.07, BLK);               // guardamonte
+  // mira: visor oscuro con lente
+  bx(b, 0, 0.088, 0.03, 0.03, 0.03, 0.09, BLK);
+  bx(b, 0, 0.1, 0.078, 0.022, 0.022, 0.006, CYAN);
+  // cañón: tubo central con tres bobinas de carga y emisor
+  cylZ(b, 0, 0.04, 0.23, 0.02, 0.02, 0.4, STEEL, 8);
+  for (const z of [0.3, 0.42, 0.54]) cylZ(b, 0, 0.04, z, 0.036, 0.036, 0.04, DGRY, 8);
+  bx(b, 0, -0.012, 0.33, 0.07, 0.06, 0.2, WHT);                 // guardamanos
+  cylZ(b, 0, 0.04, 0.63, 0.03, 0.022, 0.07, BLK, 8);            // emisor
+  cylZ(b, 0, 0.04, 0.70, 0.016, 0.016, 0.02, LBLU, 6);          // boca
+  // bobinas luminosas (se pintan aparte, ver weaponGlowGeometry)
+  for (const z of [0.345, 0.465, 0.585]) glowZ(b, 0, 0.04, z, 0.04, 0.04, 0.006, 0xffffff, 8);
+  glowZ(b, 0, 0.04, 0.705, 0.02, 0.02, 0.012, 0xffffff, 6);
+  b.box(0, 0.1, 0.081, 0.018, 0.018, 0.004, 0xffffff, { layer: 'glow', ao: 0 }); // lente del visor
+}
 
-/** Geometría del arma `id` de weapons.json (pistola, escopeta, subfusil, fusil, francotirador, taser, porra). */
+function lanzallamas(b) {
+  // culata corta, empuñadura y asa
+  bx(b, 0, -0.015, -0.17, 0.042, 0.08, 0.14, DGRY);
+  bx(b, 0, -0.02, -0.245, 0.046, 0.1, 0.02, BLK);
+  bx(b, 0, -0.06, -0.02, 0.042, 0.12, 0.05, BLK, 0.25);
+  // cajón rojo con válvula
+  bx(b, 0, 0.025, 0.07, 0.06, 0.08, 0.3, RED);
+  bx(b, 0, 0.068, 0.07, 0.04, 0.012, 0.26, DGRY);
+  bx(b, 0, -0.03, 0.06, 0.016, 0.008, 0.07, BLK);
+  cylZ(b, 0.04, 0.03, 0.12, 0.016, 0.016, 0.07, LGRY, 6);       // manómetro lateral
+  bx(b, 0.058, 0.03, 0.165, 0.012, 0.03, 0.03, 0xe8e3c8);
+  // depósito de combustible encima, con abrazaderas
+  cylZ(b, 0, 0.115, -0.1, 0.05, 0.05, 0.34, STEEL, 10);
+  for (const z of [-0.06, 0.1]) cylZ(b, 0, 0.115, z, 0.054, 0.054, 0.025, DGRY, 10);
+  cylZ(b, 0, 0.115, -0.105, 0.03, 0.03, 0.012, BLK, 8);         // tapón trasero
+  cylZ(b, 0, 0.115, 0.236, 0.02, 0.02, 0.02, RED, 8);           // tapón delantero
+  bx(b, 0, 0.085, 0.14, 0.024, 0.05, 0.05, DGRY);               // soporte del depósito
+  // lanza: tubo, empuñadura delantera y boquilla
+  cylZ(b, 0, 0.035, 0.22, 0.019, 0.019, 0.36, GUN, 8);
+  bx(b, 0, -0.03, 0.32, 0.034, 0.075, 0.04, BLK);
+  for (const z of [0.3, 0.42]) cylZ(b, 0, 0.035, z, 0.027, 0.027, 0.02, DGRY, 8);
+  cylZ(b, 0, 0.035, 0.57, 0.03, 0.02, 0.1, BLK, 8);             // boquilla cónica
+  cylZ(b, 0, 0.035, 0.65, 0.016, 0.016, 0.02, 0xd8d0b0, 6);     // boca del piloto
+  // llamita del piloto
+  glowZ(b, 0, 0.035, 0.665, 0.003, 0.014, 0.05, 0xffffff, 6);
+}
+
+function sable(b) {
+  // empuñadura negra con anillos y pomo
+  cylZ(b, 0, 0, -0.11, 0.022, 0.022, 0.02, STEEL, 8);           // pomo
+  cylZ(b, 0, 0, -0.09, 0.02, 0.02, 0.2, BLK, 8);                // mango
+  for (const z of [-0.07, -0.02, 0.03, 0.08]) cylZ(b, 0, 0, z, 0.0235, 0.0235, 0.012, DGRY, 8);
+  bx(b, 0.026, 0.0, 0.0, 0.012, 0.03, 0.05, 0xc8372d);           // botón de encendido
+  // emisor: collarín metálico con guarda corta
+  cylZ(b, 0, 0, 0.11, 0.03, 0.026, 0.06, STEEL, 8);
+  cylZ(b, 0, 0, 0.17, 0.032, 0.032, 0.012, LGRY, 8);
+  bx(b, 0, 0, 0.145, 0.1, 0.012, 0.014, DGRY);                  // guarda
+  // hoja: núcleo claro (el halo luminoso va en la capa 'glow')
+  cylZ(b, 0, 0, 0.18, 0.022, 0.022, 0.72, BLADE, 8);
+  b.sphere(0, 0, 0.9, 0.044, 0.044, 0.03, BLADE, 6, { ao: 0, oy: -0.022, oz: 0 });
+  glowZ(b, 0, 0, 0.18, 0.05, 0.05, 0.72, CYAN, 8);
+  b.sphere(0, 0, 0.9, 0.1, 0.1, 0.05, CYAN, 6, { ao: 0, oy: -0.05, layer: 'glow' });
+}
+
+const BUILDERS = { pistola, escopeta, subfusil, fusil, francotirador, taser, porra, laser, lanzallamas, sable };
+
+/** Geometría del arma `id` de weapons.json (pistola, escopeta, subfusil, fusil, francotirador, taser, porra, laser, lanzallamas, sable). */
 export function weaponGeometry(id) {
   const fn = BUILDERS[id];
   if (!fn) throw new Error(`WeaponModels: arma desconocida "${id}"`);
   const b = new PropBuilder();
   fn(b);
   return finish(b);
+}
+
+/**
+ * Partes luminosas del arma `id` (bobinas del láser, llama del piloto, halo de la hoja del sable) o
+ * null si no tiene. Se pintan con un material aditivo sin iluminación pegado al arma
+ * (`WeaponSystem`); mismo espacio local que `weaponGeometry`.
+ */
+export function weaponGlowGeometry(id) {
+  const fn = BUILDERS[id];
+  if (!fn) throw new Error(`WeaponModels: arma desconocida "${id}"`);
+  const b = new PropBuilder();
+  fn(b);
+  return b.toGeometry('glow');
 }
 
 /** Granada de mano de piña (~0,09 m de cuerpo), centrada en su centro. */

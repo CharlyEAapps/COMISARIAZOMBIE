@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as Models from './StructureModels.js';
 import { withCutaway } from './Cutaway.js';
 import { PIECE_ORDER } from '../systems/BuildSystem.js';
+import { JOIN_TYPES, JOIN_SHAPES, JOIN_BITS, joinShape, structureJoinGeometry } from './StructureModels.js';
 
 const MAX_PER_KIND = 256;
 const MAX_PREVIEW = 8; // celdas de la vista previa (huecos de puerta anchos)
@@ -16,8 +17,34 @@ const LENS_ON = new THREE.Color(2.2, 2.1, 1.9);
 // Despacho del comisario: tono acerado de los muros reforzados (niveles I y II) y de las persianas.
 const REINFORCED = [new THREE.Color(0.86, 0.93, 1.08), new THREE.Color(0.74, 0.86, 1.15)];
 const SHUTTER = new THREE.Color(0.72, 0.78, 0.9);
-/** Piezas lineales (corren a lo largo de X) que se giran 90° en una columna. */
+/** Piezas lineales (corren a lo largo de X) que se giran 90° en una columna (para el fantasma). */
 const LINEAR = new Set(['valla', 'alambre']);
+/** Piezas que se unen con sus vecinas (poste compartido y tramos hacia cada vecino). */
+const JOINS = new Set(JOIN_TYPES);
+/** Con qué se une cada tipo (además de muros, vallas, rejas y puertas). */
+const JOIN_WITH = {
+  barricada: new Set(['barricada', 'sacos', 'valla']),
+  sacos: new Set(['barricada', 'sacos', 'valla']),
+  valla: new Set(['barricada', 'sacos', 'valla']),
+  alambre: new Set(['alambre']),
+};
+const DIRS = [[1, 0, JOIN_BITS.E], [0, 1, JOIN_BITS.S], [-1, 0, JOIN_BITS.W], [0, -1, JOIN_BITS.N]];
+const bitCount = (m) => (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m >> 3) & 1);
+const opposite = (m) => ((m << 2) | (m >> 2)) & 15;
+
+/**
+ * Máscara de unión de una pieza (E=1, S=2, W=4, N=8) a partir de sus vecinos: `link` = piezas con
+ * las que se une; `wall` = muros, vallas del mapa, rejas o puertas. Con dos o más piezas vecinas
+ * solo cuentan ellas (una fila pegada a un muro no le clava brazos); con una, el muro de enfrente
+ * prolonga la fila; suelta, se apoya en los muros del eje que más tenga (como un tapón de puerta).
+ */
+export function joinMask(link, wall) {
+  const n = bitCount(link);
+  if (n >= 2) return link;
+  if (n === 1) return link | (wall & opposite(link));
+  const wx = wall & (JOIN_BITS.E | JOIN_BITS.W), wz = wall & (JOIN_BITS.S | JOIN_BITS.N);
+  return bitCount(wz) > bitCount(wx) ? wz : wx;
+}
 
 // Dibuja las construcciones del jugador con un InstancedMesh por (tipo, nivel), la vista
 // previa de colocación (fantasma verde/rojo), el anillo de alcance y el daño del transformador.
@@ -34,7 +61,23 @@ export class StructureRenderer {
     this.material = withCutaway(new THREE.MeshStandardMaterial(matOpts));
     this.meshes = {}; // tipo → [InstancedMesh por nivel]
     this.leafMeshes = [];    // hojas de puerta abiertas por nivel
+    const instanced = (geo) => {
+      const mesh = new THREE.InstancedMesh(geo, this.material, MAX_PER_KIND);
+      mesh.count = 0;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = false;
+      mesh.setColorAt(0, WHITE);
+      this.group.add(mesh);
+      return mesh;
+    };
+    // Piezas que se unen: una malla por (tipo, nivel, forma de unión).
+    this.joinMeshes = {};
+    for (const type of JOIN_TYPES) {
+      this.joinMeshes[type] = build.pieces[type].levels.map((_, level) => JOIN_SHAPES.map((shape) => instanced(structureJoinGeometry(type, level, shape))));
+    }
     for (const type of PIECE_ORDER) {
+      if (JOINS.has(type)) { this.meshes[type] = []; continue; }
       this.meshes[type] = build.pieces[type].levels.map((_, level) => {
         const mesh = new THREE.InstancedMesh(Models.structureGeometry(type, level), this.material, MAX_PER_KIND);
         mesh.count = 0;
@@ -146,7 +189,7 @@ export class StructureRenderer {
       this.group.add(this.trDamage);
     }
 
-    this.allMeshes = [...Object.values(this.meshes).flat(), ...this.leafMeshes, ...this.frameMeshes, ...this.turretHeads];
+    this.allMeshes = [...Object.values(this.meshes).flat(), ...Object.values(this.joinMeshes).flat(2), ...this.leafMeshes, ...this.frameMeshes, ...this.turretHeads];
     this._m = new THREE.Matrix4();
     this._q = new THREE.Quaternion();
     this._p = new THREE.Vector3();
@@ -172,7 +215,7 @@ export class StructureRenderer {
     const t = game.time;
     if (build.version !== this._orientVersion) {
       this._orientVersion = build.version;
-      for (const s of build.all) if (LINEAR.has(s.type)) s.rot = this.linearRotation(s.type, s.i, s.j);
+      for (const s of build.all) if (JOINS.has(s.type)) this.updateJoin(s);
     }
     const powered = build.powered;
     const wallsLevel = game.despacho?.level('muros') ?? 0;
@@ -183,7 +226,7 @@ export class StructureRenderer {
       // Color: se oscurece con el daño; destello al recibir un golpe.
       _c.copy(WHITE).lerp(DAMAGED, s.def.kind === 'trampa' ? 0 : 1 - s.hp / s.maxHp);
       if (s.type === 'valla' && powered) _c.multiply(POWERED);
-      if (s.auto) _c.multiply(SHUTTER);
+      if (s.auto && s.type === 'puerta') _c.multiply(SHUTTER);
       else if (reinforced && s.def.kind !== 'trampa') _c.multiply(reinforced);
       if (s.flash > 0) _c.lerp(FLASH, 0.6);
       const baseRot = s.type === 'puerta' && s.axis === 'z' ? Math.PI / 2 : (s.rot ?? 0);
@@ -214,7 +257,7 @@ export class StructureRenderer {
           mesh.setColorAt(mesh.count++, _c);
           continue;
         }
-        const mesh = this.meshes[s.type][s.level];
+        const mesh = s.joinShape != null ? this.joinMeshes[s.type][s.level][s.joinShape] : this.meshes[s.type][s.level];
         if (mesh.count >= MAX_PER_KIND) continue;
         // Pequeño temblor al recibir un golpe.
         const shake = s.flash > 0 ? (Math.random() - 0.5) * 0.06 : 0;
@@ -321,6 +364,26 @@ export class StructureRenderer {
       leaves.setMatrixAt(leaves.count, _m);
       leaves.setColorAt(leaves.count++, _c);
     }
+  }
+
+  /** Forma de unión (índice en JOIN_SHAPES) y giro de una pieza según sus vecinos. */
+  updateJoin(s) {
+    const { grid, build } = this.game;
+    const with_ = JOIN_WITH[s.type];
+    let link = 0, wall = 0;
+    for (const [di, dj, bit] of DIRS) {
+      const i = s.i + di, j = s.j + dj;
+      if (!grid.inBounds(i, j)) continue;
+      const k = grid.index(i, j);
+      const o = build.structures.get(k);
+      if (o) {
+        if (with_.has(o.type)) link |= bit;
+        else if (o.type === 'puerta') wall |= bit;
+      } else if (grid.collisionInset[k] > 0 && !grid.isStaticWalkable(i, j)) wall |= bit;
+    }
+    const js = joinShape(joinMask(link, wall));
+    s.joinShape = js.index;
+    s.rot = js.rot;
   }
 
   /**

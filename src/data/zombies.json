@@ -266,6 +266,43 @@
     "pose": "boss",
     "intro": null
   },
+  "agente_antidisturbios": {
+    "name": "Agente antidisturbios",
+    "hp": 260,
+    "speed": 1.55,
+    "speedVariance": 0.06,
+    "radius": 0.42,
+    "scale": 1.1,
+    "damage": 16,
+    "attackRange": 0.5,
+    "attackWindup": 0.5,
+    "attackCooldown": 1.2,
+    "points": 60,
+    "color": "#8a9a7a",
+    "colorVariance": 0.04,
+    "structureDamageMul": 1.5,
+    "playerKnockback": 1.2,
+    "knockbackResist": 0.6,
+    "stunResist": 0.5,
+    "turnSharpness": 3.5,
+    "shield": {
+      "arcDeg": 110,
+      "msgCooldown": 1.2
+    },
+    "explosionDamageMul": 1.6,
+    "shirts": ["#1f2a3a"],
+    "pants": ["#151b26"],
+    "armsShirt": true,
+    "body": {
+      "torso": [1.05, 1, 1.1],
+      "arms": [1.05, 1, 1.05],
+      "legs": [1.05, 1, 1.05],
+      "armSpread": 0.03
+    },
+    "accessory": "antidisturbios",
+    "pose": "boss",
+    "intro": null
+  },
   "_ai": {
     "maxZombies": 200,
     "directChaseRange": 14,

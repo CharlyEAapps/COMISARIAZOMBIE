@@ -39,7 +39,7 @@ describe('Armas', () => {
     expect(upgradeCost(weapons.pistola, 1)).toBeGreaterThan(0); // la pistola usa precio base
   });
 
-  it('cada arma tiene una ranura distinta (1-7)', () => {
+  it('cada arma tiene una ranura distinta (1-10)', () => {
     const slots = WEAPON_IDS.map((id) => weapons[id].slot);
     expect(new Set(slots).size).toBe(slots.length);
   });

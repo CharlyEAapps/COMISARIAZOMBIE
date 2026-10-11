@@ -16,7 +16,7 @@ function upgradeDesc(u) {
 
 const CONTROLS = [
   ['WASD / flechas', 'Moverse'], ['Mayús', 'Esprintar'], ['Ratón', 'Apuntar · clic: disparar'],
-  ['R', 'Recargar'], ['1-7', 'Cambiar de arma'], ['G', 'Lanzar granada'], ['Q', 'Usar botiquín'],
+  ['R', 'Recargar'], ['1-0', 'Cambiar de arma'], ['G', 'Lanzar granada'], ['Q', 'Usar botiquín'],
   ['E (mantener)', 'Interactuar · abrir tiendas y puertas'], ['B', 'Modo construcción'],
   ['Tab', 'Cambiar de página de piezas'], ['Clic dcho ×2', 'Vender una pieza'], ['N', 'Empezar la noche ya'],
   ['Rueda', 'Zoom'], ['Esc', 'Pausa / volver'], ['Enter', 'Jugar / reintentar'], ['F1', 'Panel de depuración'],
@@ -106,14 +106,15 @@ export class Menus {
       this.abandonArmed = false;
       this.render();
       this.game.audio?.play('ui_click');
-    } else if (this.current === 'pause') {
+    } else if (this.current === 'pause' || this.current === 'ending') {
       this.game.resume();
     }
   }
 
-  /** Enter: jugar desde el menú principal o reintentar tras caer. */
+  /** Enter: jugar desde el menú principal, reintentar tras caer o seguir tras el final. */
   confirm() {
-    if (this.current === 'main' && this.game.runSave.load()) this.game.continueRun();
+    if (this.current === 'ending') this.game.resume();
+    else if (this.current === 'main' && this.game.runSave.load()) this.game.continueRun();
     else if (this.current === 'main' || this.current === 'gameover') this.game.startRun();
   }
 
@@ -259,6 +260,31 @@ export class Menus {
           <button class="btn ghost" data-go="tablon">Tablón ${this.medalsChip()}</button>
           <button class="btn ghost" data-act="menu">Menú principal</button>
         </div>
+      </div>`;
+  }
+
+  /** Final de la historia (amanecer del día 16): rescate con giro, resumen y modo infinito. */
+  screen_ending() {
+    const e = this.game.story?.endingData();
+    if (!e) return '<div class="panel menu-box"><button class="btn big" data-act="resume">Seguir <span class="key">Enter</span></button></div>';
+    const story = e.paragraphs.map((p) => `<p>${esc(p)}</p>`).join('');
+    return `
+      <div class="panel menu-box wide ending">
+        <h1>${esc(e.title)}</h1>
+        <p class="ending-sub">${esc(e.subtitle)}</p>
+        <div class="ending-story">${story}</div>
+        <div class="summary">
+          <div><span class="label">Noches</span><span class="val big">${e.nights}</span></div>
+          <div><span class="label">Tiempo</span><span class="val big">${fmtTime(e.time)}</span></div>
+          <div><span class="label">Bajas</span><span class="val big">${e.kills}</span></div>
+          <div><span class="label">Puntos</span><span class="val big">${e.points}</span></div>
+        </div>
+        <p class="menu-note">Jefes abatidos: <b>${e.bosses}</b> · Mejor combo: <b>${e.maxCombo}</b>${e.bonusText ? `<br>${esc(e.bonusText)}` : ''}</p>
+        <div class="go-buttons">
+          <button class="btn big" data-act="resume">${esc(e.continueLabel)} <span class="key">Enter</span></button>
+          <button class="btn ghost" data-act="menu">Menú principal</button>
+        </div>
+        <p class="menu-note">${esc(e.footer)}</p>
       </div>`;
   }
 

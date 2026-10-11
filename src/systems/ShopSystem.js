@@ -121,7 +121,7 @@ export class ShopSystem {
         const room = Math.max(0, d.maxReserve - w.reserve);
         const amount = Math.min(d.ammoPack.amount, room);
         items.push({
-          id: `ammo:${id}`, section: 'Munición', name: `${d.icon} Munición de ${d.name.toLowerCase()} (+${amount || d.ammoPack.amount})`,
+          id: `ammo:${id}`, section: 'Munición', name: `${d.icon} ${d.ammoPack.label ?? `Munición de ${d.name.toLowerCase()}`} (+${amount || d.ammoPack.amount})`,
           desc: `Reserva ${w.reserve}/${d.maxReserve}`, amount,
           price: this.ammoPrice(Math.max(1, Math.ceil(d.ammoPack.price * (amount || d.ammoPack.amount) / d.ammoPack.amount))),
           state: amount ? null : 'max',
@@ -134,7 +134,7 @@ export class ShopSystem {
         const amount = t.flat ? `+${t.perLevel}${t.unit ? ` ${t.unit}` : ''}` : `+${Math.round(t.perLevel * 100)} %`;
         items.push({
           id: `upgrade:${id}:${track}`, section: 'Mejoras', name: `${d.icon} ${d.name}: ${t.name} ${'★'.repeat(lvl)}${'☆'.repeat(LEVELS - lvl)}`,
-          desc: `${amount} ${t.name.toLowerCase()}${track === 'reload' ? ' (más rápida)' : ''}`,
+          desc: `${amount} ${t.desc ?? t.name.toLowerCase()}${track === 'reload' ? ' (más rápida)' : ''}`,
           price: cost ? this.armPrice(cost) : 0, state: cost ? null : 'max',
         });
       }
@@ -151,7 +151,13 @@ export class ShopSystem {
   }
 
   weaponDesc(d) {
-    if (d.melee) return `Cuerpo a cuerpo: ${d.damage} de daño en arco, sin munición.`;
+    if (d.melee) return `Cuerpo a cuerpo: ${d.damage} de daño en arco de ${d.arcDeg}°, sin munición.${d.deflect ? ' Devuelve los escupitajos.' : ''}`;
+    if (d.heat) {
+      return `${d.damage} daño · ${d.fireRate}/s · rayo que atraviesa ${d.pierce} · munición infinita, pero se bloquea al sobrecalentarse`;
+    }
+    if (d.burn) {
+      return `Llamas a ${d.range} m · ${Math.round(d.damage * d.fireRate)} daño/s + quemadura ${d.burn.duration} s · ${d.magSize} de combustible`;
+    }
     const parts = [`${d.pellets > 1 ? `${d.pellets}×` : ''}${d.damage} daño`, `${d.magSize} balas`, `${d.fireRate}/s`];
     if (d.pierce) parts.push(`atraviesa ${d.pierce}`);
     if (d.stun) parts.push(`aturde ${d.stun} s y salta a ${d.chain}`);
@@ -217,7 +223,7 @@ export class ShopSystem {
         const cost = nextPrice(id, lvl);
         items.push({
           id: `despacho:${id}`, section, name: `${u.icon} ${u.name} ${'★'.repeat(lvl)}${'☆'.repeat(max - lvl)}`,
-          desc: u.desc[Math.min(lvl, max - 1)], flavor: u.flavor,
+          desc: u.desc[Math.min(lvl, max - 1)], flavor: D.flavorOf?.(id) ?? u.flavor,
           price: cost ? this.price(cost) : 0, state: cost ? null : max > 1 ? 'max' : 'owned',
         });
       }

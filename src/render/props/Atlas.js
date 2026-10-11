@@ -351,16 +351,172 @@ def('calendario', 128, 160, (ctx, w, h) => {
   ctx.strokeStyle = '#c92f26'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(10, 46); ctx.lineTo(118, 150); ctx.stroke();
 });
 
-// ---------- API ----------
-const names = Object.keys(SPRITES).sort((a, b) => SPRITES[b].h - SPRITES[a].h);
-{
-  let x = PAD, y = PAD, rowH = 0;
-  for (const n of names) {
-    const s = SPRITES[n];
-    if (x + s.w + PAD > ATLAS_SIZE) { x = PAD; y += rowH + PAD; rowH = 0; }
-    s.x = x; s.y = y; x += s.w + PAD; rowH = Math.max(rowH, s.h);
+// ---------- detalle de las salas (frente E) ----------
+/** Hoja de papel con título y líneas de texto (cartel de oficina). */
+function sheet(name, w, h, title, lines, o = {}) {
+  def(name, w, h, (ctx) => {
+    ctx.fillStyle = o.bg ?? '#fbf9f1'; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = o.edge ?? '#c9c2ac'; ctx.lineWidth = 4; ctx.strokeRect(2, 2, w - 4, h - 4);
+    if (o.band) { ctx.fillStyle = o.band; ctx.fillRect(0, 0, w, h * 0.24); }
+    fitText(ctx, title, w / 2, h * 0.12, w - 24, h * 0.13, o.band ? '#fff' : (o.fg ?? '#b0271d'));
+    const lh = (h * 0.72) / Math.max(1, lines.length);
+    lines.forEach((l, k) => fitText(ctx, l, w / 2, h * 0.3 + lh * (k + 0.5), w - 28, Math.min(lh * 0.62, h * 0.09), '#3b4252', 'bold'));
+    ctx.fillStyle = '#d24a3e'; ctx.beginPath(); ctx.arc(w / 2, 10, 7, 0, 7); ctx.fill(); // chincheta
+  });
+}
+
+// Calabozos.
+def('pintadas_celda', 256, 192, (ctx, w, h) => {
+  ctx.clearRect(0, 0, w, h);
+  ctx.save(); ctx.translate(20, 70); ctx.rotate(-0.08);
+  ctx.font = `bold 26px ${FONT}`; ctx.fillStyle = '#3b3f46'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('SOY INOCENTE', 0, 0, 220);
+  ctx.restore();
+  ctx.font = `bold 26px ${FONT}`; ctx.fillStyle = '#9c2f26'; ctx.textAlign = 'left';
+  ctx.fillText('M + J', 150, 140);
+  ctx.strokeStyle = '#9c2f26'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(140, 168); ctx.bezierCurveTo(120, 110, 250, 110, 232, 168); ctx.stroke();
+  ctx.strokeStyle = '#3b3f46'; ctx.lineWidth = 4;
+  for (let g = 0; g < 2; g++) {
+    for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(24 + g * 56 + k * 10, 120); ctx.lineTo(24 + g * 56 + k * 10, 170); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(18 + g * 56, 160); ctx.lineTo(66 + g * 56, 128); ctx.stroke();
   }
-  if (y + rowH + PAD > ATLAS_SIZE) throw new Error(`El atlas de props no cabe en 2048×2048 (${y + rowH + PAD} px)`);
+});
+def('palotes', 192, 160, (ctx, w, h) => {
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = '#3b3f46'; ctx.lineWidth = 5;
+  for (let r = 0; r < 3; r++) for (let g = 0; g < 3; g++) {
+    if (r === 2 && g === 2) break;
+    const x0 = 12 + g * 60, y0 = 12 + r * 50;
+    for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x0 + k * 10, y0); ctx.lineTo(x0 + k * 10, y0 + 38); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(x0 - 6, y0 + 32); ctx.lineTo(x0 + 40, y0 + 6); ctx.stroke();
+  }
+  fitText(ctx, '¿ME OLVIDÁIS?', 140, 136, 100, 16, '#9c2f26');
+});
+sheet('normas_calabozo', 256, 320, 'NORMAS', ['1. NO MORDER', '2. NO DEJARSE MORDER', '3. DESAYUNO A LAS 8', '(SI QUEDA ALGUIEN)', '4. VISITAS: NINGUNA'], { band: '#3a3d42' });
+plate('no_alimentar', 640, 220, '#f2c230', '#1f2328', ['PROHIBIDO DAR DE COMER', 'A LOS DETENIDOS (NI SER LA COMIDA)'], { fg2: '#7a1d16', border: 8 });
+
+// Armería.
+def('diana_zombi', 256, 384, (ctx, w, h) => {
+  ctx.fillStyle = '#f4f1ea'; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#20242b';
+  ctx.beginPath(); ctx.arc(w / 2, 92, 52, 0, 7); ctx.fill();                       // cabeza
+  ctx.beginPath(); ctx.moveTo(40, h - 20); ctx.lineTo(56, 170); ctx.quadraticCurveTo(w / 2, 130, w - 56, 170); ctx.lineTo(w - 40, h - 20); ctx.closePath(); ctx.fill();
+  ctx.fillRect(4, 176, 60, 26); ctx.fillRect(w - 64, 176, 60, 26);               // brazos estirados (zombi)
+  ctx.strokeStyle = '#f4f1ea'; ctx.lineWidth = 4;
+  for (const r of [26, 54, 82]) { ctx.beginPath(); ctx.arc(w / 2, 250, r, 0, 7); ctx.stroke(); }
+  ctx.beginPath(); ctx.arc(w / 2, 92, 26, 0, 7); ctx.stroke();
+  ctx.fillStyle = '#d24a3e';
+  for (const [x, y] of [[w / 2 + 8, 86], [w / 2 - 14, 100], [w / 2 + 30, 240], [w / 2 - 40, 270]]) { ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill(); }
+  fitText(ctx, 'PRÁCTICAS', w / 2, h - 10, w - 40, 18, '#b0271d');
+});
+def('caja_municion', 192, 96, (ctx, w, h) => {
+  ctx.fillStyle = '#5b6b3a'; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = '#3f4a28'; ctx.lineWidth = 6; ctx.strokeRect(3, 3, w - 6, h - 6);
+  fitText(ctx, '9 mm', w / 2, h * 0.36, w - 30, 34, '#f2c230');
+  fitText(ctx, '× 1000', w / 2, h * 0.74, w - 30, 22, '#f2c230');
+});
+plate('policia_chaleco', 256, 64, '#1f3260', '#f2c230', 'POLICÍA', { border: 0, radius: 4, edge: '#1f3260' });
+plate('prestada', 256, 96, '#fbf9f1', '#b0271d', ['PRESTADA', 'AL COMISARIO'], { border: 3, fg2: '#3b4252' });
+
+// Resto de salas.
+def('agente_mes', 256, 320, (ctx, w, h) => {
+  ctx.fillStyle = '#eab43c'; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#fbf9f1'; ctx.fillRect(14, 14, w - 28, h - 28);
+  fitText(ctx, 'AGENTE DEL MES', w / 2, 40, w - 40, 26, '#1f3260');
+  ctx.fillStyle = '#8fc0e8'; ctx.fillRect(48, 62, w - 96, 150);
+  face(ctx, 58, 70, w - 116, 140, SKINS[0], HAIRS[0]);
+  ctx.fillStyle = '#1f3260'; ctx.fillRect(58, 78, w - 116, 26);                      // gorra
+  fitText(ctx, 'CARLOS', w / 2, 238, w - 40, 32, '#1f3260');
+  fitText(ctx, '(ÚNICO CANDIDATO)', w / 2, 272, w - 50, 18, '#b0271d');
+});
+def('retrato_comisario', 256, 320, (ctx, w, h) => {
+  ctx.fillStyle = '#5e3d26'; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#d7b98a'; ctx.fillRect(12, 12, w - 24, h - 24);
+  ctx.fillStyle = '#3b4a3a'; ctx.fillRect(28, 28, w - 56, h - 110);
+  face(ctx, 48, 50, w - 96, 170, '#e2b48c', '#b7a58c');
+  ctx.fillStyle = '#e8e8e8'; ctx.fillRect(98, 168, 60, 14);                         // bigote canoso
+  fitText(ctx, 'EL COMISARIO', w / 2, h - 66, w - 40, 22, '#3a2412');
+  fitText(ctx, 'DE VACACIONES DESDE 2009', w / 2, h - 38, w - 40, 15, '#5e3d26');
+});
+sheet('diploma', 256, 192, 'DIPLOMA', ['CURSO DE TIRO', 'A COSAS QUE SE MUEVEN', 'APTO (POR LOS PELOS)'], { fg: '#5e3d26', edge: '#c9a227' });
+def('turno_display', 256, 96, (ctx, w, h) => {
+  ctx.fillStyle = '#14181f'; ctx.fillRect(0, 0, w, h);
+  fitText(ctx, 'TURNO', 70, h / 2, 110, 30, '#ff8a3a');
+  fitText(ctx, '666', 185, h / 2 + 2, 120, 62, '#ff3a2a');
+});
+plate('coja_numero', 320, 96, '#d24a3e', '#ffffff', ['COJA NÚMERO', 'Y RECE'], { border: 4, fg2: '#f4d77a' });
+sheet('lavese_manos', 256, 320, 'LÁVESE LAS MANOS', ['30 SEGUNDOS', 'CON JABÓN', 'Y SI LE MUERDEN,', 'AVISE ANTES', 'DE CAMBIAR'], { band: '#2f7d55' });
+def('radiografia', 256, 192, (ctx, w, h) => {
+  ctx.fillStyle = '#0c1a2a'; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = '#cfe6f6'; ctx.lineWidth = 6;
+  for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(60 + k * 24, 170); ctx.lineTo(56 + k * 26, 60 + Math.abs(k - 1.5) * 18); ctx.stroke(); } // dedos
+  ctx.beginPath(); ctx.moveTo(48, 160); ctx.lineTo(22, 110); ctx.stroke();
+  ctx.fillStyle = '#cfe6f6'; ctx.beginPath(); ctx.arc(190, 92, 44, 0, 7); ctx.fill();   // cráneo
+  ctx.fillStyle = '#0c1a2a'; ctx.beginPath(); ctx.arc(176, 86, 10, 0, 7); ctx.arc(204, 86, 10, 0, 7); ctx.fill();
+  ctx.fillRect(170, 118, 40, 14);
+  ctx.fillStyle = '#cfe6f6'; for (let k = 0; k < 5; k++) ctx.fillRect(172 + k * 8, 118, 4, 14);
+  fitText(ctx, 'MORDISCO: SÍ', 190, 172, 120, 16, '#ff6a5a');
+});
+sheet('silencio_archivo', 320, 160, 'SILENCIO', ['LOS EXPEDIENTES DUERMEN'], { band: '#5e3d26' });
+sheet('turnos_tazas', 256, 256, 'TURNOS DE FREGAR', ['LUNES: CARLOS', 'MARTES: CARLOS', 'MIÉRCOLES: CARLOS', 'RESTO: CARLOS'], { band: '#3b7a55' });
+sheet('no_tocar_pruebas', 320, 200, 'NO TOCAR', ['SON PRUEBAS', 'TAMPOCO COMÉRSELAS'], { band: '#c89c62', fg: '#3a2412' });
+sheet('aviso_duchas', 256, 256, 'AVISO', ['AGUA CALIENTE:', 'NO HAY', 'AGUA FRÍA:', 'TAMPOCO'], { band: '#2f6b8a' });
+['CARLOS', 'PACO', 'LOLI', 'MANOLO', 'PEPA', 'TONI', 'MARI LUZ', 'JIMÉNEZ (YA NO)'].forEach((n, k) => {
+  def(`nombre_${k}`, 160, 48, (ctx, w, h) => {
+    ctx.fillStyle = '#fbf9f1'; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = '#8a8f98'; ctx.lineWidth = 3; ctx.strokeRect(1, 1, w - 2, h - 2);
+    fitText(ctx, n, w / 2, h / 2 + 1, w - 14, 28, k === 7 ? '#b0271d' : '#1f3260');
+  });
+});
+
+// Los carteles de detalle se ven pequeños: van a media resolución para que quepan en el atlas.
+const DETAIL_SPRITES = ['pintadas_celda', 'palotes', 'normas_calabozo', 'no_alimentar', 'diana_zombi', 'caja_municion',
+  'policia_chaleco', 'prestada', 'agente_mes', 'retrato_comisario', 'diploma', 'turno_display', 'coja_numero',
+  'lavese_manos', 'radiografia', 'silencio_archivo', 'turnos_tazas', 'no_tocar_pruebas', 'aviso_duchas',
+  ...Array.from({ length: 8 }, (_, k) => `nombre_${k}`)];
+for (const n of DETAIL_SPRITES) {
+  const { w, h, draw } = SPRITES[n];
+  SPRITES[n] = { w: Math.round(w / 2), h: Math.round(h / 2), draw: (ctx) => { ctx.scale(0.5, 0.5); draw(ctx, w, h); } };
+}
+
+// ---------- API ----------
+const names = Object.keys(SPRITES).sort((a, b) => SPRITES[b].h - SPRITES[a].h || SPRITES[b].w - SPRITES[a].w);
+{
+  // Empaquetado "skyline": cada sprite va donde su base quede más baja, apoyado en lo ya colocado.
+  let sky = [{ x: 0, y: 0, w: ATLAS_SIZE }];
+  let maxY = 0;
+  for (const n of names) {
+    const s = SPRITES[n], w = s.w + PAD, h = s.h + PAD;
+    let best = null;
+    for (let i = 0; i < sky.length; i++) {
+      const x = sky[i].x;
+      if (x + w > ATLAS_SIZE) break;
+      let y = 0, span = 0;
+      for (let j = i; j < sky.length && span < w; j++) { y = Math.max(y, sky[j].y); span += sky[j].w; }
+      if (span < w) continue;
+      if (!best || y < best.y || (y === best.y && x < best.x)) best = { x, y };
+    }
+    if (!best) throw new Error(`El atlas de props no cabe en ${ATLAS_SIZE}×${ATLAS_SIZE} (${n})`);
+    s.x = best.x + PAD; s.y = best.y + PAD;
+    maxY = Math.max(maxY, best.y + h);
+    // Actualiza el horizonte: el tramo [x, x + w) sube a y + h.
+    const x0 = best.x, x1 = best.x + w, next = [];
+    for (const seg of sky) {
+      const a = seg.x, b = seg.x + seg.w;
+      if (b <= x0 || a >= x1) { next.push(seg); continue; }
+      if (a < x0) next.push({ x: a, y: seg.y, w: x0 - a });
+      if (b > x1) next.push({ x: x1, y: seg.y, w: b - x1 });
+    }
+    next.push({ x: x0, y: best.y + h, w });
+    next.sort((p, q) => p.x - q.x);
+    sky = [];
+    for (const seg of next) {
+      const last = sky[sky.length - 1];
+      if (last && last.y === seg.y && last.x + last.w === seg.x) last.w += seg.w; else sky.push({ ...seg });
+    }
+  }
+  if (maxY + PAD > ATLAS_SIZE) throw new Error(`El atlas de props no cabe en 2048×2048 (${maxY + PAD} px)`);
 }
 
 export const SPRITE_NAMES = names;

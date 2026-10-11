@@ -226,9 +226,10 @@ export class Player {
       pose.armL.x = relaxedLeft ? -pose.legL.x * 0.6 : this.leftArmAim.x;
       pose.armL.z = this.leftArmAim.z;
     }
-    // Porra: golpe de arriba abajo mientras dura el ataque.
-    if (this.weaponId === 'porra' && W?.meleeTimer > 0) {
-      const p = W.defs.porra, sw = p.swing;
+    // Cuerpo a cuerpo (porra, sable): golpe de arriba abajo mientras dura el ataque.
+    const meleeDef = W?.defs[this.weaponId];
+    if (meleeDef?.melee && W.meleeTimer > 0) {
+      const p = meleeDef, sw = p.swing;
       const k = 1 - W.meleeTimer * p.fireRate; // 0 → 1 durante el golpe
       pose.armR.x = sw.raise + Math.min(1, k * sw.speed) * sw.sweep;
       pose.armR.z = sw.twistFrom + k * sw.twist;
@@ -253,7 +254,7 @@ export class Player {
     pose.head.x -= sprint * FXP.sprintLean * 0.7;
     // Retroceso del arma al disparar (el arma sube y el cuerpo se echa atrás).
     const rc = game.effects?.recoil ?? 0;
-    if (rc > 0 && this.weaponId !== 'porra') {
+    if (rc > 0 && !meleeDef?.melee) {
       pose.armR.x -= rc * FXP.recoilArm;
       if (!relaxedLeft) pose.armL.x -= rc * FXP.recoilArm * 0.8;
       pose.torso.x -= rc * FXP.recoilTorso;

@@ -67,6 +67,13 @@ for (const [x, y] of [[26, 40], [52, 40], [26, 56], [52, 56], [30, 11], [66, 11]
 // Puntos de aparición
 for (const [x, y] of [[20, 2], [60, 2], [15, 77], [62, 77], [2, 25], [2, 55], [77, 25], [77, 55]]) set(x, y, 'S');
 
+// Sitio de las torres de los accesos (despacho.json → torreta_tejado.gateTowers, torre de
+// vigilancia III): siempre libre de mobiliario, aunque la torre solo exista con la mejora.
+const GT = require('../src/data/despacho.json').upgrades.torreta_tejado.gateTowers;
+for (const { x, z } of GT.spots) {
+  for (let y = z; y < z + GT.size; y++) for (let i = x; i < x + GT.size; i++) if (g[y][i] !== ' ' && g[y][i] !== '_') g[y][i] = '_';
+}
+
 const rows = g.map((r) => r.join(''));
 fs.writeFileSync(path.join(__dirname, '..', 'src', 'data', 'map.json'), JSON.stringify({ name: 'Comisaría del Distrito 13', rows }, null, 2) + '\n');
 console.log(rows.join('\n'));

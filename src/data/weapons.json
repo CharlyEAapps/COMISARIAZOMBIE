@@ -1,5 +1,5 @@
 {
-  "_comment": "Armas. fireRate en disparos/s; spreadDeg = apertura total; pellets = proyectiles por disparo (escopeta); pierce = zombis extra que atraviesa; reserve -1 = munición infinita; melee = cuerpo a cuerpo (sin munición).",
+  "_comment": "Armas. fireRate en disparos/s; spreadDeg = apertura total; pellets = proyectiles por disparo (escopeta); pierce = zombis extra que atraviesa; reserve -1 = munición infinita; melee = cuerpo a cuerpo (sin munición). heat = arma de calor (munición infinita, se bloquea al 100 %); burn = quemadura al alcanzar; coneDeg = cono de llamas; assist = asistencia de apuntado táctil de esa arma; deflect = el sable desvía los escupitajos.",
   "pistola": {
     "name": "Pistola",
     "slot": 1,
@@ -184,7 +184,137 @@
       "twistFrom": -0.35,
       "twist": 0.5
     },
-    "flavor": "Herramienta de diálogo. Diálogo breve."
+    "flavor": "Herramienta de diálogo. Diálogo breve.",
+    "assist": {
+      "range": 3.2,
+      "angleDeg": 40
+    }
+  },
+  "laser": {
+    "name": "Rifle láser Pew-Pew",
+    "slot": 8,
+    "price": 1300,
+    "icon": "🔆",
+    "twoHanded": true,
+    "damage": 28,
+    "fireRate": 6,
+    "auto": true,
+    "magSize": 0,
+    "reloadTime": 0,
+    "reserve": -1,
+    "spreadDeg": 0.6,
+    "range": 45,
+    "pellets": 1,
+    "pierce": 1,
+    "knockback": 0.12,
+    "shake": 0.05,
+    "tracerColor": "#ff2d55",
+    "hitColor": "#ffb36b",
+    "beam": {
+      "width": 2.4,
+      "life": 2.2,
+      "core": {
+        "color": "#ffffff",
+        "width": 0.9
+      }
+    },
+    "heat": {
+      "perShot": 0.085,
+      "coolDelay": 0.45,
+      "coolRate": 0.32,
+      "lockedMul": 0.8,
+      "warnAt": 0.75,
+      "smokeEvery": 0.16,
+      "lockClick": 0.35
+    },
+    "tracks": [
+      "damage",
+      "heat",
+      "cool"
+    ],
+    "flavor": "Munición infinita. La paciencia, no: a los 12 disparos se cuelga y hay que soplarle.",
+    "flashColor": "#ff4d6d"
+  },
+  "lanzallamas": {
+    "statWeight": 0.15,
+    "name": "Lanzallamas Barbacoa",
+    "slot": 9,
+    "price": 1100,
+    "icon": "🔥",
+    "twoHanded": true,
+    "damage": 5,
+    "fireRate": 14,
+    "auto": true,
+    "magSize": 70,
+    "reloadTime": 2.6,
+    "reserve": 140,
+    "maxReserve": 400,
+    "spreadDeg": 0,
+    "range": 5.2,
+    "coneDeg": 38,
+    "pellets": 1,
+    "pierce": 0,
+    "knockback": 0.02,
+    "shake": 0.03,
+    "tracerColor": "#ff9a2a",
+    "burn": {
+      "duration": 4,
+      "dps": 14
+    },
+    "ammoPack": {
+      "amount": 70,
+      "price": 80,
+      "label": "Bidón de combustible"
+    },
+    "assist": {
+      "range": 7,
+      "angleDeg": 24
+    },
+    "flavor": "Prohibido por tres convenciones internacionales. Esta comisaría no firmó ninguna."
+  },
+  "sable": {
+    "name": "Sable láser de saldo",
+    "slot": 10,
+    "price": 1100,
+    "icon": "⚔️",
+    "melee": true,
+    "damage": 90,
+    "fireRate": 2,
+    "auto": true,
+    "magSize": 0,
+    "reloadTime": 0,
+    "reserve": -1,
+    "range": 2.3,
+    "arcDeg": 200,
+    "knockback": 0.6,
+    "shake": 0.12,
+    "hitColor": "#6fe3ff",
+    "tracks": [
+      "damage",
+      "reach"
+    ],
+    "assist": {
+      "range": 3.8,
+      "angleDeg": 45
+    },
+    "swing": {
+      "raise": -2.1,
+      "sweep": 1.7,
+      "speed": 2.4,
+      "twistFrom": -0.75,
+      "twist": 1.5
+    },
+    "deflect": {
+      "range": 2.4,
+      "arcDeg": 130,
+      "height": 2.6,
+      "speedMul": 1.4,
+      "damage": 70,
+      "radius": 1.6,
+      "cooldown": 0.15,
+      "text": "¡Rebotado!"
+    },
+    "flavor": "Zumba, brilla y devuelve escupitajos. La Fuerza se vende aparte."
   },
   "_granada": {
     "name": "Granada",
@@ -238,6 +368,21 @@
         "perLevel": 1,
         "flat": true,
         "unit": ""
+      },
+      "heat": {
+        "name": "Disipador",
+        "perLevel": 0.15,
+        "desc": "menos calor por disparo"
+      },
+      "cool": {
+        "name": "Refrigeración",
+        "perLevel": 0.25,
+        "desc": "enfriamiento más rápido"
+      },
+      "reach": {
+        "name": "Alcance",
+        "perLevel": 0.12,
+        "desc": "más alcance"
       }
     },
     "costByLevel": [
@@ -252,5 +397,85 @@
       "reload"
     ]
   },
-  "_switchTime": 0.25
+  "_switchTime": 0.25,
+  "_fx": {
+    "flame": {
+      "sparks": 5,
+      "puffs": 1,
+      "speed": [
+        8,
+        12
+      ],
+      "life": 0.42,
+      "width": 0.11,
+      "colors": [
+        "#ffd24a",
+        "#ff9a2a",
+        "#ff6a1a",
+        "#fff1b0"
+      ],
+      "puffSize": [
+        0.22,
+        0.8
+      ],
+      "puffLife": 0.45,
+      "puffAlpha": 0.5,
+      "puffColor": "#ff8f26",
+      "puffColor2": "#3a342e",
+      "flashColor": "#ff8a2a",
+      "shieldMsg": 0.3
+    },
+    "burn": {
+      "glowColor": "#ff7a18",
+      "glow": 0.55,
+      "flicker": 18,
+      "fade": 0.7,
+      "sootMul": 0.35,
+      "sootTime": 0.8,
+      "flameRate": 7,
+      "flamesPerStep": 3,
+      "flameColors": [
+        "#ffcf4a",
+        "#ff8a1e",
+        "#ff5a14"
+      ],
+      "flameLife": 0.45,
+      "flameWidth": 0.07,
+      "flameRise": 1.8
+    },
+    "saber": {
+      "sparks": 16,
+      "colors": [
+        "#9ff1ff",
+        "#ffffff",
+        "#6fe3ff"
+      ],
+      "speed": 5.5,
+      "life": 0.28,
+      "width": 0.06,
+      "radius": 0.8,
+      "height": 1.05,
+      "glowColor": "#6fe3ff",
+      "glowOpacity": 0.65,
+      "flicker": 26,
+      "flickerAmp": 0.12,
+      "deflectColor": "#b8ffd0"
+    },
+    "laser": {
+      "glowCool": "#ff4d6d",
+      "glowHot": "#ffe9b0",
+      "smoke": {
+        "size": 0.14,
+        "grow": 3,
+        "life": 0.7,
+        "alpha": 0.5,
+        "rise": 0.8,
+        "color": "#505050"
+      },
+      "impactSparks": 6
+    },
+    "glow": {
+      "opacity": 0.7
+    }
+  }
 }

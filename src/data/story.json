@@ -1,0 +1,292 @@
+{
+  "_comment": "Historia de 15 días contada por la radio de la central. Cada día tiene su episodio (lines, repartidas durante el día), y algunos, líneas al empezar la noche (night), al aparecer el jefe (boss), el apodo del jefe (bossNick) y una llamada fija de la familia (call). Al amanecer del día 16 llega el final y después, el modo infinito con boletines y reposiciones.",
+  "finalNight": 15,
+  "bannerPrefix": "📻 Hoy en la radio:",
+  "timing": {
+    "firstDelay": 3,
+    "minGap": 1.2,
+    "maxGap": 9,
+    "skipGap": 0.35,
+    "readBase": 2.2,
+    "readPerChar": 0.05,
+    "readMin": 3.5,
+    "readMax": 10,
+    "fill": 0.85,
+    "nightDelay": 4,
+    "bossDelay": 1.5,
+    "afterCallGap": 1.5,
+    "interruptKeep": 0.7,
+    "duskCallDelay": 3,
+    "maxAmbientQueue": 2
+  },
+  "speakers": {
+    "central": { "name": "Mari Luz", "icon": "📻" },
+    "comisario": { "name": "Ferrándiz (contestador)", "icon": "📻" },
+    "alcalde": { "name": "Alcalde Bermúdez", "icon": "📻" },
+    "borja": { "name": "Cuña de Sinergia Global", "icon": "📻" },
+    "onda13": { "name": "Onda Trece", "icon": "📻" },
+    "morales": { "name": "Agente Morales", "icon": "📻" },
+    "delegacion": { "name": "Delegación del Gobierno", "icon": "📻" },
+    "carlos": { "name": "Carlos (central)", "icon": "📻" },
+    "jubilada": { "name": "Mari Luz (jubilada)", "icon": "📻" }
+  },
+  "ambientSpeakers": { "Central": "central" },
+  "days": [
+    {
+      "day": 1,
+      "title": "Sin relevo",
+      "lines": [
+        ["central", "Buenos días, Carlos. Soy Mari Luz, de la central. Malas noticias: tu relevo no viene. Ni el de las siete ni ninguno."],
+        ["central", "Resumen de la situación: los vecinos están mordiendo a otros vecinos. No, esta vez no es por la junta de la comunidad."],
+        ["onda13", "El alcalde Bermúdez pide calma: asegura que no hay zombis, solo «vecinos con movilidad reducida y mucho apetito»."],
+        ["comisario", "Hola, ha llamado al comisario Ferrándiz. Estoy de vacaciones hasta el día 15. Para urgencias, llame al comisario Ferrándiz. Piiii."],
+        ["central", "O sea, a él. Bienvenido al Distrito 13, Carlos. Cierra las puertas, que corre aire. Y otras cosas."]
+      ],
+      "night": [
+        ["central", "Primera noche, Carlos. Consejo de la casa: lo que gime y arrastra los pies no es un vecino con lumbago. A estas horas, no."]
+      ],
+      "call": {
+        "who": "ana",
+        "at": 30,
+        "text": "Carlos, estamos en casa de mi madre con Oliver. ¿Vienes a comer?",
+        "reply": "Quedaos ahí, Ana. Sí, ya sé que con tu madre. Aguanta: los zombis son peores. Creo."
+      }
+    },
+    {
+      "day": 2,
+      "title": "La bebida del lunes",
+      "lines": [
+        ["central", "Buenos días, Carlos. Sigues vivo: me ahorras un papeleo tremendo. A mí me quedan catorce días para jubilarme y pienso cumplirlos."],
+        ["borja", "¿Cansado? ¿Desmotivado? PRODUKTIV+, de Sinergia Global: la bebida del empleado público que nunca para. Nunca. Para."],
+        ["onda13", "El brote empezó el lunes en el ayuntamiento, en una degustación gratuita de bebida energética. Lo gratis, ya se sabe."],
+        ["central", "Aquí no la probó nadie, Carlos: la máquina de bebidas de la comisaría lleva tres años averiada. El parte sigue en trámite."],
+        ["central", "Primera vez en la historia que la burocracia salva vidas. No lo digas muy alto, que la arreglan."]
+      ]
+    },
+    {
+      "day": 3,
+      "title": "El alcalde tiene un plan",
+      "lines": [
+        ["alcalde", "Vecinos del Distrito 13: esto no es una crisis, es una oportunidad. Desde el lunes, el distrito ha ganado trescientos habitantes."],
+        ["onda13", "El alcalde empadronará a los afectados: más vecinos, más fondos europeos. La oposición pide que, al menos, no voten con la boca abierta."],
+        ["central", "Carlos, Delegación quiere que salgas a «contener la situación» con una porra y un chaleco de 2009. Les he dicho que estás reunido."],
+        ["morales", "(gruñido)… (gruñido)… cambio."],
+        ["central", "Morales, cielo, si no vas a decir nada útil, suelta el botón. Lleva así desde el lunes. Eso sí, ya no pide horas extra."]
+      ]
+    },
+    {
+      "day": 4,
+      "title": "Sinergia",
+      "lines": [
+        ["onda13", "Hablamos con Borja Montalbán, CEO de Sinergia Global. Según él, los afectados no duermen, no descansan y no se quejan: «empleados ejemplares»."],
+        ["borja", "Nuestros indicadores son espectaculares: cero bajas por ansiedad, cero vacaciones, disponibilidad 24/7. Lo de morder es un efecto secundario leve."],
+        ["central", "He mirado el BOE, Carlos. El contrato con Sinergia lo firmó el alcalde y le dio el visto bueno el comisario. Que está de vacaciones. Qué casualidad."],
+        ["comisario", "Hola, ha llamado al comisario Ferrándiz. Si llama para denunciarme, se ha equivocado de comisario. Y de semana. Piiii."],
+        ["central", "Mañana nos mandan refuerzos. Te lo digo hoy para que tengas un día de ilusión, que es gratis."]
+      ]
+    },
+    {
+      "day": 5,
+      "title": "Refuerzos",
+      "lines": [
+        ["central", "Lo prometido, Carlos: Delegación nos manda refuerzos. Una unidad de antidisturbios entera."],
+        ["central", "La mala noticia: la unidad estuvo en la degustación de PRODUKTIV+. Vigilando el catering. Muy de cerca."],
+        ["onda13", "El alcalde inaugura hoy una rotonda. Afluencia de público masiva y muy interesada en el alcalde. Se ha ido antes del aperitivo."],
+        ["central", "Esta noche viene a verte el subinspector Lago. Treinta años sin faltar a un turno. No va a empezar ahora."],
+        ["central", "Si lo tumbas, guárdame su placa. Me debe cinco euros de la lotería de Navidad, y la lotería no prescribe."]
+      ],
+      "boss": [
+        ["central", "Ahí está Lago, con el escudo de reglamento. Rodéale, Carlos: por la espalda no mira. No miró nunca."]
+      ],
+      "bossNick": "Subinspector Lago · nunca faltó a un turno, ni ahora"
+    },
+    {
+      "day": 6,
+      "title": "Recursos Humanos",
+      "lines": [
+        ["central", "Lago, tumbado. Su placa ya está en mi cajón, con mis cinco euros. Gracias, Carlos. Eres un sol."],
+        ["central", "Ha llamado Recursos Humanos: preguntan por qué llevas seis días sin fichar la salida. Les he explicado lo de los zombis."],
+        ["central", "Dicen que «invasión de no-muertos» no figura en el anexo III de ausencias justificadas. Te lo apuntan como falta. De salida."],
+        ["borja", "Sinergia Global presenta PRODUKTIV+ Zero: sin azúcar, sin cafeína y sin efectos secundarios demostrados. Todavía."],
+        ["onda13", "El alcalde ha sido evacuado en helicóptero «para coordinar la crisis desde un lugar seguro». El lugar seguro tiene jacuzzi."],
+        ["central", "Me quedan diez días para jubilarme, Carlos. Ya tengo la mantita y la planta. Como alguien me muerda la planta, salgo yo."]
+      ]
+    },
+    {
+      "day": 7,
+      "title": "¿Dónde está Ferrándiz?",
+      "lines": [
+        ["central", "Carlos, he llamado al hotel de Benidorm del comisario. Reservó hace un mes, pero no ha llegado. No ha bajado ni al bufé libre."],
+        ["central", "Un comisario que no baja al bufé libre. Esto es más grave de lo que pensábamos."],
+        ["comisario", "Hola, ha llamado al comisario Ferrándiz. Estoy tomando el sol hasta el día 15. Me llevo el móvil, pero no lo pienso coger. Piiii."],
+        ["onda13", "Según nuestra encuesta, el 40 % de los vecinos está «muy satisfecho» con la gestión de la crisis. El resto solo ha gemido."],
+        ["central", "He encontrado una foto de la degustación de PRODUKTIV+. Primera fila, con un vaso en cada mano: el comisario Ferrándiz. Ay, madre."]
+      ]
+    },
+    {
+      "day": 8,
+      "title": "Ecuador del turno",
+      "lines": [
+        ["central", "Ocho días, Carlos. Ya llevas en esta comisaría más tiempo vivo que cualquier comisario en el cargo."],
+        ["borja", "Sinergia Global lamenta las molestias. Como compensación, le ofrecemos un 10 % de descuento en su próximo pack de PRODUKTIV+."],
+        ["alcalde", "Desde un lugar seguro, quiero dar las gracias al agente del Distrito 13. Al agente… al agente… En fin, un gran profesional."],
+        ["central", "No sabe ni cómo te llamas, Carlos. Te encargo la placa: «Al agente, en reconocimiento». Queda elegante."],
+        ["morales", "(gruñido)… ¿cafééé?… cambio."],
+        ["central", "¡Morales ha dicho una palabra! Pues ya está: en dos semanas, jefe de servicio."]
+      ]
+    },
+    {
+      "day": 9,
+      "title": "La cura",
+      "lines": [
+        ["onda13", "Sinergia Global asegura tener la cura: PRODUKTIV+ Reset. Se toma en ayunas y cuesta 49,99 al mes, con permanencia de dos años."],
+        ["central", "Carlos, la cura la reparte el mismo catering. Si te la ofrecen, sonríe y di que eres intolerante a la lactosa."],
+        ["delegacion", "El rescate del Distrito 13 está aprobado. Solo falta la firma del comisario responsable."],
+        ["central", "¿Y quién es el responsable? Ferrándiz. ¿Y dónde está Ferrándiz? Exacto. Ni el apocalipsis se libra del papeleo."],
+        ["central", "Según su contestador, vuelve el día 15. Esperemos que vuelva moreno y no con hambre."]
+      ]
+    },
+    {
+      "day": 10,
+      "title": "Horas extra",
+      "lines": [
+        ["central", "Otra visita esta noche, Carlos. El inspector jefe Gil pidió el traslado a una zona tranquila y se lo han concedido: aquí."],
+        ["central", "Gil viene a reclamar sus horas extra. Le deben ochocientas. Tú no le debes ninguna, pero él no lo sabe."],
+        ["borja", "Sinergia Global aclara que el brote no es culpa nuestra, sino de no leer la letra pequeña. Que es muy pequeña. A propósito."],
+        ["onda13", "El alcalde cancela su comparecencia. Su portavoz explica que «tiene la agenda muy apretada». Y su escolta, los dientes."],
+        ["central", "Me quedan seis días, Carlos. Si sobrevives a esta, te pido una medalla. De las de verdad, no de las del bazar de abajo."]
+      ],
+      "boss": [
+        ["central", "Ya está aquí Gil, con el escudo y el cuadrante de horas. No le discutas el cuadrante, Carlos. Nadie se lo ha ganado nunca."]
+      ],
+      "bossNick": "Inspector jefe Gil · viene a cobrar las horas extra"
+    },
+    {
+      "day": 11,
+      "title": "Compromiso con el producto",
+      "lines": [
+        ["central", "Gil ya descansa, Carlos. Primera vez en treinta años que se coge un día libre."],
+        ["onda13", "Entrevista en directo con Borja Montalbán, de Sinergia. Borja, ¿cómo valora…? ¿Borja? Borja está mordiendo el micro. Vamos a publicidad."],
+        ["borja", "PRODUKTIV+: lo bebe nuestro CEO. Y se nota."],
+        ["central", "Pues ya está: el de la bebida se la ha bebido. En las escuelas de negocios lo llaman «compromiso con el producto»."],
+        ["alcalde", "El ayuntamiento rescinde el contrato con Sinergia Global con efecto inmediato. Y con cara de sorpresa."]
+      ]
+    },
+    {
+      "day": 12,
+      "title": "Campaña electoral",
+      "lines": [
+        ["onda13", "El alcalde arrasa en las encuestas del distrito gracias a trescientos votos nuevos. Todos por correo. Muy lento."],
+        ["alcalde", "Gracias a mis nuevos votantes. Siempre he dicho que este distrito tenía hambre de cambio."],
+        ["central", "Carlos, ha llamado tu mujer a la central. Que no le coges el teléfono. Cógeselo, por Dios, que me tiene frita."],
+        ["comisario", "Hola, ha llamado al comisario Ferrándiz. Vuelvo el día 15. Que nadie toque mi despacho. Sobre todo, la nevera. Piiii."],
+        ["central", "Me quedan cuatro días. He empezado a vaciar el cajón: un bocadillo de 2011 con mejor aspecto que medio distrito."]
+      ],
+      "call": {
+        "who": "ana",
+        "at": 34,
+        "text": "¡Por fin! He tenido que llamar a la central. Una tal Mari Luz me ha contado tu vida entera.",
+        "reply": "Mari Luz sabe más de mi vida que yo, Ana. Y ahora tú. Esto ya es un expediente."
+      }
+    },
+    {
+      "day": 13,
+      "title": "Día 13, Distrito 13",
+      "lines": [
+        ["central", "Día 13 en el Distrito 13, Carlos. Si fueras supersticioso, ya te habrías ido. Pero no tienes adónde."],
+        ["delegacion", "El helicóptero de rescate saldrá en cuanto firme el comisario Ferrándiz. Llegada prevista: día 16, al amanecer."],
+        ["central", "No van a esperar a Ferrándiz: usarán la firma de su contestador. Un abogado del Estado dice que vale. El mismo que validó lo de Sinergia."],
+        ["onda13", "Onda Trece cierra por falta de anunciantes. El técnico de sonido sigue aquí, pero ahora muerde los cables. Gracias por escucharnos."],
+        ["morales", "(gruñido)… Carlos… (gruñido)… relevo… cambio."],
+        ["central", "¡Hasta Morales pregunta por tu relevo! Eso es conciencia de clase, Carlos. Se me saltan las lágrimas."]
+      ]
+    },
+    {
+      "day": 14,
+      "title": "La víspera",
+      "lines": [
+        ["central", "Penúltimo día, Carlos. Me han llegado los papeles de la jubilación firmados por Ferrándiz. Su firma también va en piloto automático."],
+        ["comisario", "Hola, ha llamado al comisario Ferrándiz. Vuelvo mañana. Que nadie toque mi taza, ni mi silla, ni mi cuello. Piiii."],
+        ["central", "Lo de «ni mi cuello» es nuevo, Carlos. Ese mensaje lo ha regrabado alguien. O algo."],
+        ["delegacion", "Helicóptero listo. Cuatro plazas: el alcalde, su asesor, su asesora de imagen y doña Mari Luz, con cita previa desde 1998."],
+        ["central", "La pedí con lo del efecto 2000. ¿Que si hay sitio para ti, Carlos? Tú ya tienes plaza: fija, en el Distrito 13."]
+      ]
+    },
+    {
+      "day": 15,
+      "title": "Vuelve el comisario",
+      "lines": [
+        ["central", "Último día, Carlos. Mañana a estas horas yo estaré jubilada y tú… bueno, tú estarás."],
+        ["central", "Oigo pasos en el despacho del comisario. Pasos de alguien que ha cogido cinco kilos en Benidorm sin pisar Benidorm."],
+        ["comisario", "Hola, ha llamado al comisario Ferrándiz. Ya he vuelto. Esta noche paso a revisar los informes. Y al personal. Piiii."],
+        ["central", "Es él, Carlos. Escudo, porra y treinta años de mando. Nunca supo delegar: por eso viene en persona."],
+        ["central", "Aguanta hasta el amanecer y te invito a churros. Bueno, los pagas tú, que yo ya no cobro. Pero te invito."]
+      ],
+      "night": [
+        ["central", "Última noche, Carlos. Dicen que el helicóptero ya está calentando. Tú también: carga todo lo que tengas."]
+      ],
+      "boss": [
+        ["central", "Ahí lo tienes: Ferrándiz viene a por el informe de las quince noches. Dáselo en mano, Carlos. Pero que no te coja la tuya."],
+        ["comisario", "Hola, ha llamado al comisario Ferrándiz. Grrr. Piiii."]
+      ],
+      "bossNick": "Comisario Ferrándiz · vuelve de vacaciones",
+      "call": {
+        "who": "oliver",
+        "at": 40,
+        "text": "Papá, mamá dice que mañana te rescatan. ¿Te traes la porra para enseñarla en clase?",
+        "reply": "Me traigo lo que me dejen, campeón. Y si no me dejan, me traigo la radio."
+      }
+    }
+  ],
+  "ending": {
+    "delay": 3.5,
+    "bonus": 1000,
+    "title": "Amanecer del día 16",
+    "subtitle": "Fin de la historia. Del turno, no.",
+    "paragraphs": [
+      "A las 07:00 en punto aterriza en el parking el helicóptero de la Delegación. Es la primera vez que algo público llega a su hora.",
+      "Baja el alcalde Bermúdez, se hace una foto contigo delante de la comisaría («para el cartel de las elecciones») y te prende en el pecho la Medalla al Mérito Policial. Es de chocolate. Del bueno, eso sí.",
+      "Mari Luz sube con su mantita, su planta y su cita previa de 1998. Te da un beso en la frente y te deja los cascos: «Ahora la central eres tú, Carlos».",
+      "Cuando vas a subir, el piloto te pide el parte de relevo firmado. Tu relevo no ha llegado. Reglamento, artículo 47: sin relevo, nadie abandona el puesto. El helicóptero despega sin ti.",
+      "Suena el móvil. Es Ana: «¿Vienes ya?». Le contestas lo de siempre: «Diez minutos, cariño». Al fondo, Oliver grita que eres el último policía del mundo. Y que le lleves un zombi para clase.",
+      "La comisaría del Distrito 13 sigue en pie por tres motivos: una máquina de bebidas averiada desde hace tres años, un parte de relevo sin firmar y un agente demasiado cabezota para irse a casa. Ese eres tú."
+    ],
+    "bonusText": "Gratificación por servicios extraordinarios: +{bonus} puntos (sujeta a retención).",
+    "footer": "Delegación del Gobierno: su relevo llegará «próximamente». Mientras tanto, la radio emitirá reposiciones.",
+    "continue": "Seguir de servicio (modo infinito)"
+  },
+  "infinite": {
+    "linesPerDay": 3,
+    "rerunChance": 0.4,
+    "rerunTag": "reposición",
+    "titles": [
+      "Seguimos sin relevo",
+      "Reposición",
+      "Boletín de la central (tú)",
+      "Postales de Mari Luz",
+      "El relevo, próximamente"
+    ],
+    "bulletins": [
+      ["carlos", "Aquí la central. Soy yo. Cambio. … Recibido, central. Soy yo también. Cambio."],
+      ["carlos", "Parte del día: un agente en servicio, cero relevos, trescientos vecinos sin cita previa. Todo en orden."],
+      ["carlos", "Central a todas las unidades… Bueno, central a mí. Hoy toca reparar barricadas. Cambio y corto."],
+      ["carlos", "Morales, si me relevas tú, firmo ahora mismo. … No, ya sé que no. Cambio."],
+      ["jubilada", "Postal desde Benidorm, Carlos: el bufé libre está buenísimo. Ferrándiz no sabe lo que se perdió."],
+      ["jubilada", "Carlos, cariño, ¿te abrigas? Que esa comisaría tiene muchas corrientes. Y muchos vecinos."],
+      ["jubilada", "He empezado aquagym. Hay un señor que gime y arrastra los pies, pero dicen que a su edad es normal."],
+      ["jubilada", "Te he mandado un táper de croquetas por mensajería urgente. Llega en 3-5 días hábiles. Ábrelo antes de que se abra solo."],
+      ["jubilada", "En el pueblo dicen que ya hay vacuna. La ponen en el centro de salud, con cita previa. Para 2031."],
+      ["delegacion", "Su relevo está en camino. Lo de «en camino» es una forma de hablar."],
+      ["delegacion", "Se abre el plazo para solicitar el relevo. El formulario solo se entrega en persona. En la Delegación. Al otro lado de la ciudad."],
+      ["delegacion", "Por su servicio extraordinario, se le concede un día de asuntos propios. A disfrutar en su puesto de trabajo."],
+      ["delegacion", "Le recordamos que las vacaciones se piden con dos meses de antelación y que su puesto no puede quedar vacío. Felices vacaciones."],
+      ["comisario", "Hola, ha llamado al comisario Ferrándiz. Estoy fuera indefinidamente. Para urgencias, llame al agente Carlos. Piiii."],
+      ["comisario", "Hola, ha llamado al comisario Ferrándiz. Sí, ya sé lo que pasó la noche 15. No me lo tenga en cuenta. Piiii."],
+      ["alcalde", "El alcalde Bermúdez, reelegido por mayoría absoluta, promete un distrito «más vivo». Lo de «más vivo» lo ha subrayado su asesor."],
+      ["alcalde", "Inauguramos la Plaza del Agente… del agente del Distrito 13. El nombre lo pondremos cuando lo sepamos."],
+      ["morales", "(gruñido)… Carlos… (gruñido)… ¿relevo?… cambio."],
+      ["borja", "Vuelve PRODUKTIV+ Eternal: para el empleado que no quiere jubilarse. Ni descansar. Ni nada."],
+      ["onda13", "Onda Trece, en reposición: el equipo sigue de vacaciones y el técnico sigue con los cables."]
+    ]
+  }
+}

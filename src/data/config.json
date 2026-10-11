@@ -139,6 +139,22 @@
         "smoke": 0,
         "recoil": 0.3,
         "ejectBack": 0.1
+      },
+      "laser": {
+        "casings": 0,
+        "casingColor": "0xffffff",
+        "casingScale": 1,
+        "smoke": 0,
+        "recoil": 0.3,
+        "ejectBack": 0.1
+      },
+      "lanzallamas": {
+        "casings": 0,
+        "casingColor": "0xffffff",
+        "casingScale": 1,
+        "smoke": 0,
+        "recoil": 0.12,
+        "ejectBack": 0.1
       }
     },
     "muzzleSmoke": {

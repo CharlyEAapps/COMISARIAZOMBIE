@@ -49,6 +49,7 @@ export class TouchControls {
         <button class="m-weapon" data-act="weapon" aria-label="Cambiar de arma">
           <span class="m-wicon" data-m="wicon"></span>
           <span class="m-ammo"><b data-m="mag">12</b><small data-m="res">/∞</small></span>
+          <span class="m-heat"><i data-m="heat"></i></span>
           <span class="m-swap">⇄</span>
           <div class="m-reload"><div class="fill reload" data-m="reload"></div></div>
         </button>
@@ -289,7 +290,13 @@ export class TouchControls {
     this.set('rem', String(waves.remaining));
     const w = weapons.weapon;
     this.set('wicon', w.data.icon);
-    if (w.data.melee) { this.set('mag', '—'); this.set('res', ''); } else {
+    // Rifle láser: la barra de calor sustituye a la munición.
+    const heat = !!w.data.heat;
+    this.toggle('heat-weapon', heat);
+    this.toggle('heat-locked', heat && w.locked);
+    this.toggle('heat-hot', heat && !w.locked && w.heat >= w.data.heat.warnAt);
+    if (heat) this.set('heat', `${(w.heat * 100).toFixed(0)}%`, 'width');
+    else if (w.data.melee) { this.set('mag', '—'); this.set('res', ''); } else {
       this.set('mag', w.reloading > 0 ? '··' : String(w.mag));
       this.set('res', w.reserve < 0 ? '/∞' : `/${w.reserve}`);
     }

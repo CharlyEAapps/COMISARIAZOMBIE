@@ -25,7 +25,12 @@
       "📻 Central: si se queda sin balas, aplique el protocolo 12. El protocolo 12 dice 'corra'.",
       "📻 Central: confirmamos que el café de la máquina es apto para el consumo humano. Del resto no respondemos.",
       "📻 Central: la grúa municipal no pasará esta noche. Ni ninguna otra.",
-      "📻 Central: Recursos Humanos pregunta si puede adelantar las vacaciones. Por si acaso."
+      "📻 Central: Recursos Humanos pregunta si puede adelantar las vacaciones. Por si acaso.",
+      "📻 Central: Carlos, apunta bien, cariño, que la munición te la descuentan de la nómina.",
+      "📻 Central: aviso a todas las unidades. Bueno, a Carlos, que es la única.",
+      "📻 Central: Carlos, te recuerdo que mañana tienes revisión médica. Si llegas entero, te la hacen.",
+      "📻 Central: Carlos, ha llamado tu suegra preguntando por ti. No le he dicho dónde estás. De nada.",
+      "📻 Central: Carlos, si oyes a alguien pedir el libro de reclamaciones, no es un vecino. Ya no."
     ],
     "day": [
       "📻 Central: buenos días, agente. Hoy toca papeleo: todos los informes de anoche. Escriba bonito.",
@@ -44,7 +49,10 @@
     "Sale el sol. Los zombis duermen. Recursos Humanos, no.",
     "Otro día en la oficina. Literalmente: no puedes salir.",
     "Repara las barricadas: el presupuesto municipal no lo va a hacer.",
-    "Desayuno de campeones: café de máquina y munición."
+    "Desayuno de campeones: café de máquina y munición.",
+    "Arriba, Carlos: repara, compra y prepárate.",
+    "Buenos días, Carlos. Tu relevo sigue sin venir.",
+    "Carlos, ficha la entrada. La salida, ya si eso."
   ],
   "dawn": [
     "Parte de servicio: {kills} ciudadanos atendidos, 0 reclamaciones.",
@@ -63,7 +71,13 @@
     "El comisario te propondrá para una medalla. A título póstumo y con retención del 20 %.",
     "Por fin te han concedido el traslado. No al destino que pedías.",
     "Jubilación anticipada concedida. No exactamente como la imaginabas.",
-    "Tranquilo: mañana te reincorporas. En el otro bando."
+    "Tranquilo: mañana te reincorporas. En el otro bando.",
+    "Aquí yace el agente Carlos. Murió como vivió: sin relevo.",
+    "El agente Carlos causa baja. Recursos Humanos ya le ha descontado el día.",
+    "Descanse en paz el agente Carlos. Por fin, unas vacaciones.",
+    "Mari Luz ha cerrado tu expediente: «Carlos. Buen chico. No cogía el teléfono».",
+    "Ana pregunta si eso quiere decir que esta noche tampoco vienes a cenar.",
+    "Carlos, agente del Distrito 13. Su relevo llegará próximamente."
   ],
   "quips": {
     "chance": 0.12,
@@ -73,7 +87,8 @@
     "tanque": ["Ni el gimnasio… me salvó", "¿Quién… ha apagado… la luz?", "Mañana… pierna…", "Necesito… proteínas…"],
     "explosivo": ["Uy, perdón", "No debí cenar fabada", "¡Sorpresa!", "Era gas, era gas", "Me siento… liberado"],
     "escupidor": ["Te lo dije…", "Glup", "Solo era un catarro", "Tápate al toser…"],
-    "antidisturbios": ["Yo solo… cumplía órdenes…", "Pido… el traslado…", "¡Exijo… las horas extra!", "Esto va… al sindicato…"]
+    "antidisturbios": ["Yo solo… cumplía órdenes…", "Pido… el traslado…", "¡Exijo… las horas extra!", "Esto va… al sindicato…"],
+    "agente_antidisturbios": ["Mi turno… acababa… a las tres…", "¡Esto no está… en el protocolo!", "Pido… refuerzos… (de verdad)", "Mi escudo… era de alquiler…"]
   },
   "bossNames": [
     "Sgto. Ruiz · 23 años de servicio, 1 de no-muerto",

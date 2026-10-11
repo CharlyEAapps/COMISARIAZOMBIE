@@ -24,6 +24,9 @@ import { WeaponSystem } from '../systems/WeaponSystem.js';
 import { WaveDirector } from '../systems/WaveDirector.js';
 import { DayNight, PHASE } from '../systems/DayNight.js';
 import { Score } from '../systems/Score.js';
+import { Missions } from '../systems/Missions.js';
+import { MissionRenderer } from '../render/MissionRenderer.js';
+import { MissionHud } from '../ui/MissionHud.js';
 import { InteractionSystem } from '../systems/InteractionSystem.js';
 import { BuildSystem } from '../systems/BuildSystem.js';
 import { StructureRenderer } from '../render/StructureRenderer.js';
@@ -34,6 +37,8 @@ import { ShopSystem } from '../systems/ShopSystem.js';
 import { BlastQueue } from '../systems/Explosions.js';
 import { AcidSystem } from '../systems/AcidSystem.js';
 import { Humor } from '../systems/Humor.js';
+import { Story } from '../systems/Story.js';
+import { RadioPanel } from '../ui/RadioPanel.js';
 import { AudioSystem } from '../audio/AudioSystem.js';
 import { Meta } from '../systems/Meta.js';
 import { RunSaveStore, captureRun, restoreRun } from '../save/RunSave.js';
@@ -43,8 +48,9 @@ import { ThreatIndicators } from '../ui/ThreatIndicators.js';
 import { GamepadInput } from '../input/GamepadInput.js';
 import zombieData from '../data/zombies.json';
 import { ShopPanel } from '../ui/ShopPanel.js';
-import { WEAPON_IDS } from '../systems/WeaponSystem.js';
+import { WEAPON_IDS, assistParams } from '../systems/WeaponSystem.js';
 import { Player } from '../entities/Player.js';
+import { assistBarrel } from '../systems/Barrels.js';
 
 export const STATE = { MENU: 'menu', PLAYING: 'playing', PAUSED: 'paused', GAMEOVER: 'gameover' };
 
@@ -84,6 +90,7 @@ export class Game {
     this.floating = new WorldLabels(this);
     this.score = new Score(this);
     this.humor = new Humor(this);
+    this.missions = new Missions(this); // misiones de la pizarra y eventos forzados de la noche
     this.interactions = new InteractionSystem(this);
     this.lighting = new Lighting(this);
     this.lighting.setAnchors(this.props.lightAnchors);
@@ -97,6 +104,10 @@ export class Game {
     this.grenadeRenderer = new GrenadeRenderer(this);
     this.flowViz = new FlowFieldViz(this.scene, this.grid);
     this.hud = new Hud(this);
+    this.missionHud = new MissionHud(this);
+    this.missionRenderer = new MissionRenderer(this);
+    this.story = new Story(this); // historia por radio y llamadas de la familia (antes del guardado del amanecer)
+    this.radioPanel = new RadioPanel(this);
     this.shopPanel = new ShopPanel(this);
     this.audio = new AudioSystem(this);
     this.meta = new Meta(this);
@@ -226,13 +237,19 @@ export class Game {
     this.structureRenderer.dispose();
     this.despachoRenderer.dispose();
     this.despacho.dispose();
+    this.missionRenderer.dispose();
+    this.missionHud.dispose();
+    this.missions.dispose();
     this.grenadeRenderer.dispose();
+    this.weapons.dispose();
     this.acid.dispose();
     this.zombies.dispose();
     this.effects.dispose();
     this.decals.dispose();
     this.audio.dispose();
     this.humor.dispose();
+    this.story.dispose();
+    this.radioPanel.dispose();
     this.meta.dispose();
     this.menus.dispose();
     this.touch.dispose();
@@ -278,7 +295,9 @@ export class Game {
     this.dayNight.reset();
     this.waves.reset();
     this.score.reset();
+    this.missions.reset();
     this.humor.reset();
+    this.story.reset();
     this.interactions.reset();
     this.build.reset();
     this.shop.reset();
@@ -290,6 +309,7 @@ export class Game {
     this.floating.reset();
     this.threats.reset();
     this.hud.reset();
+    this.missionHud.reset();
     this.lighting.alarmTimer = 0;
     Object.assign(this.power, { generator: true, lightsOn: true });
     Object.assign(this.run, { time: 0, points: 0, score: 0, kills: 0, nights: 0, killsByType: {} });
@@ -386,19 +406,24 @@ export class Game {
     if (input.aim.active) { dx = input.aim.x; dz = input.aim.y; } else if (input.move.x || input.move.y) { dx = input.move.x; dz = input.move.y; } else return;
     const px = player.position.x, pz = player.position.z;
     if (input.aim.active) {
-      const cosMax = Math.cos(THREE.MathUtils.degToRad(T.assistAngleDeg));
+      // Cada arma puede tener su propio alcance y ángulo de ayuda (lanzallamas y sable, de corto alcance).
+      const assist = assistParams(this.weapons.weapon?.data, T);
+      const cosMax = Math.cos(THREE.MathUtils.degToRad(assist.angleDeg));
       let best = null, bestCos = cosMax;
       for (const z of this.zombies.active) {
         if (z.state !== 0) continue;
         const zx = z.pos.x - px, zz = z.pos.z - pz;
         const d = Math.hypot(zx, zz);
-        if (d > T.assistRange || d < 1e-3) continue;
+        if (d > assist.range || d < 1e-3) continue;
         const c = (zx * dx + zz * dz) / d;
         if (c > bestCos) { bestCos = c; best = z; }
       }
-      if (best) {
-        const d = Math.hypot(best.pos.x - px, best.pos.z - pz);
-        dx = (best.pos.x - px) / d; dz = (best.pos.z - pz) / d;
+      // Un barril con zombis al lado y más alineado que el mejor zombi también vale (Barrels.js).
+      const bar = assistBarrel(this.build.barrels, this.zombies.active, px, pz, dx, dz, bestCos, assist.range);
+      if (bar || best) {
+        const tx = bar ? bar.cx : best.pos.x, tz = bar ? bar.cz : best.pos.z;
+        const d = Math.hypot(tx - px, tz - pz);
+        dx = (tx - px) / d; dz = (tz - pz) / d;
       }
     }
     this.aimPoint.set(px + dx * T.aimDistance, AIM_HEIGHT, pz + dz * T.aimDistance);
@@ -461,6 +486,7 @@ export class Game {
     this.effects.update(visualDt);
     this.decals.update(visualDt);
     this.lighting.update(visualDt);
+    this.missionRenderer.update(visualDt); // niebla y apagón: después de la luz, que fija esos valores cada frame
     if (this.debug.flags.showFlowField) this.flowViz.update(this.zombies.flow, visualDt);
 
     const pp = this.player.position;
@@ -474,6 +500,7 @@ export class Game {
     this.renderer.render(this.cameraRig.camera);
 
     this.hud.update(dt);
+    this.missionHud.update(dt);
     this.touch.update();
     this.shopPanel.update(visualDt);
     this.floating.update(visualDt);
@@ -512,12 +539,14 @@ export class Game {
     this.weapons.update(dt);
     this.build.update(dt);
     this.despacho.update(dt);
+    this.missions.update(dt);
     if (this.wavesEnabled && this.player.alive) this.waves.update(dt, this.dayNight);
     this.zombies.update(dt);
     this.blasts.update(dt);
     this.acid.update(dt);
     this.score.update(dt);
     this.humor.update(dt);
+    this.story.update(dt);
     if (this.deathTimer > 0) {
       this.deathTimer -= dt;
       if (this.deathTimer <= 0) {

@@ -34,7 +34,10 @@ export class Score {
   addPoints(amount, x, z, label) {
     const { run, floating } = this.game;
     run.points += amount;
-    if (amount > 0) run.score += amount; // lo ganado (para los récords), sin gastos
+    if (amount > 0) {
+      run.score += amount; // lo ganado (para los récords), sin gastos
+      this.game.missions?.noteGain(amount); // para distinguir cobros de gastos (Hacienda)
+    }
     if (floating && x !== undefined) floating.spawn(label ?? `+${amount}`, x, 1.9, z, amount >= 0 ? 'pts' : 'neg');
   }
 
@@ -52,7 +55,8 @@ export class Score {
     run.kills++;
     const mult = this.multiplier;
     if (mult > before) this.game.bus.emit('combo', { mult });
-    const pts = Math.round(points * mult);
+    // Horas extra (misión): las bajas se pagan más.
+    const pts = Math.round(points * mult * (this.game.missions?.fx.killPointsMul ?? 1));
     this.addPoints(pts, x, z, mult > 1 ? `+${pts} ×${mult}` : `+${pts}`);
   }
 
@@ -70,8 +74,18 @@ export class Score {
     const n = Math.max(o.min ?? -Infinity, o.base + o.perNight * (night - 1));
     // Archivo ordenado (despacho del jefe): los casos pagan más.
     const reward = Math.round(o.reward * (this.game.despacho?.caseRewardMul ?? 1));
-    this.objective = { id: o.id, n, reward, text: o.text.replace('{n}', n), night };
+    this.objective = { id: o.id, n, reward, text: o.text.replace('{n}', n), short: o.short, night };
     return this.objective;
+  }
+
+  /** Progreso del caso clásico en la noche en curso ("7/16"), para el HUD. */
+  objectiveProgress(o = this.objective) {
+    if (!o) return '';
+    const s = this.nightStats;
+    if (o.id === 'kills') return `${s.kills}/${o.n}`;
+    if (o.id === 'maxDamage') return `${Math.round(s.damage)}/${o.n}`;
+    if (o.id === 'combo') return `${s.maxCombo}/${o.n}`;
+    return '';
   }
 
   objectiveMet(o = this.objective) {
@@ -103,6 +117,12 @@ export class Score {
         lines.push('Caso sin resolver');
       }
       this.objective = null;
+    }
+    // Misiones originales (missions.json): recompensas, multas y líneas del parte.
+    const mission = game.missions?.settle(night);
+    if (mission) {
+      lines.push(...mission.lines);
+      total += mission.total;
     }
     game.run.points += total;
     game.run.score += total;

@@ -40,7 +40,8 @@ export class Humor {
     this.reset();
     this._unsub = [
       game.bus.on('phase:noche', () => { this.radioTimer = this.cfg.radio.firstNightDelay; }),
-      game.bus.on('phase:dia', ({ night }) => { if (night > 1) this.dayTimer = this.cfg.radio.dayDelay; }),
+      // Con la historia (Story), la radio del día es su episodio: aquí solo queda de respaldo.
+      game.bus.on('phase:dia', ({ night }) => { if (night > 1 && !game.story) this.dayTimer = this.cfg.radio.dayDelay; }),
       game.bus.on('zombie:killed', (e) => this.onKill(e)),
     ];
   }
@@ -57,6 +58,11 @@ export class Humor {
 
   /** Siguiente frase de la lista `path` (sin repetir hasta agotarla). */
   pick(path) {
+    // Los jefes de las noches del guion llevan su nombre en la historia.
+    if (path === 'bossNames') {
+      const nick = this.game.story?.bossNick?.();
+      if (nick) return nick;
+    }
     let bag = this.bags.get(path);
     if (!bag) {
       const list = at(path);
@@ -92,8 +98,12 @@ export class Humor {
     if (dayNight.phase === PHASE.NIGHT && (this.radioTimer -= dt) <= 0) {
       const [a, b] = this.cfg.radio.nightInterval;
       this.radioTimer = a + Math.random() * (b - a);
-      hud?.toast(this.pick('radio.night'), 7);
-      this.game.bus.emit('radio');
+      // Va al panel de radio de la historia; sin él, como aviso.
+      const text = this.pick('radio.night');
+      if (!this.game.story?.radio(text)) {
+        hud?.toast(text, 7);
+        this.game.bus.emit('radio');
+      }
     }
     if (dayNight.phase === PHASE.DAY && (this.dayTimer -= dt) <= 0) {
       this.dayTimer = Infinity;

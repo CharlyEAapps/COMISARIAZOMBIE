@@ -141,6 +141,44 @@ export const RECIPES = {
     k.chain(o, k.filter('highpass', 400, 0.7), ag, k.env([[0, 0.5], [0.4, 0.001]]));
     k.burst(0, 0.4, 'bandpass', 4000, 1, 0.4);
   }],
+  // Rifle láser: chasquido agudo que cae en picado + siseo; avisos de calor.
+  shot_laser: [0.32, (k) => {
+    k.chain(k.osc('sawtooth', 2400, 0, 0.28, 260), k.filter('lowpass', 3500, 0.8), k.perc(0, 0.002, 0.45, 0.26));
+    k.chain(k.osc('square', 1200, 0, 0.2, 140), k.filter('lowpass', 2000), k.perc(0, 0.002, 0.2, 0.18));
+    k.burst(0, 0.12, 'highpass', 5000, 0.7, 0.3);
+  }],
+  overheat: [0.9, (k) => {
+    for (let i = 0; i < 3; i++) k.chain(k.osc('square', 1900, i * 0.2, 0.12), k.filter('lowpass', 3000), k.perc(i * 0.2, 0.004, 0.3, 0.1));
+    k.burst(0.05, 0.8, 'highpass', 3500, 0.6, 0.35, 1500);
+  }],
+  laser_locked: [0.2, (k) => k.chain(k.osc('square', 150, 0, 0.16), k.filter('lowpass', 700), k.perc(0, 0.004, 0.35, 0.15))],
+  cooled: [0.35, (k) => { k.ping(0, 1500, 0.2, 0.25); k.ping(0.1, 2000, 0.2, 0.2); }],
+  // Lanzallamas: rugido de gas encendido (se solapa en un chorro continuo).
+  shot_lanzallamas: [0.26, (k) => {
+    k.burst(0, 0.24, 'bandpass', 900, 0.7, 0.55, 380);
+    k.burst(0, 0.24, 'lowpass', 300, 0.7, 0.7, 120);
+    k.thump(0, 90, 55, 0.18, 0.4);
+  }],
+  // Sable láser: zumbido que sube al blandirlo, encendido y choque con un escupitajo.
+  swing_sable: [0.5, (k) => {
+    const o = k.osc('sawtooth', 120, 0, 0.45, 300);
+    const lfo = k.osc('sine', 38, 0, 0.45);
+    const d = k.ctx.createGain();
+    d.gain.value = 22;
+    lfo.connect(d).connect(o.frequency);
+    k.chain(o, k.filter('lowpass', 1400, 1.2), k.env([[0, 0.001], [0.06, 0.4], [0.25, 0.35], [0.45, 0.001]]));
+    k.burst(0, 0.3, 'bandpass', 900, 1.5, 0.15, 2600);
+  }],
+  saber_on: [0.6, (k) => {
+    const o = k.osc('sawtooth', 55, 0, 0.55, 150);
+    k.chain(o, k.filter('lowpass', 900), k.env([[0, 0.001], [0.1, 0.4], [0.4, 0.3], [0.55, 0.001]]));
+    k.click(0, 0.4, 2600);
+    k.burst(0.05, 0.4, 'bandpass', 700, 1.2, 0.18, 2200);
+  }],
+  deflect: [0.3, (k) => {
+    k.ping(0, 1700, 0.25, 0.35);
+    k.chain(k.osc('sawtooth', 900, 0, 0.22, 200), k.filter('lowpass', 2500), k.perc(0, 0.002, 0.35, 0.2));
+  }],
   swing: [0.25, (k) => k.burst(0, 0.22, 'bandpass', 400, 1.2, 0.5, 1800)],
   melee_hit: [0.2, (k) => { k.burst(0, 0.1, 'lowpass', 350, 1, 0.9); k.thump(0, 140, 60, 0.12, 0.8); }],
   reload: [0.35, (k) => { k.click(0, 0.5, 2500); k.ping(0.02, 1700, 0.06, 0.15); k.click(0.12, 0.4, 3000); }],
@@ -227,6 +265,17 @@ export const RECIPES = {
   radio: [0.45, (k) => {
     k.chain(k.osc('sine', 1050, 0, 0.06), k.perc(0, 0.002, 0.25, 0.05));
     for (let i = 0; i < 12; i++) k.burst(0.06 + i * 0.03, 0.02, 'bandpass', 2500, 1, 0.08 + Math.random() * 0.12);
+  }],
+  // Timbrazo de móvil (llamadas de Ana y Oliver): doble trino suave de dos tonos alternos. Story lo
+  // repite según familia.json (ring.times y ring.gap) antes de enseñar la llamada.
+  phone_ring: [0.8, (k) => {
+    for (const t0 of [0, 0.42]) {
+      const g = k.env([[t0, 1e-4], [t0 + 0.02, 0.22], [t0 + 0.32, 0.2], [t0 + 0.36, 1e-4]]);
+      const lp = k.filter('lowpass', 2600, 0.7);
+      lp.connect(g);
+      g.connect(k.out);
+      for (let i = 0; i < 8; i++) k.osc('sine', i % 2 ? 1760 : 1320, t0 + i * 0.045, 0.047).connect(lp);
+    }
   }],
   combo: [0.15, (k) => k.chain(k.osc('triangle', 660, 0, 0.12, 1320), k.perc(0, 0.003, 0.3, 0.11))],
   siren: [4.0, (k) => {

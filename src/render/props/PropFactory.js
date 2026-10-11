@@ -253,6 +253,8 @@ export function buildRoom(b, grid, room, level = 0, global = 0) {
       placeGroup(place, g, cls, extra, instances, companions);
     }
     companionDecor(companions, decor);
+    // Acabado común de las paredes (zócalo con el color de la sala, rodapié y enchufes).
+    if (!room.kind) decor.push({ type: 'acabado_sala', x: x0, z: y0, room: room.id });
     for (const e of room.decor ?? []) {
       if (!visibleAt(e, level)) continue;
       if (e.wall) {
@@ -367,6 +369,7 @@ export const GALLERY_SIZES = {
   caseta: [2, 2], generador: [2, 1],
   estanteria_archivo: [3, 1], servidor: [1, 1], mesa_comedor: [2, 2], sofa: [3, 1], maqueta: [2, 1], trastos: [3, 1],
   banco_trabajo: [2, 1], duchas: [4, 1], banco_vestuario: [3, 1], lavabos: [3, 1],
+  mesa_guardia: [2, 1], armero_cortas: [3, 1],
 };
 /** Parámetros de ejemplo para la decoración en la galería. */
 export const GALLERY_DECOR = {
@@ -379,6 +382,9 @@ export const GALLERY_DECOR = {
   arbusto: {}, planta_deco: {},
   fluorescente: { y: 1.4 }, gotera: {}, monitores_pared: {}, puerta_acorazada: {}, cruz_luminosa: { y: 1.3 },
   perchero_chalecos: {}, calendario: { y: 1.2 }, silla_rota: {}, cajas_suelo: {},
+  puerta_reja: { slide: -1 }, ventanuco: { y: 1.2 }, lampara_jaula: { y: 1.4 }, manta_suelo: {}, panel_armas: { y: 1.0 },
+  chalecos_armeria: {}, ventana: { y: 1.0 }, tele_pared: { y: 1.3 }, perchero: {}, negatoscopio: { y: 1.0 },
+  dispensador_turnos: {}, palet: {}, carretilla: {}, papelera: {},
 };
 
 /** Todos los tipos en filas de ancho limitado (muebles y luego decoración), cada uno con su nombre. */

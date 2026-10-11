@@ -69,6 +69,7 @@ const CASINGS = FX.casings;
 const SMOKE = FX.muzzleSmoke;
 const EXP = FX.explosion;
 const AXIS_Z = new THREE.Vector3(0, 0, 1);
+const FLASH_COLOR = 0xffc870; // color de serie del fogonazo (el láser y el lanzallamas usan el suyo)
 
 export class Effects {
   constructor(scene) {
@@ -93,7 +94,7 @@ export class Effects {
     this._tracerIdx = 0;
 
     // Fogonazo: una única luz puntual reutilizada (fundido rápido).
-    this.flashLight = new THREE.PointLight(0xffc870, 0, 9, 1.6);
+    this.flashLight = new THREE.PointLight(FLASH_COLOR, 0, 9, 1.6);
     scene.add(this.flashLight);
     this.flashTimer = 0;
     this.flashDur = FX.flash.time;
@@ -210,16 +211,18 @@ export class Effects {
   }
 
   // ------------------------------------------------------------------ trazadoras y luz
-  tracer(from, to, color = 0xffe6a0) {
+  /** `widthMul` y `lifeMul` ensanchan y alargan el trazo (rayo láser). */
+  tracer(from, to, color = 0xffe6a0, widthMul = 1, lifeMul = 1) {
     const t = this.tracers[this._tracerIdx];
     this._tracerIdx = (this._tracerIdx + 1) % this.maxTracers;
     const len = from.distanceTo(to);
     t.mesh.position.copy(from);
     t.mesh.lookAt(to);
-    t.mesh.scale.set(FX.tracers.width, FX.tracers.width, len);
+    t.mesh.scale.set(FX.tracers.width * widthMul, FX.tracers.width * widthMul, len);
     t.mesh.material.color.set(color);
     t.mesh.material.opacity = 1;
     t.mesh.visible = true;
+    t.maxLife = FX.tracers.life * lifeMul;
     t.life = t.maxLife;
     // Si la trazadora acaba contra un muro (celda que bloquea disparos justo detrás del
     // punto final), salta una lluvia de chispas.
@@ -234,7 +237,8 @@ export class Effects {
     }
   }
 
-  muzzleFlash(pos) {
+  muzzleFlash(pos, color = FLASH_COLOR) {
+    this.flashLight.color.set(color);
     this.flashLight.position.copy(pos);
     this.lastMuzzle.copy(pos);
     this.flashPeak = FX.flash.intensity;
@@ -446,6 +450,7 @@ export class Effects {
   explosion(x, z, radius) {
     const sc = radius / EXP.refRadius;
     // Destello de luz: reutiliza la luz del fogonazo, con fundido.
+    this.flashLight.color.set(FLASH_COLOR);
     this.flashLight.position.set(x, 1.4, z);
     this.flashPeak = FX.flash.explosionIntensity;
     this.flashDur = FX.flash.explosionTime;

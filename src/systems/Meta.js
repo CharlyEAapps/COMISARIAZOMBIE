@@ -41,7 +41,7 @@ export class Meta {
     const on = (t, fn) => game.bus.on(t, fn);
     this._unsub = [
       on('run:start', () => this.resetRunStats()),
-      on('weapon:fired', ({ id }) => this.useWeapon(id)),
+      on('weapon:fired', ({ id, weapon }) => this.useWeapon(id, weapon?.statWeight ?? 1)),
       on('weapon:melee', ({ id }) => this.useWeapon(id)),
       on('boss:killed', () => { this.runStats.bossKills++; }),
       on('build:placed', () => { this.runStats.built++; }),
@@ -55,9 +55,10 @@ export class Meta {
     this.runStats = { bossKills: 0, built: 0, cases: 0, perfectNights: 0, shots: {} };
   }
 
-  useWeapon(id) {
+  /** `weight`: lo que cuenta cada disparo (el lanzallamas dispara 14 veces por segundo). */
+  useWeapon(id, weight = 1) {
     const s = this.runStats.shots;
-    s[id] = (s[id] ?? 0) + 1;
+    s[id] = (s[id] ?? 0) + weight;
   }
 
   get medals() { return this.data.medals; }

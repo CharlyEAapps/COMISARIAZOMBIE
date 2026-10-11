@@ -107,6 +107,22 @@ html, body {
 .ammo-mag { font: 700 38px/1 ui-monospace, "Cascadia Mono", Consolas, monospace; }
 .ammo-mag.low { color: var(--danger); }
 .ammo-res { font: 600 16px ui-monospace, Consolas, monospace; color: var(--hud-dim); }
+.ammo.hide { display: none; }
+
+/* Rifle láser: barra de calor en lugar de la munición */
+.heat-bar {
+  display: none; position: relative; height: 22px; margin: 4px 0 6px; border-radius: 6px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.1); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.heat-bar.show { display: block; }
+.heat-fill { height: 100%; width: 0; background: linear-gradient(90deg, #4fc3ff, #ffd24a); transition: width 0.08s linear; }
+.heat-bar[data-state="hot"] .heat-fill { background: linear-gradient(90deg, #ffb02e, #ff5a2a); }
+.heat-bar[data-state="locked"] .heat-fill { background: linear-gradient(90deg, #ff5a2a, #e0281c); animation: heat-blink 0.5s steps(2) infinite; }
+.heat-text {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font: 700 11px ui-monospace, Consolas, monospace; letter-spacing: 0.06em; color: #fff; text-shadow: 0 1px 2px #000;
+}
+@keyframes heat-blink { 50% { opacity: 0.45; } }
 
 .hurt {
   position: absolute; inset: 0; opacity: 0;
@@ -556,6 +572,14 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
 .m-ammo b { font: 800 18px ui-monospace, Consolas, monospace; }
 .m-ammo small { font: 600 11px ui-monospace, Consolas, monospace; color: var(--hud-dim); margin-left: 1px; }
 .m-swap { color: var(--hud-dim); font-size: 13px; }
+/* Rifle láser en el móvil: barra de calor en lugar de la munición */
+.m-heat { display: none; width: 44px; height: 9px; border-radius: 5px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.m-heat i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #4fc3ff, #ffd24a); transition: width 0.08s linear; }
+.touch-layer.heat-weapon .m-ammo { display: none; }
+.touch-layer.heat-weapon .m-heat { display: block; }
+.touch-layer.heat-hot .m-heat i { background: linear-gradient(90deg, #ffb02e, #ff5a2a); }
+.touch-layer.heat-locked .m-heat i { background: #ff3b30; animation: heat-blink 0.5s steps(2) infinite; }
+.touch-layer.heat-locked .m-weapon { box-shadow: inset 0 0 0 1px #ff3b30; }
 .m-reload { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; }
 .m-reload .fill { height: 100%; width: 0; }
 
@@ -666,3 +690,94 @@ table.controls td:first-child { text-align: right; white-space: nowrap; }
   border: 2px solid var(--accent); border-radius: 8px; user-select: text; -webkit-user-select: text;
 }
 table.records td.ini { font: 800 14px ui-monospace, Consolas, monospace; color: var(--accent); letter-spacing: 0.15em; }
+
+/* ---------------------------------------------------------------- Radio de la historia y llamadas (frente C) */
+/* Escritorio: abajo a la izquierda. Móvil: bajo los botones de construir/noche, sin tapar avisos ni botones. */
+.radio-feed {
+  position: absolute; left: 12px; bottom: 12px; width: min(380px, 34vw); padding: 8px 26px 8px 12px;
+  display: none; font-size: 13px; line-height: 1.38; border-left: 3px solid var(--accent); cursor: pointer;
+}
+.radio-feed.show { display: block; animation: rf-in 0.25s ease-out; }
+.radio-feed.call { border-left-color: #7fd36b; }
+.radio-feed.ringing { animation: rf-ring 0.2s linear 7; }
+.radio-feed .rf-who { color: var(--accent); font-weight: 700; }
+.radio-feed.call .rf-who { color: #8fe07a; }
+.radio-feed .rf-reply { margin-top: 4px; }
+.radio-feed .rf-reply .rf-who { color: #8ad0ff; }
+.radio-feed .rf-tag { color: var(--hud-dim); font-style: italic; }
+.radio-feed .rf-skip { position: absolute; right: 8px; top: 6px; font-size: 11px; opacity: 0.45; }
+.hud.building .radio-feed { bottom: 190px; }
+@keyframes rf-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes rf-ring { 25% { transform: translateX(-2px) rotate(-0.6deg); } 75% { transform: translateX(2px) rotate(0.6deg); } }
+.touch .radio-feed, .touch .hud.building .radio-feed {
+  left: calc(env(safe-area-inset-left, 0px) + 8px); top: calc(env(safe-area-inset-top, 0px) + 130px); bottom: auto;
+  width: min(240px, calc(34vw - env(safe-area-inset-left, 0px))); padding: 5px 20px 6px 8px; font-size: 11px; line-height: 1.3;
+}
+.touch .radio-feed .rf-skip { right: 6px; top: 4px; font-size: 10px; }
+.touch .radio-feed .rf-reply { margin-top: 2px; }
+
+/* Pantalla final de la historia */
+.ending h1 { color: var(--accent); }
+.ending .ending-sub { margin: -4px 0 12px; color: var(--hud-dim); font-style: italic; text-align: center; }
+.ending .ending-story { text-align: left; max-width: 660px; margin: 0 auto 12px; font-size: 14px; line-height: 1.5; }
+.ending .ending-story p { margin: 0 0 8px; }
+.touch .ending .ending-story { font-size: 12px; line-height: 1.4; }
+
+/* ---------------------------------------------------------------- Misiones (ui/MissionHud.js) */
+/* Sustituye al panel "Caso de la noche" de Hud.js: MissionHud enseña el caso clásico y las misiones. */
+.panel-case { display: none !important; }
+.mission-hud { position: absolute; inset: 0; pointer-events: none; }
+.mission-panel {
+  position: absolute; left: 12px; top: 330px; width: 260px; padding: 8px 12px; display: none;
+  flex-direction: column; gap: 8px; font-size: 12px; line-height: 1.35;
+}
+.mission-panel.show { display: flex; }
+.mrow { border-left: 3px solid var(--accent); padding-left: 8px; }
+.mrow.ok { border-left-color: #7fd36b; }
+.mrow.warn { border-left-color: #e0a05a; }
+.mrow.bad { border-left-color: var(--danger); }
+.mrow-head { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
+.mrow-head b { color: var(--accent); }
+.mrow.ok .mrow-head b { color: #7fd36b; }
+.mrow.bad .mrow-head b { color: var(--danger); }
+.mrow-head em {
+  font-style: normal; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; margin-left: 4px;
+  background: rgba(217, 71, 59, 0.35); border-radius: 4px; padding: 0 4px;
+}
+.mrow-desc { color: var(--hud-dim); margin-top: 2px; }
+.mrow-live { margin-top: 2px; font: 600 11.5px ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.mrow.bad .mrow-live { color: #ff8a7a; }
+.mission-chips { display: none; }
+.touch .mission-panel { display: none !important; }
+.touch .mission-chips {
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 52px); right: calc(env(safe-area-inset-right, 0px) + 8px);
+  width: 152px; display: flex; flex-direction: column; gap: 3px;
+}
+.mchip {
+  background: rgba(16, 18, 24, 0.74); border: 1px solid rgba(255, 255, 255, 0.08); border-left: 3px solid var(--accent);
+  border-radius: 7px; padding: 3px 6px; font-size: 10px; line-height: 1.25; color: var(--hud-fg);
+}
+.mchip b { color: var(--accent); }
+.mchip.ok { border-left-color: #7fd36b; }
+.mchip.warn { border-left-color: #e0a05a; }
+.mchip.bad { border-left-color: var(--danger); color: #ff8a7a; }
+.mpoint { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 3; }
+.mpoint-arrow { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.mpoint-arrow::after {
+  content: ""; position: absolute; left: 22px; top: -8px;
+  border-left: 12px solid #f4c94a; border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+.mpoint-badge {
+  position: absolute; left: 0; top: 0; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+  background: rgba(22, 24, 30, 0.82); border: 2px solid #f4c94a; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  animation: threat-pulse 1.1s ease-in-out infinite;
+}
+.mpoint-icon { font-size: 16px; }
+.mpoint-dist { font: 700 9px ui-monospace, "Cascadia Mono", Consolas, monospace; margin-top: 1px; }
+.mbar {
+  position: absolute; left: 0; top: 0; width: 46px; height: 7px; border-radius: 4px; overflow: hidden;
+  background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.35);
+}
+.mbar-fill { height: 100%; width: 100%; transition: width 0.15s linear; }

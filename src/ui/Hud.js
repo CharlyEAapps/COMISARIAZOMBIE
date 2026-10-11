@@ -36,7 +36,8 @@ export class Hud {
       <div class="panel panel-weapon">
         <div class="weapon-slots" data-k="slots"></div>
         <div class="stat-row"><span class="label" data-k="medkits">🩹 ×1 <span class="key small">Q</span></span><span class="label" data-k="grenades">💣 ×1 <span class="key small">G</span></span><span class="label" data-k="wname">Pistola</span></div>
-        <div class="ammo"><span class="ammo-mag" data-k="mag">12</span><span class="ammo-res" data-k="res">/ ∞</span></div>
+        <div class="ammo" data-k="ammoRow"><span class="ammo-mag" data-k="mag">12</span><span class="ammo-res" data-k="res">/ ∞</span></div>
+        <div class="heat-bar" data-k="heatWrap"><div class="heat-fill" data-k="heat"></div><span class="heat-text" data-k="heatText">CALOR</span></div>
         <div class="bar thin"><div class="fill reload" data-k="reload"></div></div>
       </div>
       <div class="boss-bar panel" data-k="boss"><div class="boss-name" data-k="bossName"></div><div class="bar"><div class="fill boss" data-k="bossHp"></div></div></div>
@@ -50,7 +51,7 @@ export class Hud {
       </div>
       <div class="prompt-wrap">
         <div class="hint panel" data-k="hint">
-          <span class="key">WASD</span> mover <span class="key">Ratón</span> apuntar y disparar <span class="key">R</span> recargar <span class="key">1-7</span> armas <span class="key">G</span> granada <span class="key">E</span> interactuar <span class="key">Q</span> botiquín <span class="key">Esc</span> pausa
+          <span class="key">WASD</span> mover <span class="key">Ratón</span> apuntar y disparar <span class="key">R</span> recargar <span class="key">1-0</span> armas <span class="key">G</span> granada <span class="key">E</span> interactuar <span class="key">Q</span> botiquín <span class="key">Esc</span> pausa
         </div>
         <div class="prompt panel" data-k="prompt">
           <span class="key" data-k="promptKey">E</span><span data-k="promptText"></span>
@@ -92,7 +93,7 @@ export class Hud {
     const bus = game.bus;
     bus.on('phase:atardecer', ({ night }) => this.banner(`Noche ${night}`, 'Suena la sirena… se acercan', 3.5));
     bus.on('phase:noche', ({ night }) => this.banner(`Noche ${night}`, 'Sobrevive hasta el amanecer', 2.5));
-    bus.on('phase:dia', ({ night }) => { if (night > 1) this.banner(`Día ${night}`, game.humor.pick('dayBanner'), 3); });
+    bus.on('phase:dia', ({ night }) => { if (night > 1) this.banner(`Día ${night}`, game.story?.dayBanner(night) ?? game.humor.pick('dayBanner'), 3); });
     bus.on('run:over', () => this.set('obit', game.humor.pick('death')));
     // Si el jefe era el último zombi, su banner y el de la noche se juntan en uno.
     this.bossKilledAt = -Infinity;
@@ -101,7 +102,7 @@ export class Hud {
       const parte = game.humor.dawnLine(game.score.nightStats.kills);
       this.banner(`${boss}¡Noche ${night} superada!`, `<i>${parte}</i><br>${lines.join(' · ')}<br><b>+${total}</b>`, 6);
     });
-    bus.on('run:start', () => this.banner('Turno de noche', 'Comisaría del Distrito 13 · Día 1', 3));
+    bus.on('run:start', () => this.banner('Turno de noche', 'Agente Carlos · Comisaría del Distrito 13 · Día 1', 3));
     bus.on('boss:killed', () => {
       this.bossKilledAt = game.time;
       this.banner('¡Jefe abatido!', game.humor.pick('events.bossKilled'), 3.5);
@@ -119,6 +120,8 @@ export class Hud {
     if (prop === 'width') this.el[key].style.width = value;
     else if (prop === 'opacity') this.el[key].style.opacity = value;
     else if (prop === 'show') this.el[key].classList.toggle('show', value);
+    else if (prop === 'hide') this.el[key].classList.toggle('hide', value);
+    else if (prop === 'state') this.el[key].dataset.state = value;
     else this.el[key][prop] = value;
   }
 
@@ -179,7 +182,7 @@ export class Hud {
     if (player.buff('staminaRegen') > 1) chips.push('☕ Cafeinado');
     if (power.generator) chips.push(power.lightsOn ? '💡 Luces' : '🌑 Luces apagadas');
     if (this.game.lighting.alarmTimer > 0) chips.push('🚨 Alarma');
-    if (this.game.zombies.decoy.timer > 0) chips.push('🚓 Sirena');
+    if (this.game.zombies.decoy.timer > 0 && !this.game.missions?.ownsDecoy()) chips.push('🚓 Sirena');
     const tr = this.game.build.transformer;
     if (tr && tr.hp <= 0) chips.push('<b class="danger-text">⚠ Sin corriente</b>');
     else if (tr && tr.hp < tr.maxHp) chips.push(`⚡ Transformador ${Math.round((tr.hp / tr.maxHp) * 100)} %`);
@@ -203,7 +206,15 @@ export class Hud {
     this.set('wname', w.data.name);
     this.set('medkits', `🩹 ×${player.medkits} <span class="key small">Q</span>`, 'innerHTML');
     this.set('grenades', `💣 ×${weapons.grenades} <span class="key small">G</span>`, 'innerHTML');
-    if (w.data.melee) {
+    // Rifle láser: en vez de munición, la barra de calor (se vuelve roja y avisa al bloquearse).
+    const heat = !!w.data.heat;
+    this.set('heatWrap', heat, 'show');
+    this.set('ammoRow', heat, 'hide');
+    if (heat) {
+      this.set('heat', `${(w.heat * 100).toFixed(0)}%`, 'width');
+      this.set('heatText', w.locked ? 'SOBRECALENTADO' : `CALOR ${Math.round(w.heat * 100)} %`);
+      this.set('heatWrap', w.locked ? 'locked' : w.heat >= w.data.heat.warnAt ? 'hot' : '', 'state');
+    } else if (w.data.melee) {
       this.set('mag', '—');
       this.set('res', '');
     } else {
@@ -212,7 +223,7 @@ export class Hud {
     }
     const rl = w.reloading > 0 ? 1 - w.reloading / (w.reloadTotal || w.stats.reloadTime) : player.medkitTimer > 0 ? 1 - player.medkitTimer / MEDKIT_TIME : 0;
     this.set('reload', `${(rl * 100).toFixed(0)}%`, 'width');
-    this.el.mag.classList.toggle('low', !w.data.melee && w.mag <= Math.ceil(w.stats.magSize * 0.25));
+    this.el.mag.classList.toggle('low', !w.data.melee && !heat && w.mag <= Math.ceil(w.stats.magSize * 0.25));
     // Tira de armas: número de tecla e icono; resaltada la actual.
     const slotsKey = `${weapons.current}|${weapons.owned.size}`;
     if (this._last.slotsKey !== slotsKey) {

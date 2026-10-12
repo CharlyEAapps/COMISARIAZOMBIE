@@ -641,8 +641,8 @@
       "availableFromNight": 5,
       "lockedMsg": "Disponible a partir del día {n} (oleadas avanzadas). Hasta entonces lo tiene el alcalde vigilando a los funcionarios.",
       "desc": [
-        "De día sale de su base en el almacén y recorre el recinto: repone poco a poco la munición de tus torretas y repara lo que esté dañado (primero lo más roto y lo más cercano). Cada reparación se cobra como una normal y solo si te llegan los puntos. Al anochecer vuelve a su base a cargar. No se puede destruir y los zombis lo ignoran.",
-        "Motores nuevos: vuela más rápido, repone el doble de munición, suelda en menos tiempo y repara un 25 % más barato."
+        "De día sale de su base en el almacén y recorre el recinto: llena del todo la munición de cada torreta (unos 6 s por torreta) y repara lo que esté dañado (primero lo más roto y lo más cercano). Cada reparación se cobra como una normal y solo si te llegan los puntos. Al anochecer vuelve a su base a cargar. No se puede destruir y los zombis lo ignoran.",
+        "Motores nuevos: vuela más rápido, recarga el doble de rápido (unos 3 s por torreta), suelda en menos tiempo y repara un 25 % más barato."
       ],
       "flavor": "Dron municipal de mantenimiento. Lo compró el alcalde para vigilar a los funcionarios. Ya no quedan funcionarios, pero el dron sigue tomando nota.",
       "flavors": [
@@ -662,8 +662,8 @@
       "parkY": 0.08,
       "climbSpeed": 1.4,
       "speed": [
-        2.6,
-        3.8
+        3.4,
+        4.8
       ],
       "accel": 3,
       "arriveDist": 0.3,
@@ -686,10 +686,10 @@
         0.75
       ],
       "ammoPerSec": [
-        3,
-        6
+        25,
+        50
       ],
-      "ammoSeconds": 6,
+      "ammoSeconds": 8,
       "skipSeconds": 20,
       "drainPerSec": 0.005,
       "chargePerSec": 0.05,

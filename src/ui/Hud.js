@@ -335,7 +335,8 @@ export class Hud {
         info = `<i>${b.hoverReason}</i>`;
       } else {
         const def = b.pieces[b.selected];
-        info = `<b>${def.icon} ${def.name}</b> · Toca el suelo para elegir sitio y pulsa ✔${b.isNight ? ` · <i>De noche +${surcharge} %</i>` : ''}`;
+        const row = def.blocks && b.selected !== 'puerta' ? ' (mantén ✔ y camina para una fila)' : '';
+        info = `<b>${def.icon} ${def.name}</b> · Se pone delante de ti: pulsa ✔${row}${b.isNight ? ` · <i>De noche +${surcharge} %</i>` : ''}`;
       }
     }
     this.set('buildInfo', info, 'innerHTML');

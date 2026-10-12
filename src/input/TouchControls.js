@@ -66,8 +66,8 @@ export class TouchControls {
         <button class="tbtn tb-use" data-a="interact" data-hold="1" aria-label="Usar">✋</button>
       </div>
       <div class="build-actions">
-        <button class="bact bact-main" data-a="buildConfirm"><b data-m="baMain">✔ Construir</b><small data-m="baMainSub"></small></button>
-        <button class="bact bact-sell" data-a="alt"><b data-m="baSell">💲 Vender</b><small data-m="baSellSub"></small></button>
+        <button class="bact bact-main" data-a="buildConfirm" data-hold="1"><b data-m="baMain">✔ Construir</b><small data-m="baMainSub"></small></button>
+        <button class="bact bact-sell" data-a="alt" data-hold="1"><b data-m="baSell">💲 Vender</b><small data-m="baSellSub"></small></button>
       </div>
       <div class="rotate-hint panel"><div>📱↻</div><p>Gira el móvil: el turno se juega en horizontal.</p></div>`;
     game.uiRoot.prepend(root);

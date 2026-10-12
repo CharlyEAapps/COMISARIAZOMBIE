@@ -296,6 +296,8 @@
   "repairCooldown": 1.5,
   "sellConfirmTime": 2.0,
   "touchStartDistance": 2,
+  "rowTrailPending": 4,
+  "rowTrailMax": 2.5,
   "maxPerType": 200,
   "placeMargin": 0.05,
   "trapDamageTick": 0.25,

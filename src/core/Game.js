@@ -385,10 +385,11 @@ export class Game {
   updateAimPoint() {
     const p = this.input.pointer;
     const analog = this.input.analog;
-    // Construyendo en el móvil, el cursor solo se mueve mientras el dedo está en el suelo: si no,
-    // se quedaría resbalando al moverse la cámara.
-    const lockBuild = this.build.active && this.input.lastDevice === 'touch' && !(this.touch?.buildTouch >= 0);
-    if (p.inside && !lockBuild) {
+    // Construyendo en el móvil, el cursor lo lleva updateTouchBuildCursor (delante de Carlos o donde
+    // se toque el suelo), nunca el último toque de pantalla.
+    const touchBuild = this.build.active && this.input.lastDevice === 'touch';
+    if (touchBuild) this.updateTouchBuildCursor();
+    if (p.inside && !touchBuild) {
       this._ndc.set(p.ndcX, p.ndcY);
       this._raycaster.setFromCamera(this._ndc, this.cameraRig.camera);
       this._raycaster.ray.intersectPlane(this._groundPlane, this.groundPoint);
@@ -402,6 +403,31 @@ export class Game {
    * el zombi más alineado; sin apuntar, el policía mira hacia donde camina. La cámara mira al
    * norte sin girar, así que pantalla derecha = +X y pantalla abajo = +Z.
    */
+  /**
+   * Cursor de construcción en el móvil: va solo a la celda de delante de Carlos (según camina o
+   * hacia donde mira). Si se toca el suelo, salta ahí y se queda hasta que Carlos vuelva a andar.
+   */
+  updateTouchBuildCursor() {
+    const { input, player, build } = this;
+    const C = config.touch;
+    const p = input.pointer;
+    if (this.touch?.buildTouch >= 0 && p.inside) {
+      this._ndc.set(p.ndcX, p.ndcY);
+      this._raycaster.setFromCamera(this._ndc, this.cameraRig.camera);
+      this._raycaster.ray.intersectPlane(this._groundPlane, this.groundPoint);
+      build.manualCursor = true;
+      return;
+    }
+    const mx = input.move.x, my = input.move.y, mag = Math.hypot(mx, my);
+    const moving = mag > C.buildFollowDeadZone;
+    if (build.manualCursor && !moving) return;
+    build.manualCursor = false;
+    let dx, dz;
+    if (moving) { dx = mx / mag; dz = my / mag; } else { dx = Math.sin(player.facing); dz = Math.cos(player.facing); }
+    const pp = player.position;
+    this.groundPoint.set(pp.x + dx * C.buildDistance, 0, pp.z + dz * C.buildDistance);
+  }
+
   updateAnalogAim() {
     const { input, player } = this;
     const T = config.touch;

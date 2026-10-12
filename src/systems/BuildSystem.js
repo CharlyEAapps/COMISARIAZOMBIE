@@ -797,6 +797,9 @@ export class BuildSystem {
   setActive(on) {
     this.active = on;
     this.dragging = false;
+    this.rowing = false;
+    this.rowPending = [];
+    this.manualCursor = false;
     // Móvil: el cursor empieza delante de Carlos (luego se mueve tocando el suelo).
     const { game } = this;
     if (on && game.input?.lastDevice === 'touch' && game.player && game.groundPoint) {
@@ -831,6 +834,40 @@ export class BuildSystem {
       this.sellArmed = s.id;
       this.sellArmedUntil = this.game.time + this.cfg.sellConfirmTime;
     }
+  }
+
+  /** Celda (índice) en la que está Carlos. */
+  playerCell() {
+    const g = this.game.grid, p = this.game.player.position;
+    return g.index(g.cellX(p.x), g.cellZ(p.z));
+  }
+
+  /**
+   * ✔ mantenido en el móvil. Si Carlos camina, cada casilla que deja atrás se queda pendiente y se
+   * construye en cuanto ha salido del todo de ella (fila "a su paso"). Al soltar sin haber
+   * caminado, es un toque: construir, mejorar o reparar en el cursor.
+   */
+  updateRow(held) {
+    const type = this.selected;
+    const g = this.game.grid, p = this.game.player.position;
+    const pc = this.playerCell();
+    if (held && pc !== this.rowCell) {
+      if (this.pieces[type].blocks && type !== 'puerta') {
+        this.rowTrail = true;
+        if (this.rowCell >= 0 && this.rowPending.length < this.cfg.rowTrailPending) this.rowPending.push(this.rowCell);
+      }
+      this.rowCell = pc;
+    }
+    for (let n = this.rowPending.length - 1; n >= 0; n--) {
+      const k = this.rowPending[n];
+      const far = Math.hypot(g.centerX(k % g.w) - p.x, g.centerZ((k / g.w) | 0) - p.z) > this.cfg.rowTrailMax;
+      if (this.structures.has(k) || far) { this.rowPending.splice(n, 1); continue; }
+      const why = this.canPlace(type, k);
+      if (!why) { this.place(type, k); this.rowPending.splice(n, 1); } else if (why !== 'Estás encima') this.rowPending.splice(n, 1);
+    }
+    if (held) return;
+    if (!this.rowTrail) { this.rowTrail = true; this.primaryAction(this.hoverCell); }
+    if (!this.rowPending.length) this.rowing = false;
   }
 
   update(dt) {
@@ -879,9 +916,18 @@ export class BuildSystem {
       return;
     }
     if (this.sellArmed >= 0 && (hovered?.id !== this.sellArmed || this.game.time >= this.sellArmedUntil)) this.sellArmed = -1;
-    // Móvil: el dedo solo mueve el cursor; construir, mejorar o reparar se confirma con el botón ✔.
+    // Móvil: el cursor va delante de Carlos (o donde se toque el suelo) y el botón ✔ confirma.
+    //   Toque corto: construye, mejora o repara en el cursor al soltar.
+    //   Mantener ✔ y caminar: deja una fila de piezas en las casillas por las que va pasando.
     if (input.consume('buildConfirm')) {
-      this.primaryAction(this.hoverCell);
+      this.rowing = true;
+      this.rowTrail = false;
+      this.rowCell = this.playerCell();
+      this.rowPending.length = 0;
+      return;
+    }
+    if (this.rowing) {
+      this.updateRow(input.isHeld('buildConfirm'));
       return;
     }
     if (input.consume('fire')) {

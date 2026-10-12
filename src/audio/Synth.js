@@ -239,6 +239,26 @@ export const RECIPES = {
     k.burst(0, 0.3, 'highpass', 5000, 0.7, 0.35);
   }],
   turret_empty: [0.2, (k) => { k.click(0, 0.4); k.click(0.1, 0.35); }],
+  // Dron de mantenimiento: zumbido suave de hélices (se repite mientras vuela, con fundidos para
+  // que las repeticiones empalmen) y chisporroteo flojo de soldadura.
+  drone_hum: [1.1, (k) => {
+    const env = () => k.env([[0, 1e-4], [0.18, 0.3], [0.9, 0.3], [1.1, 1e-4]]);
+    for (const [f, a] of [[150, 1], [226, 0.5]]) {
+      const o = k.osc('sawtooth', f, 0, 1.1);
+      const am = k.osc('sine', 38, 0, 1.1); // batido de las palas
+      const ag = k.ctx.createGain();
+      ag.gain.value = 0.35 * a;
+      const depth = k.ctx.createGain();
+      depth.gain.value = 0.15 * a;
+      am.connect(depth).connect(ag.gain);
+      k.chain(o, k.filter('lowpass', 700, 0.8), ag, env());
+    }
+    k.chain(k.noise(0, 1.1), k.filter('bandpass', 1200, 0.8), env());
+  }],
+  drone_weld: [0.35, (k) => {
+    for (let i = 0; i < 6; i++) k.burst(i * 0.05 + Math.random() * 0.02, 0.03, 'highpass', 3500 + Math.random() * 2500, 1, 0.25);
+    k.chain(k.osc('square', 95, 0, 0.3), k.filter('bandpass', 1800, 2), k.perc(0, 0.01, 0.12, 0.28));
+  }],
   door: [0.6, (k) => {
     const o = k.osc('sawtooth', 180, 0, 0.4, 260);
     const lfo = k.osc('sine', 23, 0, 0.4);

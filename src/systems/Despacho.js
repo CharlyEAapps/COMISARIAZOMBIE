@@ -4,6 +4,7 @@ import { PHASE } from './DayNight.js';
 import { ROOMS_LIST, ROOM_BY_ID, roomLevel, globalLevel, inRoom } from './Station.js';
 import { YardBarrels } from './Barrels.js';
 import { Luigi } from '../entities/Luigi.js';
+import { Drone, droneAvailable } from '../entities/Drone.js';
 
 // Despacho del jefe: reformas de la comisaría por SALAS, compradas con los puntos del turno (se
 // pierden al acabarlo). Cada sala (station.json) agrupa sus mejoras; su nivel es la suma de los
@@ -179,6 +180,8 @@ export class Despacho {
     this.barrels = new YardBarrels(game);
     this._reserved = (k) => this.towerCells.has(k);
     this.luigi = new Luigi(game, UPGRADES.luigi);
+    // Dron de mantenimiento: base de carga en el almacén de pruebas.
+    this.drone = new Drone(game, UPGRADES.dron, this.wx, this.wz);
 
     // Interacciones de la comisaría que modifican las mejoras (los objetos persisten entre turnos).
     const items = game.interactions.items;
@@ -238,6 +241,16 @@ export class Despacho {
     return u.flavors[((this.game.dayNight?.night ?? 1) + this.level(id)) % u.flavors.length];
   }
 
+  /**
+   * Motivo por el que la mejora `id` aún no se puede comprar (mejoras con `availableFromNight`,
+   * como el dron, para las oleadas avanzadas), o null si ya está disponible o ya se tiene.
+   */
+  lockReason(id) {
+    const u = UPGRADES[id];
+    if (!u || this.has(id) || droneAvailable(u, this.game.dayNight?.night ?? 1)) return null;
+    return (u.lockedMsg ?? '').replace('{n}', u.availableFromNight);
+  }
+
   /** Descuento de la armería reformada en munición y granadas (0–1). */
   get ammoDiscount() {
     return levelValue(UPGRADES.armeria.ammoDiscount, this.level('armeria'), 0);
@@ -277,6 +290,7 @@ export class Despacho {
     // Los barriles, en el primer paso: antes se restaura lo construido (que tiene preferencia).
     this.barrels.pending = this.has('barriles');
     if (this.has('luigi')) this.luigi.spawnNearPlayer();
+    if (this.has('dron')) this.drone.spawnAtBase();
   }
 
   reset() {
@@ -333,6 +347,7 @@ export class Despacho {
     this.roofTurret.level = Math.max(0, Math.min(this.level('torreta_tejado'), T.levels.length) - 1);
     this.syncTowers();
     this.luigi.setLevel(this.level('luigi'));
+    this.drone.setLevel(this.level('dron'));
     this.version++;
   }
 
@@ -392,6 +407,11 @@ export class Despacho {
         this.luigi.spawn(this.wx(B.x), this.wz(B.z + B.d));
         game.hud?.toast(u.buyMsg, 5);
       } else game.hud?.toast(u.vestMsg, 4);
+    }
+    if (id === 'dron') {
+      // Sale de su base del almacén (de día despega enseguida; de noche se queda cargando).
+      if (lvl === 0) this.drone.spawnAtBase();
+      game.hud?.toast(lvl === 0 ? u.buyMsg : u.upgradeMsg, 5);
     }
     return `🗄️ ${u.icon} ${u.name}${u.prices.length > 1 ? ` (nivel ${lvl + 1})` : ''}: ¡obra terminada! Comisaría nivel ${this.global}.`;
   }
@@ -584,6 +604,7 @@ export class Despacho {
       this.barrels.place(this.level('barriles'), this._reserved);
     }
     this.luigi.update(dt);
+    this.drone.update(dt);
     // Alarma mejorada: cuando se apaga, vuelve a estar disponible hasta gastar sus usos.
     if (this.has('alarma') && this.alarmUses > 0 && this.alarmUses < UPGRADES.alarma.usesPerNight &&
         game.dayNight.phase === PHASE.NIGHT && game.lighting.alarmTimer <= 0) {

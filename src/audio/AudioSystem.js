@@ -305,6 +305,8 @@ export class AudioSystem {
     bus.on('fence:zap', ({ s }) => this.play('zap', s.cx, s.cz));
     bus.on('turret:fired', (s) => this.play('shot_torreta', s.cx, s.cz));
     bus.on('turret:empty', (s) => this.play('turret_empty', s.cx, s.cz));
+    bus.on('drone:hum', (p) => this.play('drone_hum', p.x, p.z));
+    bus.on('drone:weld', (d) => this.play('drone_weld', d.pos.x, d.pos.z));
     bus.on('acid:spit', ({ x, z }) => this.play('spit', x, z));
     bus.on('acid:splash', ({ x, z }) => this.play('splash', x, z));
     bus.on('door:toggle', ({ x, z }) => this.play('door', x, z));

@@ -221,10 +221,14 @@ export class ShopSystem {
         if (!u) continue;
         const lvl = D.level(id), max = u.prices.length;
         const cost = nextPrice(id, lvl);
+        // Mejoras que llegan más tarde (el dron, desde las oleadas avanzadas): se ven con el motivo.
+        const lock = D.lockReason?.(id) ?? null;
+        const desc = u.desc[Math.min(lvl, max - 1)];
         items.push({
           id: `despacho:${id}`, section, name: `${u.icon} ${u.name} ${'★'.repeat(lvl)}${'☆'.repeat(max - lvl)}`,
-          desc: u.desc[Math.min(lvl, max - 1)], flavor: D.flavorOf?.(id) ?? u.flavor,
-          price: cost ? this.price(cost) : 0, state: cost ? null : max > 1 ? 'max' : 'owned',
+          desc: lock ? `🔒 ${lock} ${desc}` : desc, flavor: D.flavorOf?.(id) ?? u.flavor,
+          price: cost ? this.price(cost) : 0, state: lock ? 'locked' : cost ? null : max > 1 ? 'max' : 'owned',
+          reason: lock,
         });
       }
     }
@@ -252,7 +256,8 @@ export class ShopSystem {
   whyNot(itemId) {
     const item = this.catalog().find((i) => i.id === itemId);
     if (!item) return 'No disponible';
-    return item.state === 'ok' ? null : STATE_REASON[item.state] ?? 'No disponible';
+    if (item.state === 'ok') return null;
+    return item.reason ?? STATE_REASON[item.state] ?? 'No disponible';
   }
 
   /** @returns {string|null} mensaje de resultado (o null si no se pudo comprar) */

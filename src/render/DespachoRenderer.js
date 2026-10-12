@@ -7,6 +7,7 @@ import { ROOM_BY_ID } from '../systems/Station.js';
 import { bakeBuilder } from './PropRenderer.js';
 import { UPGRADES } from '../systems/Despacho.js';
 import { LuigiRenderer } from './LuigiRenderer.js';
+import { DroneRenderer } from './DroneRenderer.js';
 
 const DEG = Math.PI / 180;
 const UP = new THREE.Vector3(0, 1, 0);
@@ -22,6 +23,10 @@ const GLYPHS = {
   U: ['101', '101', '101', '101', '111'],
   I: ['111', '010', '010', '010', '111'],
   G: ['111', '100', '101', '101', '111'],
+  D: ['110', '101', '101', '101', '110'],
+  R: ['110', '101', '110', '101', '101'],
+  O: ['111', '101', '101', '101', '111'],
+  N: ['101', '111', '111', '101', '101'],
 };
 
 // Lo que se ve de las reformas del despacho del jefe. Las SALAS (muebles, carteles con estrellas,
@@ -78,6 +83,8 @@ export class DespachoRenderer {
 
     // Luigi, el chihuahua (mejora de la sala de descanso).
     this.luigi = new LuigiRenderer(game, this.group);
+    // Dron de mantenimiento (mejora del almacén) y su base de carga.
+    this.drone = new DroneRenderer(game, this.group);
 
     // Generador de emergencia junto al transformador.
     const G = UPGRADES.generador_emergencia;
@@ -171,6 +178,8 @@ export class DespachoRenderer {
 
     // Cama de Luigi en la sala de descanso (siempre: sin la mejora, la cama espera).
     this.dogBed(b);
+    // Base del dron en el almacén (siempre: sin la mejora, vacía y con un cono).
+    this.dronePad(b, d.has('dron'));
     any = true;
 
     if (d.has('generador_emergencia')) {
@@ -275,6 +284,61 @@ export class DespachoRenderer {
     }
   }
 
+  /** Base de carga del dron: plataforma con la «H», poste con su cartel «DRON» y marco de la barra de carga. */
+  dronePad(b, bought) {
+    const d = this.game.despacho;
+    const B = UPGRADES.dron.base;
+    const s = B.pad;
+    b.root(d.wx(B.x), 0, d.wz(B.z), 0);
+    b.box(0, 0, 0, s, 0.05, s, 0x3b3f45, { ao: 0.2 });
+    // Borde de franjas amarillas y negras.
+    const n = 6, step = s / n;
+    for (let k = 0; k < n; k++) {
+      const c = k % 2 ? BLK : YEL, o = -s / 2 + step * (k + 0.5);
+      b.box(o, 0.05, -s / 2 + 0.05, step, 0.012, 0.1, c, { ao: 0 });
+      b.box(o, 0.05, s / 2 - 0.05, step, 0.012, 0.1, c, { ao: 0 });
+      b.box(-s / 2 + 0.05, 0.05, o, 0.1, 0.012, step, k % 2 ? YEL : BLK, { ao: 0 });
+      b.box(s / 2 - 0.05, 0.05, o, 0.1, 0.012, step, k % 2 ? YEL : BLK, { ao: 0 });
+    }
+    // «H» de helipuerto (de juguete).
+    const h = s * 0.42, w = 0.07;
+    for (const x of [-h / 3, h / 3]) b.box(x, 0.05, 0, w, 0.01, h, 0xf3ecd8, { ao: 0 });
+    b.box(0, 0.05, 0, (h * 2) / 3, 0.01, w, 0xf3ecd8, { ao: 0 });
+    if (!bought) {
+      // Sin dron: un cono en medio de la plataforma.
+      b.cyl(0, 0.06, 0, 0.02, 0.14, 0.42, 0xf08a24, 10, { ao: 0.1 });
+      b.cyl(0, 0.2, 0, 0.075, 0.1, 0.07, 0xf3ecd8, 10, { ao: 0 });
+      b.box(0, 0.05, 0, 0.32, 0.03, 0.32, 0xf08a24, { ao: 0.1 });
+    }
+    // Poste de carga con el marco de la barra (la barra y el piloto los pinta DroneRenderer) y,
+    // encima, el cartel «DRON» inclinado hacia la cámara.
+    b.root(d.wx(B.postX), 0, d.wz(B.postZ), 0);
+    b.box(0, 0, 0, 0.34, 0.06, 0.34, IRON, { ao: 0.2 });
+    b.box(0, 0.06, 0, 0.26, 1.14, 0.26, 0xe9ecef, { ao: 0.15 });
+    b.box(0, 1.2, 0, 0.3, 0.05, 0.3, 0xf08a24, { ao: 0 });
+    b.box(0, 0.3, 0.13, 0.17, 0.7, 0.012, BLK, { ao: 0 });
+    const tilt = -0.75, cy = 1.25, cs = Math.cos(tilt), sn = Math.sin(tilt);
+    // Punto del plano del cartel (u a lo ancho, v hacia arriba, w hacia fuera) → caja con la inclinación.
+    const plate = (u, v, w, bw, bh, bd, color) => b.box(u, cy + v * cs - w * sn, v * sn + w * cs, bw, bh, bd, color, { rx: tilt, ao: 0 });
+    const name = 'DRON';
+    const px = 0.05, letterW = px * 3;
+    const textW = name.length * letterW + (name.length - 1) * px;
+    b.box(0, 1.25, 0, 0.05, 0.1, 0.05, IRON, { ao: 0 });
+    plate(0, 0.02, -0.02, textW + 0.16, 0.4, 0.035, 0x2f5fa8);   // placa azul municipal
+    plate(0, 0.0, -0.03, textW + 0.2, 0.03, 0.05, 0xf3ecd8);     // marco inferior
+    plate(0, 0.43, -0.03, textW + 0.2, 0.03, 0.05, 0xf3ecd8);    // marco superior
+    let x = -textW / 2 + px / 2;
+    for (const ch of name) {
+      const rows = GLYPHS[ch];
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 3; c++) {
+          if (rows[r][c] === '1') plate(x + c * px, 0.09 + (4 - r) * px, 0.018, px, px, 0.012, 0xf3ecd8);
+        }
+      }
+      x += letterW + px;
+    }
+  }
+
   /** Jaula metálica alrededor del transformador: postes y barandillas (I), barrotes (II), chapas y techo (III). */
   transformerCage(b, level) {
     const t = this.game.build.transformer;
@@ -357,6 +421,7 @@ export class DespachoRenderer {
       if (d.towersUp) this.gateHeads[n].rotation.y = d.gateTurrets[n].yaw;
     }
     this.luigi.update();
+    this.drone.update();
     this.generator.visible = d.has('generador_emergencia');
     const focos = d.has('focos');
     this.focos.visible = this.lenses.visible = focos;
@@ -368,6 +433,7 @@ export class DespachoRenderer {
 
   dispose() {
     this.luigi.dispose();
+    this.drone.dispose();
     this.game.scene.remove(this.group);
     for (const g of [...this.geos, ...this.staticGeos]) g.dispose();
     this.material.dispose();

@@ -630,6 +630,110 @@
       "vestMsg": "🐕 Luigi estrena chaleco. Se lo ha mordido dos veces, pero lo lleva.",
       "stuckSeconds": 2.5,
       "trotStride": 9
+    },
+    "dron": {
+      "icon": "🚁",
+      "name": "Dron de mantenimiento",
+      "prices": [
+        750,
+        1350
+      ],
+      "availableFromNight": 5,
+      "lockedMsg": "Disponible a partir del día {n} (oleadas avanzadas). Hasta entonces lo tiene el alcalde vigilando a los funcionarios.",
+      "desc": [
+        "De día sale de su base en el almacén y recorre el recinto: repone poco a poco la munición de tus torretas y repara lo que esté dañado (primero lo más roto y lo más cercano). Cada reparación se cobra como una normal y solo si te llegan los puntos. Al anochecer vuelve a su base a cargar. No se puede destruir y los zombis lo ignoran.",
+        "Motores nuevos: vuela más rápido, repone el doble de munición, suelda en menos tiempo y repara un 25 % más barato."
+      ],
+      "flavor": "Dron municipal de mantenimiento. Lo compró el alcalde para vigilar a los funcionarios. Ya no quedan funcionarios, pero el dron sigue tomando nota.",
+      "flavors": [
+        "Dron municipal de mantenimiento. Lo compró el alcalde para vigilar a los funcionarios. Ya no quedan funcionarios, pero el dron sigue tomando nota.",
+        "Repara barricadas, recarga torretas y te pasa la factura. Es lo más parecido a un funcionario que queda en la ciudad.",
+        "Los zombis no le hacen caso: no tiene cerebro. Como el que lo compró.",
+        "Viene con la cámara del alcalde. En la tarjeta de memoria hay tres años de pausas para el café."
+      ],
+      "base": {
+        "x": 45.75,
+        "z": 34.75,
+        "pad": 1.3,
+        "postX": 47.0,
+        "postZ": 34.05
+      },
+      "flyY": 3.6,
+      "parkY": 0.08,
+      "climbSpeed": 1.4,
+      "speed": [
+        2.6,
+        3.8
+      ],
+      "accel": 3,
+      "arriveDist": 0.3,
+      "retarget": 0.75,
+      "repairKinds": [
+        "estructura",
+        "utilidad"
+      ],
+      "minDamage": 0.05,
+      "minAmmo": 0.1,
+      "repairWeight": 1,
+      "ammoWeight": 0.6,
+      "distWeight": 0.012,
+      "repairSeconds": [
+        4,
+        2.5
+      ],
+      "repairCostMul": [
+        1,
+        0.75
+      ],
+      "ammoPerSec": [
+        3,
+        6
+      ],
+      "ammoSeconds": 6,
+      "skipSeconds": 20,
+      "drainPerSec": 0.005,
+      "chargePerSec": 0.05,
+      "resumeCharge": 0.25,
+      "weldEvery": 0.12,
+      "humEvery": 0.9,
+      "beamColor": "#7fe0ff",
+      "sparkColor": "#ffd47a",
+      "patrol": [
+        [
+          39.5,
+          42
+        ],
+        [
+          60,
+          48
+        ],
+        [
+          67,
+          25
+        ],
+        [
+          52,
+          9
+        ],
+        [
+          27,
+          9
+        ],
+        [
+          11,
+          25
+        ],
+        [
+          18,
+          50
+        ]
+      ],
+      "transformerName": "el transformador",
+      "buyMsg": "🚁 El dron de mantenimiento despega del almacén. De día repara (cobrando) y recarga torretas; de noche, a cargar.",
+      "upgradeMsg": "🚁 Dron con motores nuevos: más rápido y reparaciones un 25 % más baratas.",
+      "noBudgetMsg": "🚁 Sin presupuesto para reparar {what} ({p} pts). El dron pasa a lo siguiente (hoy no vuelve a avisar).",
+      "repairFloat": "🔧 −{p}",
+      "ammoFloat": "+{n} 🎯"
     }
   }
 }

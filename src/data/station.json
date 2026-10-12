@@ -1449,7 +1449,8 @@
         }
       ],
       "upgrades": [
-        "muros"
+        "muros",
+        "dron"
       ],
       "tiles": [
         {

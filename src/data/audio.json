@@ -399,6 +399,18 @@
       "min": 0.15,
       "max": 2
     },
+    "drone_hum": {
+      "vol": 0.22,
+      "rate": 0.02,
+      "min": 0.5,
+      "max": 2
+    },
+    "drone_weld": {
+      "vol": 0.18,
+      "rate": 0.12,
+      "min": 0.3,
+      "max": 1
+    },
     "hurt": {
       "vol": 0.55,
       "rate": 0.1,

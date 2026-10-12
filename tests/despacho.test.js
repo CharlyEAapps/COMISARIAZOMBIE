@@ -317,7 +317,7 @@ describe('Despacho: mejoras en partida', () => {
     const idx = items.map((i) => order.findIndex((n) => i.section.startsWith(n)));
     expect(idx.every((n) => n >= 0)).toBe(true);
     expect(idx).toEqual([...idx].sort((a, b) => a - b));
-    expect(items.find((i) => i.id === 'despacho:muros').section).toContain('nivel 0/2');
+    expect(items.find((i) => i.id === 'despacho:muros').section).toContain('nivel 0/4'); // muros (2) + dron (2)
     const pers = items.find((i) => i.id === 'despacho:persianas');
     expect(pers.price).toBe(U.persianas.prices[0]);
     expect(pers.name).toContain('☆☆☆');

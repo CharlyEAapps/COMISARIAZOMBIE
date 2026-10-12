@@ -31,6 +31,11 @@ export function repairCost(cfg, def, s, mul = 1) {
   return Math.max(1, Math.ceil(((s.maxHp - s.hp) / s.maxHp) * def.levels[s.level].cost * cfg.repairCostFactor * mul));
 }
 
+/** Coste con un multiplicador (descuentos): 0 si no hay nada que pagar; si no, al menos 1. */
+export function scaledCost(base, mul = 1) {
+  return base > 0 ? Math.max(1, Math.ceil(base * mul)) : 0;
+}
+
 // Construcción del jugador: barricadas, sacos, puertas y trampas, y el transformador de la
 // comisaría. Casi todas las piezas ocupan 1 celda; la puerta reforzada cubre el hueco entero
 // de la puerta del mapa (varias celdas 'D' seguidas), con coste y vida por celda.
@@ -460,6 +465,33 @@ export class BuildSystem {
     this.game.floating?.spawn(`-${cost}`, s.cx, 1.6, s.cz, 'neg');
     this.changed(false);
     return true;
+  }
+
+  /**
+   * Reparación a distancia (dron de mantenimiento del despacho): como repair(), pero sin el
+   * alcance del jugador y con el coste multiplicado por `costMul` (descuento del dron). El número
+   * flotante lo pone quien llama. @returns {number} puntos cobrados (0 = no se pudo)
+   */
+  remoteRepair(s, costMul = 1) {
+    const cost = scaledCost(this.repairCostOf(s), costMul);
+    if (!cost || !this.all.has(s) || this.game.run.points < cost || this.game.time < s.repairReady) return 0;
+    this.game.run.points -= cost;
+    s.hp = s.maxHp;
+    s.repairReady = this.game.time + this.cfg.repairCooldown;
+    this.game.bus.emit('build:repaired', { s, remote: true });
+    this.applyGrid(s);
+    this.changed(false);
+    return cost;
+  }
+
+  /** Reparación a distancia del transformador (dron). @returns {number} puntos cobrados (0 = no) */
+  remoteRepairTransformer(costMul = 1) {
+    const t = this.transformer;
+    const cost = scaledCost(this.transformerRepairCost(), costMul);
+    if (!cost || this.game.run.points < cost) return 0;
+    this.game.run.points -= cost;
+    t.hp = t.maxHp;
+    return cost;
   }
 
   sellValue(s) {
